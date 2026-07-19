@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Merkeigen selectiekleur (indigo-op-wit) i.p.v. de standaard blauwe
+   browserselectie. */
+::selection {
+  background-color: #4f46e5;
+  color: #ffffff;
+}
+
+/* Eén consistente focusring in de indigo accentkleur i.p.v. de standaard
+   blauwe browserring. */
+:focus-visible {
+  outline: 2px solid #4f46e5;
+  outline-offset: 2px;
+}
+
+/* Dunne, architecturale "tekenmarkering" (kruis) — een terugkerend grafisch
+   motief geïnspireerd op bouwtekening-registratiemarkeringen, puur
+   decoratief. Gebruik: <span class="crosshair" />. */
+.crosshair {
+  position: relative;
+  display: inline-block;
+  width: 1px;
+  height: 22px;
+  background-color: currentColor;
+  opacity: 0.35;
+}
+.crosshair::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 22px;
+  height: 1px;
+  background-color: currentColor;
+  transform: translate(-50%, -50%);
+}
+
+/* Oversized, uitgesneden watermark-typografie (alleen contour, geen vulling)
+   — het grafische signatuurdevice op de hero: grote, deels wegvallende
+   letters op de achtergrond, zoals een architectenstempel op een tekening.
+   Bewust met -webkit-text-stroke i.p.v. een gevulde kleur: leest als een
+   afdruk, niet als een tweede kop. */
+.watermark-outline {
+  -webkit-text-stroke: 1.5px rgba(31, 31, 46, 0.09);
+  color: transparent;
+}
+
+@media (min-width: 640px) {
+  .watermark-outline {
+    -webkit-text-stroke: 2px rgba(31, 31, 46, 0.09);
+  }
+}
