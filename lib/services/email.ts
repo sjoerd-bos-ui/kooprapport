@@ -5,6 +5,8 @@
 // controleerbaar blijft. Docs: https://resend.com/docs/api-reference/emails/send-email
 // -----------------------------------------------------------------------------
 
+import { APP_BASE_URL } from "@/lib/config/payment";
+
 const RESEND_API_URL = "https://api.resend.com/emails";
 
 export interface StuurRapportEmailInput {
@@ -85,6 +87,7 @@ function escapeHtml(input: string): string {
 // -----------------------------------------------------------------------------
 function buildRapportEmailHtml(adresLabel: string): string {
   const adres = escapeHtml(adresLabel);
+  const logoUrl = `${APP_BASE_URL}/logo-email.png`;
   return `<!DOCTYPE html>
 <html lang="nl">
   <body style="margin:0;padding:0;background-color:#F5F5FA;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
@@ -93,15 +96,30 @@ function buildRapportEmailHtml(adresLabel: string): string {
         <td align="center">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background-color:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #EEF0FF;">
             <tr>
-              <td style="background-color:#1F1F2E;padding:24px 32px;">
-                <span style="font-size:18px;font-weight:700;color:#ffffff;letter-spacing:-0.01em;">Kooprapport</span>
+              <td style="background-color:#1F1F2E;padding:22px 32px;">
+                <table role="presentation" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td style="padding-right:10px;">
+                      <img src="${logoUrl}" width="32" height="32" alt="" style="display:block;border-radius:9px;" />
+                    </td>
+                    <td>
+                      <span style="font-size:18px;font-weight:700;color:#ffffff;letter-spacing:-0.01em;">Kooprapport</span>
+                    </td>
+                  </tr>
+                </table>
               </td>
             </tr>
             <tr>
               <td style="padding:32px;">
-                <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#1F1F2E;">Hallo,</p>
+                <p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#4F46E5;">
+                  Uw rapport is onderweg
+                </p>
+                <p style="margin:0 0 18px;font-size:20px;line-height:1.4;font-weight:700;color:#1F1F2E;">
+                  Klaar voor ${adres} 🎉
+                </p>
                 <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#1F1F2E;">
-                  Hierbij het kooprapport voor <strong>${adres}</strong>, als PDF-bijlage bij deze e-mail.
+                  Zoals gevraagd: hierbij het volledige kooprapport, als PDF-bijlage bij deze e-mail. Alles wat u
+                  moet weten over deze woning staat erin, klaar om rustig door te nemen wanneer het u uitkomt.
                 </p>
                 <table role="presentation" cellpadding="0" cellspacing="0" style="background-color:#EEF0FF;border-radius:12px;width:100%;">
                   <tr>
@@ -111,7 +129,8 @@ function buildRapportEmailHtml(adresLabel: string): string {
                   </tr>
                 </table>
                 <p style="margin:24px 0 0;font-size:13px;line-height:1.6;color:#6B7280;">
-                  Dit rapport is opgevraagd via kooprapport.nl. Heb je deze e-mail niet zelf aangevraagd, dan kun je 'm gewoon negeren.
+                  Deze e-mail is opgevraagd via kooprapport.nl. Heeft u 'm niet zelf aangevraagd, dan kunt u 'm
+                  gewoon negeren, er verandert verder niets.
                 </p>
               </td>
             </tr>
