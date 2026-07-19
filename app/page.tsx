@@ -1,8 +1,6 @@
 import Link from "next/link";
 import Container from "@/components/ui/Container";
 import AddressSearchBar from "@/components/address/AddressSearchBar";
-import { MOCK_ADDRESSES } from "@/lib/mock/addresses";
-import { buildReportHref } from "@/lib/utils/slug";
 import { RAPPORT_PRIJS } from "@/lib/utils/prijs";
 import { APP_BASE_URL } from "@/lib/config/payment";
 import { isVolledigLive } from "@/lib/config/launchStatus";
@@ -128,7 +126,6 @@ const VEELGESTELDE_VRAGEN = [
 ];
 
 export default function HomePage() {
-  const demo = MOCK_ADDRESSES[0];
   const volledigLive = isVolledigLive();
 
   // JSON-LD — rechtstreeks uit bestaande, op de pagina zichtbare content
@@ -170,14 +167,19 @@ export default function HomePage() {
       {/* eslint-disable-next-line react/no-danger */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
       {/* Context-ribbon boven de header — spreekt de koper aan op het
-          moment vlak voor een bezichtiging of bod. */}
+          moment vlak voor een bezichtiging of bod.
+          BUGFIX: linkte voorheen altijd naar hetzelfde vaste demo-adres
+          (MOCK_ADDRESSES[0], Keizersgracht 123) — elke bezoeker kwam dus op
+          precies datzelfde nepvoorbeeld terecht in plaats van zelf een adres
+          te kunnen invoeren. Nu, net als de "Probeer gratis"-knop in de
+          header, gewoon naar de echte zoekbalk. */}
       <div className="bg-ink py-2 text-center">
-        <Link
-          href={buildReportHref(demo)}
+        <a
+          href="#zoeken"
           className="text-xs font-medium text-parchment/90 underline-offset-2 hover:text-[#818CF8] hover:underline"
         >
           Bezichtiging gepland? Check het adres eerst →
-        </Link>
+        </a>
       </div>
 
       {/* Eigen, lichte header voor de homepage — geen zwarte masthead, geen

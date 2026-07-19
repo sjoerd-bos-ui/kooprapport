@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { renderToBuffer } from "@react-pdf/renderer";
 import ReportDocument from "@/lib/pdf/ReportDocument";
 import { voorbeeldRapport } from "@/lib/pdf/voorbeeldRapport";
+import { APP_BASE_URL } from "@/lib/config/payment";
 
 // -----------------------------------------------------------------------------
 // Premium voorbeeld-PDF voor op de homepage — GEEN live adresopzoeking, geen
@@ -14,7 +15,13 @@ import { voorbeeldRapport } from "@/lib/pdf/voorbeeldRapport";
 // -----------------------------------------------------------------------------
 
 export async function GET() {
-  const buffer = await renderToBuffer(<ReportDocument report={voorbeeldRapport} isVoorbeeld />);
+  // BUGFIX: siteUrl werd hier niet meegegeven, dus viel terug op een
+  // relatief pad — een PDF-viewer kan dat niet naar de site herleiden,
+  // waardoor de "eigen adres invoeren"-knop niet werkte. Nu de echte,
+  // absolute site-URL (zie ReportDocument.tsx voor de volledige uitleg).
+  const buffer = await renderToBuffer(
+    <ReportDocument report={voorbeeldRapport} isVoorbeeld siteUrl={APP_BASE_URL} />
+  );
 
   return new NextResponse(buffer, {
     status: 200,

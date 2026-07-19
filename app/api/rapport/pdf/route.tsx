@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { renderToBuffer } from "@react-pdf/renderer";
 import type { Report } from "@/types/report";
 import ReportDocument from "@/lib/pdf/ReportDocument";
+import { APP_BASE_URL } from "@/lib/config/payment";
 
 // -----------------------------------------------------------------------------
 // PDF-export van een AL OPGEHAALD rapport. De client (ReportView.tsx) heeft op
@@ -42,7 +43,9 @@ export async function POST(req: NextRequest) {
   // server-side, zodat een volgend incident wél te diagnosticeren is.
   let buffer: Buffer;
   try {
-    buffer = await renderToBuffer(<ReportDocument report={report} />);
+    // siteUrl: zie de uitleg in ReportDocument.tsx — moet een absolute URL
+    // zijn, anders werkt de "voer nu je eigen adres in"-knop niet in de PDF.
+    buffer = await renderToBuffer(<ReportDocument report={report} siteUrl={APP_BASE_URL} />);
   } catch (err) {
     console.error("[api/rapport/pdf] renderToBuffer faalde:", err);
     return NextResponse.json(

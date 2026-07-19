@@ -643,12 +643,16 @@ function Footer({ gegenereerdOp }: { gegenereerdOp: string }) {
   );
 }
 
-// Alleen op het showcase-rapport (isVoorbeeld): een opvallende, volledige-
-// breedte balk bovenaan de contentkolom — op ELKE pagina apart neergezet
-// (react-pdf heeft geen document-brede "fixed", alleen per <Page>), zodat hij
-// vanaf pagina 1 mee omhoog/omlaag "scrollt". Bewust een balk i.p.v. de
-// eerdere kleine pil rechtsboven: die viel te weinig op, terwijl het doel
-// juist is om de lezer zo snel mogelijk weer naar de site te leiden.
+// Alleen op het showcase-voorbeeldrapport (isVoorbeeld) — een echt, betaald
+// rapport toont deze knop niet. Op ELKE pagina apart neergezet (react-pdf
+// heeft geen document-brede "fixed", alleen per <Page>), zodat hij vanaf
+// pagina 1 mee omhoog/omlaag "scrollt". Bewust een balk i.p.v. een kleine pil
+// rechtsboven: die viel te weinig op, terwijl het doel juist is om de lezer
+// zo snel mogelijk naar de site te leiden.
+//
+// Twee exemplaren per pagina (boven én onder, zie VoorbeeldBannerOnder
+// hieronder) — op verzoek, zodat de link ook zichtbaar is als iemand
+// onderaan een pagina is beland zonder terug te scrollen.
 function VoorbeeldBanner({ siteUrl }: { siteUrl: string }) {
   return (
     <Link
@@ -657,6 +661,41 @@ function VoorbeeldBanner({ siteUrl }: { siteUrl: string }) {
       style={{
         position: "absolute",
         top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 30,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 7,
+        backgroundColor: KLEUR.accentDark,
+        paddingVertical: 8,
+        textDecoration: "none",
+      }}
+    >
+      <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center" }}>
+        <IcoonHuis kleur={KLEUR.accentDark} size={8} />
+      </View>
+      <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: "#FFFFFF" }}>
+        Dit is een voorbeeldrapport. Bekijk het rapport van jouw eigen adres →
+      </Text>
+    </Link>
+  );
+}
+
+// Onderste exemplaar: zelfde link/tekst, maar onderaan de pagina i.p.v.
+// bovenaan — geplaatst net boven de Footer (die zelf op bottom:16 staat),
+// zodat ze niet overlappen. Vereist dat de content-View een paddingBottom
+// heeft die hier ruimte voor vrijhoudt (zie de paddingBottom: isVoorbeeld ?
+// ... hieronder bij elke pagina).
+function VoorbeeldBannerOnder({ siteUrl }: { siteUrl: string }) {
+  return (
+    <Link
+      src={siteUrl}
+      fixed
+      style={{
+        position: "absolute",
+        bottom: 40,
         left: 0,
         right: 0,
         zIndex: 30,
@@ -963,18 +1002,24 @@ function StepperLijn({ actief }: { actief?: boolean }) {
 export default function ReportDocument({
   report,
   isVoorbeeld = false,
-  siteUrl = "/",
+  siteUrl,
 }: {
   report: Report;
-  // Alleen aangezet vanuit app/api/rapport/voorbeeld-pdf/route.tsx voor het
-  // met de hand samengestelde showcase-rapport — een echt, per-adres
-  // gegenereerd rapport (POST /api/rapport/pdf) toont deze knop nooit, want
-  // de lezer heeft dan al zijn eigen adres ingevoerd.
+  // true voor het met de hand samengestelde showcase-rapport
+  // (app/api/rapport/voorbeeld-pdf/route.tsx), false voor een echt,
+  // per-adres gegenereerd rapport (POST /api/rapport/pdf). Bepaalt of de
+  // "bekijk je eigen adres"-knoppen (VoorbeeldBanner/VoorbeeldBannerOnder,
+  // twee per pagina: boven én onder) getoond worden — alleen op het
+  // voorbeeldrapport, een betaald rapport toont ze niet.
   isVoorbeeld?: boolean;
-  // Absolute of same-origin URL waar de "eigen adres invoeren"-knop naartoe
-  // linkt — same-origin resolveert prima als relatief pad ("/") omdat de PDF
-  // zelf ook vanaf hetzelfde domein wordt geserveerd/geopend.
-  siteUrl?: string;
+  // BUGFIX: moet een VOLLEDIGE, absolute URL zijn (bv. "https://kooprapport.nl"),
+  // geen relatief pad. Een gedownloade PDF heeft geen eigen "origin" zoals een
+  // webpagina — een PDF-viewer (Preview, Adobe Reader, browser-ingebouwde
+  // viewer) kan een relatieve link-bestemming niet tegen het website-domein
+  // resolven, dus een relatief pad als "/" opent simpelweg niets. Vandaar
+  // verplicht (geen default meer): elke aanroeper moet expliciet APP_BASE_URL
+  // meegeven (zie de twee PDF-routes in app/api/rapport/).
+  siteUrl: string;
 }) {
   const { core, building, energy, market, nearbySales, buurtprofiel, fundering, gegenereerdOp } = report;
   // Defensieve fallback, NIET een normale "data onbeschikbaar"-staat: kavel
@@ -1128,7 +1173,7 @@ export default function ReportDocument({
       {/* ================================================================== */}
       <Page size="A4" style={styles.pageRow}>
         <Sidebar actief={0} />
-        <View style={[styles.content, { paddingTop: isVoorbeeld ? 46 : 26 }]}>
+        <View style={[styles.content, { paddingTop: isVoorbeeld ? 46 : 26, paddingBottom: isVoorbeeld ? 74 : 40 }]}>
           {isVoorbeeld && <VoorbeeldBanner siteUrl={siteUrl} />}
           <View style={{ position: "relative", backgroundColor: KLEUR.accentDark, borderRadius: 12, padding: 18, marginBottom: 12, overflow: "hidden" }}>
             <Svg width={160} height={64} viewBox="0 0 160 64" style={{ position: "absolute", right: 0, bottom: 0 }}>
@@ -1193,6 +1238,7 @@ export default function ReportDocument({
             ))}
           </View>
 
+          {isVoorbeeld && <VoorbeeldBannerOnder siteUrl={siteUrl} />}
           <Footer gegenereerdOp={gegenereerdOp} />
         </View>
       </Page>
@@ -1202,7 +1248,7 @@ export default function ReportDocument({
       {/* ================================================================== */}
       <Page size="A4" style={styles.pageRow}>
         <Sidebar actief={1} />
-        <View style={[styles.contentTinted, { paddingTop: isVoorbeeld ? 46 : 26 }]}>
+        <View style={[styles.contentTinted, { paddingTop: isVoorbeeld ? 46 : 26, paddingBottom: isVoorbeeld ? 74 : 40 }]}>
           {isVoorbeeld && <VoorbeeldBanner siteUrl={siteUrl} />}
           <Text style={styles.pageTitel}>Waarde-indicatie</Text>
           <Text style={[styles.pageSubtitel, { marginBottom: 10 }]}>Modelschatting van deze woning, geen taxatie, geen WOZ-waarde</Text>
@@ -1365,6 +1411,7 @@ export default function ReportDocument({
             <NietBeschikbaar tekst="Geen modelschatting beschikbaar voor dit adres." />
           )}
 
+          {isVoorbeeld && <VoorbeeldBannerOnder siteUrl={siteUrl} />}
           <Footer gegenereerdOp={gegenereerdOp} />
         </View>
       </Page>
@@ -1374,7 +1421,7 @@ export default function ReportDocument({
       {/* ================================================================== */}
       <Page size="A4" style={styles.pageRow}>
         <Sidebar actief={2} />
-        <View style={[styles.contentTinted, { paddingTop: isVoorbeeld ? 46 : 26 }]}>
+        <View style={[styles.contentTinted, { paddingTop: isVoorbeeld ? 46 : 26, paddingBottom: isVoorbeeld ? 74 : 40 }]}>
           {isVoorbeeld && <VoorbeeldBanner siteUrl={siteUrl} />}
           <Text style={styles.pageTitel}>Verkopen in de buurt</Text>
           <Text style={[styles.pageSubtitel, { marginBottom: 10 }]}>
@@ -1467,6 +1514,7 @@ export default function ReportDocument({
             />
           )}
 
+          {isVoorbeeld && <VoorbeeldBannerOnder siteUrl={siteUrl} />}
           <Footer gegenereerdOp={gegenereerdOp} />
         </View>
       </Page>
@@ -1476,7 +1524,7 @@ export default function ReportDocument({
       {/* ================================================================== */}
       <Page size="A4" style={styles.pageRow}>
         <Sidebar actief={3} />
-        <View style={[styles.contentTinted, { paddingTop: isVoorbeeld ? 46 : 26 }]}>
+        <View style={[styles.contentTinted, { paddingTop: isVoorbeeld ? 46 : 26, paddingBottom: isVoorbeeld ? 74 : 40 }]}>
           {isVoorbeeld && <VoorbeeldBanner siteUrl={siteUrl} />}
           <Text style={styles.pageTitel}>Objectgegevens & Energieprestatie</Text>
           <Text style={[styles.pageSubtitel, { marginBottom: 10 }]}>Kenmerken van dit pand en het officieel geregistreerde energielabel</Text>
@@ -1595,6 +1643,7 @@ export default function ReportDocument({
             )}
           </View>
 
+          {isVoorbeeld && <VoorbeeldBannerOnder siteUrl={siteUrl} />}
           <Footer gegenereerdOp={gegenereerdOp} />
         </View>
       </Page>
@@ -1604,7 +1653,7 @@ export default function ReportDocument({
       {/* ================================================================== */}
       <Page size="A4" style={styles.pageRow}>
         <Sidebar actief={4} />
-        <View style={[styles.contentTinted, { paddingTop: isVoorbeeld ? 46 : 26 }]}>
+        <View style={[styles.contentTinted, { paddingTop: isVoorbeeld ? 46 : 26, paddingBottom: isVoorbeeld ? 74 : 40 }]}>
           {isVoorbeeld && <VoorbeeldBanner siteUrl={siteUrl} />}
           <Text style={styles.pageTitel}>Funderingsrisico</Text>
           <Text style={[styles.pageSubtitel, { marginBottom: 10 }]}>Indicatie, geen funderingsonderzoek</Text>
@@ -1737,6 +1786,7 @@ export default function ReportDocument({
             <NietBeschikbaar tekst="Geen funderingsindicatie mogelijk zonder bekend bouwjaar." />
           )}
 
+          {isVoorbeeld && <VoorbeeldBannerOnder siteUrl={siteUrl} />}
           <Footer gegenereerdOp={gegenereerdOp} />
         </View>
       </Page>
@@ -1746,7 +1796,7 @@ export default function ReportDocument({
       {/* ================================================================== */}
       <Page size="A4" style={styles.pageRow}>
         <Sidebar actief={5} />
-        <View style={[styles.contentTinted, { paddingTop: isVoorbeeld ? 46 : 26 }]}>
+        <View style={[styles.contentTinted, { paddingTop: isVoorbeeld ? 46 : 26, paddingBottom: isVoorbeeld ? 74 : 40 }]}>
           {isVoorbeeld && <VoorbeeldBanner siteUrl={siteUrl} />}
           <Text style={styles.pageTitel}>Buurtprofiel</Text>
           <Text style={[styles.pageSubtitel, { marginBottom: 10 }]}>{buurtSubtitel}</Text>
@@ -1883,6 +1933,7 @@ export default function ReportDocument({
             <NietBeschikbaar tekst="Geen buurtprofiel beschikbaar voor dit adres." />
           )}
 
+          {isVoorbeeld && <VoorbeeldBannerOnder siteUrl={siteUrl} />}
           <Footer gegenereerdOp={gegenereerdOp} />
         </View>
       </Page>
@@ -1892,7 +1943,7 @@ export default function ReportDocument({
       {/* ================================================================== */}
       <Page size="A4" style={styles.pageRow}>
         <Sidebar actief={6} />
-        <View style={[styles.contentTinted, { paddingTop: isVoorbeeld ? 46 : 26 }]}>
+        <View style={[styles.contentTinted, { paddingTop: isVoorbeeld ? 46 : 26, paddingBottom: isVoorbeeld ? 74 : 40 }]}>
           {isVoorbeeld && <VoorbeeldBanner siteUrl={siteUrl} />}
           <Text style={styles.pageTitel}>Samenvatting</Text>
           <Text style={[styles.pageSubtitel, { marginBottom: 10 }]}>Compacte, feitelijke afsluiting van dit rapport</Text>
@@ -1968,6 +2019,7 @@ export default function ReportDocument({
             </View>
           </View>
 
+          {isVoorbeeld && <VoorbeeldBannerOnder siteUrl={siteUrl} />}
           <Footer gegenereerdOp={gegenereerdOp} />
         </View>
       </Page>
@@ -1980,7 +2032,7 @@ export default function ReportDocument({
         <View
           style={[
             styles.contentTinted,
-            { alignItems: "center", justifyContent: "center", paddingHorizontal: 60, paddingTop: isVoorbeeld ? 46 : 26 },
+            { alignItems: "center", justifyContent: "center", paddingHorizontal: 60, paddingTop: isVoorbeeld ? 46 : 26, paddingBottom: isVoorbeeld ? 74 : 40 },
           ]}
         >
           {isVoorbeeld && <VoorbeeldBanner siteUrl={siteUrl} />}
@@ -2003,6 +2055,7 @@ export default function ReportDocument({
             </Text>
           </View>
 
+          {isVoorbeeld && <VoorbeeldBannerOnder siteUrl={siteUrl} />}
           <Footer gegenereerdOp={gegenereerdOp} />
         </View>
       </Page>
