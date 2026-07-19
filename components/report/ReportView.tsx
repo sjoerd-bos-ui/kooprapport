@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode, type ReactElement } from "react";
+import { useState, type ReactNode, type ReactElement, type FormEvent } from "react";
 import type { Report, NearbySale } from "@/types/report";
 import SiteHeader from "@/components/layout/SiteHeader";
 import SiteFooter from "@/components/layout/SiteFooter";
@@ -48,6 +48,7 @@ import {
   ParkIcon,
   KavelIcon,
   BestemmingIcon,
+  MailIcon,
 } from "@/components/report/icons";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
 import { duidEnergielabel, ENERGIELABEL_SCHAAL, ENERGIELABEL_KLEUREN } from "@/lib/utils/energielabel";
@@ -440,6 +441,13 @@ export default function ReportView({
   // aanroep, geen risico dat de PDF andere cijfers toont dan wat hierboven
   // al te zien is.
   const [downloadingPdf, setDownloadingPdf] = useState(false);
+  // "Verstuur naar e-mail" bij de "Rapport gereed"-kaart — zelfde
+  // vertrouwensmodel als de PDF-download hierboven (het al opgehaalde
+  // `report`-object gaat mee, zie app/api/rapport/email/route.tsx).
+  const [showEmailForm, setShowEmailForm] = useState(false);
+  const [emailInput, setEmailInput] = useState("");
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailStatus, setEmailStatus] = useState<{ kind: "success" | "error"; message: string } | null>(null);
   const { core, building, energy, market, nearbySales, buurtprofiel, fundering, kavel, bestemming } = report;
   // Compacte, feitelijke eindsamenvatting (Samenvatting-tabblad + laatste
   // stuk van de PDF) — bouwt uitsluitend voort op velden die al hierboven in
@@ -466,6 +474,30 @@ export default function ReportView({
       alert("De PDF kon nu niet worden gemaakt. Probeer het straks opnieuw.");
     } finally {
       setDownloadingPdf(false);
+    }
+  }
+
+  async function handleSendEmail(e: FormEvent) {
+    e.preventDefault();
+    setSendingEmail(true);
+    setEmailStatus(null);
+    try {
+      const res = await fetch("/api/rapport/email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ report, email: emailInput.trim() }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        setEmailStatus({ kind: "error", message: data.error ?? "Versturen is niet gelukt. Probeer het opnieuw." });
+        return;
+      }
+      setEmailStatus({ kind: "success", message: `Verstuurd naar ${emailInput.trim()}.` });
+      setEmailInput("");
+    } catch {
+      setEmailStatus({ kind: "error", message: "Versturen is niet gelukt. Probeer het opnieuw." });
+    } finally {
+      setSendingEmail(false);
     }
   }
 
@@ -1363,19 +1395,61 @@ export default function ReportView({
         )}
 
         {isUnlocked && (
-          <div className="mt-6 flex flex-col items-center justify-between gap-4 rounded-2xl border border-ink/10 bg-paper p-8 sm:flex-row">
-            <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#E6FBF7] text-[#0F766E]">
-                <FileCheckIcon className="h-4 w-4" />
-              </span>
-              <div>
-                <p className="font-display text-lg font-bold text-ink">Rapport gereed</p>
-                <p className="mt-0.5 text-sm text-ink/50">Download een PDF-versie voor eigen gebruik.</p>
+          <div className="mt-6 rounded-2xl border border-ink/10 bg-paper p-8">
+            <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
+              <div className="flex items-center gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#E6FBF7] text-[#0F766E]">
+                  <FileCheckIcon className="h-4 w-4" />
+                </span>
+                <div>
+                  <p className="font-display text-lg font-bold text-ink">Rapport gereed</p>
+                  <p className="mt-0.5 text-sm text-ink/50">Download de PDF, of ontvang 'm per e-mail.</p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="secondary" onClick={handleDownloadPdf} disabled={downloadingPdf}>
+                  {downloadingPdf ? "PDF wordt gemaakt…" : "Download PDF"}
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setShowEmailForm((v) => !v);
+                    setEmailStatus(null);
+                  }}
+                >
+                  <span className="flex items-center gap-1.5">
+                    <MailIcon className="h-3.5 w-3.5" />
+                    Verstuur naar mail
+                  </span>
+                </Button>
               </div>
             </div>
-            <Button variant="secondary" onClick={handleDownloadPdf} disabled={downloadingPdf}>
-              {downloadingPdf ? "PDF wordt gemaakt…" : "Download PDF"}
-            </Button>
+
+            {showEmailForm && (
+              <form onSubmit={handleSendEmail} className="mt-5 border-t border-ink/10 pt-5">
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <input
+                    type="email"
+                    required
+                    value={emailInput}
+                    onChange={(e) => setEmailInput(e.target.value)}
+                    placeholder="naam@voorbeeld.nl"
+                    className="min-w-0 flex-1 rounded-xl border border-line bg-white px-3.5 py-2.5 text-sm text-ink placeholder:text-ink/35 focus:outline-none focus:ring-2 focus:ring-accent/30"
+                  />
+                  <Button type="submit" disabled={sendingEmail || emailInput.trim().length === 0}>
+                    {sendingEmail ? "Versturen…" : "Verstuur"}
+                  </Button>
+                </div>
+                {emailStatus && (
+                  <p className={`mt-2 text-xs ${emailStatus.kind === "success" ? "text-[#0F766E]" : "text-rust"}`}>
+                    {emailStatus.message}
+                  </p>
+                )}
+                <p className="mt-2 text-xs text-ink/40">
+                  We bewaren dit e-mailadres niet, alleen gebruikt om deze ene PDF te versturen.
+                </p>
+              </form>
+            )}
           </div>
         )}
       </Container>
