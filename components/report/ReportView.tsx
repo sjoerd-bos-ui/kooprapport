@@ -1446,7 +1446,8 @@ export default function ReportView({
                   </p>
                 )}
                 <p className="mt-2 text-xs text-ink/40">
-                  We bewaren dit e-mailadres niet, alleen gebruikt om deze ene PDF te versturen.
+                  We bewaren dit e-mailadres niet, alleen gebruikt om deze ene PDF te versturen. Kom je 'm niet
+                  tegen? Check ook even je spam- of ongewenste-mailbox.
                 </p>
               </form>
             )}

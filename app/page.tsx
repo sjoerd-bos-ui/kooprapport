@@ -75,7 +75,7 @@ const VEELGESTELDE_VRAGEN = [
   {
     vraag: "Wat zit er precies in het volledige rapport?",
     antwoord:
-      "Acht onderdelen, geen opvulling: rapportoverzicht, waarde-indicatie met bandbreedte, vergelijkbare verkopen met adressen en prijzen, objectgegevens, energieprestatie en label, funderingsrisico met volledige duiding en advies, een buurtprofiel (veiligheid, voorzieningen, samenstelling) en een compacte samenvatting met eindconclusie. Ook gewoon te downloaden als PDF, voor als u het liever rustig doorleest, met koffie erbij.",
+      "Acht onderdelen, geen opvulling: rapportoverzicht, waarde-indicatie met bandbreedte, vergelijkbare verkopen met adressen en prijzen, objectgegevens, energieprestatie en label, funderingsrisico met volledige duiding en advies, een buurtprofiel (veiligheid, voorzieningen, samenstelling) en een compacte samenvatting met eindconclusie. Ook gewoon te downloaden als PDF, of direct naar uw e-mail te sturen, voor als u het liever rustig doorleest, met koffie erbij.",
   },
   {
     vraag: "Voor wie is dit rapport bedoeld?",
@@ -85,7 +85,7 @@ const VEELGESTELDE_VRAGEN = [
   {
     vraag: "Wat is het verschil tussen de gratis preview en het volledige rapport?",
     antwoord:
-      "Gratis ziet u al bouwjaar, energielabel, oppervlakte en een eerste indicatie van het funderingsrisico. Na het ontgrendelen krijgt u de exacte waarde-indicatie met bandbreedte, alle vergelijkbare verkopen met adressen en prijzen, de volledige funderingsduiding met advies, het complete buurtprofiel én de samenvatting, plus het geheel als PDF.",
+      "Gratis ziet u al bouwjaar, energielabel, oppervlakte en een eerste indicatie van het funderingsrisico. Na het ontgrendelen krijgt u de exacte waarde-indicatie met bandbreedte, alle vergelijkbare verkopen met adressen en prijzen, de volledige funderingsduiding met advies, het complete buurtprofiel én de samenvatting, plus het geheel als PDF, direct beschikbaar om te downloaden of naar uw mail te sturen.",
   },
   {
     vraag: "Is dit onafhankelijk, of zit er een makelaar achter?",
