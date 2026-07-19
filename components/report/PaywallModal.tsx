@@ -159,7 +159,7 @@ export default function PaywallModal({
             </span>
             <div>
               <p className="text-xs font-semibold text-ink">Downloadbare PDF</p>
-              <p className="text-[10.5px] text-ink/50">Voor eigen gebruik</p>
+              <p className="text-[10.5px] text-ink/50">Download, of stuur 'm direct naar uw mail</p>
             </div>
           </div>
         </div>
