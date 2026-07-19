@@ -403,10 +403,18 @@ function KernstatKaart({ stat }: { stat: SamenvattingKernstat }) {
 export default function ReportView({
   report,
   isUnlocked,
+  isConfirmingPayment = false,
   onUnlock,
 }: {
   report: Report;
   isUnlocked: boolean;
+  // BUGFIX: net terug van Mollie wordt de betaalstatus nog server-side
+  // geverifieerd (polling in ReportPageClient, meestal een paar seconden).
+  // Zolang dat loopt is isUnlocked nog gewoon false — zonder deze prop bleef
+  // in die paar seconden het volledige verkoopblok staan ("Ontgrendel nu voor
+  // €11,95"), wat verwarrend is vlak nadat iemand al heeft afgerekend. Met
+  // deze prop tonen we in plaats daarvan een korte "wordt bevestigd"-melding.
+  isConfirmingPayment?: boolean;
   // Async: het daadwerkelijke ontgrendelen doet nu ook de (kostenveroorzakende)
   // Altum-aanroep via /api/rapport/premium — zie ReportPageClient. Krijgt de
   // bestellingId van de zojuist afgeronde betaling mee, zodat die route
@@ -1316,8 +1324,21 @@ export default function ReportView({
               een pagina die er nog identiek uitzag aan de niet-betaalde
               staat, met het daadwerkelijk ontgrendelde rapport (ReportTabs
               hieronder) pas zichtbaar na scrollen. Nu, net als bij ReportTabs
-              zelf, alleen tonen zolang er nog niet ontgrendeld is. */}
-          {!isUnlocked && <PreviewSummary onUnlockClick={() => setShowPaywall(true)} />}
+              zelf, alleen tonen zolang er nog niet ontgrendeld is — én niet
+              tijdens de paar seconden waarin de zojuist afgeronde betaling
+              nog bevestigd wordt (isConfirmingPayment), anders zou iemand
+              die al heeft afgerekend alsnog kort "Ontgrendel nu voor €11,95"
+              te zien krijgen. */}
+          {!isUnlocked && !isConfirmingPayment && (
+            <PreviewSummary onUnlockClick={() => setShowPaywall(true)} />
+          )}
+          {isConfirmingPayment && (
+            <div className="border-t border-ink/10 bg-white px-5 py-10 text-center sm:px-6">
+              <div className="mx-auto h-6 w-6 animate-spin rounded-full border-2 border-accent/25 border-t-accent" />
+              <p className="mt-3 text-sm font-semibold text-ink">Betaling wordt bevestigd…</p>
+              <p className="mt-1 text-xs text-ink/50">Een moment geduld, het rapport wordt zo ontgrendeld.</p>
+            </div>
+          )}
         </div>
 
         {/* Ontgrendeld rapport: 7 sticky tabbladen, precies de canonieke

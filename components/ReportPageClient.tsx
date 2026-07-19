@@ -223,7 +223,12 @@ export default function ReportPageClient({
           We konden de betaling nog niet bevestigen. Vernieuw de pagina, of neem contact op als dit blijft gebeuren.
         </div>
       )}
-      <ReportView report={report} isUnlocked={isUnlocked} onUnlock={handleUnlock} />
+      <ReportView
+        report={report}
+        isUnlocked={isUnlocked}
+        isConfirmingPayment={betalingTerugkeer === "controleren"}
+        onUnlock={handleUnlock}
+      />
     </>
   );
 }
