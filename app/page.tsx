@@ -14,6 +14,9 @@ import {
   CalendarIcon,
   DoorIcon,
   FlagIcon,
+  TrendingUpIcon,
+  AlertTriangleIcon,
+  BoltIcon,
 } from "@/components/report/icons";
 
 // Vierde homepage-richting: indigo "SaaS"-uitstraling, gekozen na een reeks
@@ -166,22 +169,11 @@ export default function HomePage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }} />
       {/* eslint-disable-next-line react/no-danger */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
-      {/* Context-ribbon boven de header — spreekt de koper aan op het
-          moment vlak voor een bezichtiging of bod.
-          BUGFIX: linkte voorheen altijd naar hetzelfde vaste demo-adres
-          (MOCK_ADDRESSES[0], Keizersgracht 123) — elke bezoeker kwam dus op
-          precies datzelfde nepvoorbeeld terecht in plaats van zelf een adres
-          te kunnen invoeren. Nu, net als de "Probeer gratis"-knop in de
-          header, gewoon naar de echte zoekbalk. */}
-      <div className="bg-ink py-2 text-center">
-        <a
-          href="#zoeken"
-          className="text-xs font-medium text-parchment/90 underline-offset-2 hover:text-[#818CF8] hover:underline"
-        >
-          Bezichtiging gepland? Check het adres eerst →
-        </a>
-      </div>
-
+      {/* Donkere context-ribbon boven de header is verwijderd (feedback:
+          de mobiele homepage voelde te druk aan) — de "Probeer gratis"-knop
+          in de header hieronder dekt dezelfde functie (springen naar de
+          zoekbalk) al af, dus die extra balk voegde alleen visueel gewicht
+          toe zonder iets nieuws te doen. */}
       {/* Eigen, lichte header voor de homepage — geen zwarte masthead, geen
           crosshair-motief; alleen het wordmark en één heldere CTA die naar
           de zoekbalk springt. Er zijn nog geen andere pagina's (alleen het
@@ -214,82 +206,64 @@ export default function HomePage() {
                 ✓ Onafhankelijk · gebaseerd op officiële bronnen
               </span>
 
-              {/* "Vóórdat u biedt" was koper-specifiek; "vóórdat u beslist"
-                  dekt ook verkopers en huiseigenaren die niet bieden maar wel
-                  willen weten waar ze aan toe zijn. */}
-              <h1 className="mt-4 font-display text-[2.6rem] font-extrabold leading-[1.08] text-ink sm:text-[3.2rem]">
-                Ken de feiten.
-                <br />
-                Vóórdat u beslist.
+              {/* Kop aangepast (was "Ken de feiten. Vóórdat u beslist.") naar
+                  een variant die meteen de breedte van het rapport benoemt —
+                  sloot beter aan bij de iconentegels + "37 meer"-tegel
+                  hieronder dan de vorige, algemenere kop. */}
+              <h1 className="mt-4 font-display text-[2.3rem] font-extrabold leading-[1.12] text-ink sm:text-[2.9rem]">
+                Alles wat u moet weten over een woning, op één plek.
               </h1>
               <p className="mt-3 max-w-md text-[13.5px] leading-relaxed text-ink/60">
-                Voor kopers, verkopers en huiseigenaren. Dit ziet u per adres:
+                Waarde, verkopen in de buurt, fundering en nog veel meer, per adres.
               </p>
-
-              {/* 3 concrete onderwerpen + 1 "+N"-chip i.p.v. één zin waarin
-                  waarde toevallig als eerste genoemd wordt — het rapport gaat
-                  over veel meer dan alleen de waarde. */}
-              <div className="mt-3 flex flex-wrap gap-2">
-                <span className="rounded-full border border-line bg-parchment px-3.5 py-1.5 text-[11.5px] font-semibold text-ink">
-                  Waarde woning
-                </span>
-                <span className="rounded-full border border-line bg-parchment px-3.5 py-1.5 text-[11.5px] font-semibold text-ink">
-                  Verkopen in de buurt
-                </span>
-                <span className="rounded-full border border-line bg-parchment px-3.5 py-1.5 text-[11.5px] font-semibold text-ink">
-                  Funderingsrisico
-                </span>
-                <span className="rounded-full border border-[#DCDBFA] bg-mist px-3.5 py-1.5 text-[11.5px] font-bold text-accent-dark">
-                  + 37 andere inzichten
-                </span>
-              </div>
 
               <div className="mt-6">
                 <AddressSearchBar />
               </div>
 
-              {/* Prijsmodel direct zichtbaar i.p.v. verstopt in de kleine
-                  lettertjes bij stap 3 — neemt onzekerheid over een verborgen
-                  betaalmuur weg vóórdat iemand gaat zoeken. */}
-              <p className="mt-2.5 text-[11px] text-ink/55">
-                <span className="font-bold text-[#0D9488]">✓ Gratis preview</span> · volledig rapport eenmalig
-                ontgrendelen, geen abonnement
-              </p>
-
-              {/* Eén premium CTA naar het complete, met de hand samengestelde
-                  showcase-rapport (lib/pdf/voorbeeldRapport.ts) — nu als
-                  compacte, rustige pil i.p.v. het grotere twee-regelige
-                  blok van eerder. */}
-              <a
-                href="/api/rapport/voorbeeld-pdf"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group mt-4 inline-flex items-center gap-2.5 rounded-full border border-line bg-white py-1.5 pl-1.5 pr-4 shadow-overlay transition-all hover:-translate-y-0.5 hover:border-accent/30 hover:shadow-lg"
-              >
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-accent to-accent-dark text-white">
-                  <FileCheckIcon className="h-3.5 w-3.5" />
-                </span>
-                <span className="text-[11.5px] font-bold text-ink">Bekijk het echte voorbeeldrapport</span>
-                <ArrowRightIcon className="h-3.5 w-3.5 shrink-0 text-accent transition-transform group-hover:translate-x-1" />
-              </a>
-
-              {/* Vertrouwensregel: vervangt de eerdere losse statsrij + een
-                  aparte volledige-breedte bronnenstrip verderop op de pagina
-                  — één rustige regel i.p.v. twee blokken met overlappende
-                  boodschap. */}
-              <div className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-line pt-4 text-[11px] text-ink/55">
-                <span>
-                  <span className="font-bold text-ink">1.240+</span> rapporten gegenereerd
-                </span>
-                <span className="text-ink/25">·</span>
-                <span>
-                  <span className="font-bold text-ink">8</span> pagina&apos;s per rapport
-                </span>
-                <span className="text-ink/25">·</span>
-                <span>
-                  bronnen: <span className="font-semibold text-ink">Kadaster, RVO, CBS, KCAF</span>
-                </span>
+              {/* Iconentegels i.p.v. de eerdere losse tekstpillen: compacter,
+                  en de 4e tegel ("37 meer") maakt in één oogopslag duidelijk
+                  dat het rapport verder gaat dan deze 3 onderwerpen, zonder
+                  dat er een lange opsomming nodig is. */}
+              <div className="mt-4 grid max-w-sm grid-cols-4 gap-2">
+                <div className="flex flex-col items-center gap-1 rounded-xl bg-mist px-1.5 py-2.5 text-center">
+                  <TrendingUpIcon className="h-4 w-4 text-accent-dark" />
+                  <span className="text-[9.5px] font-bold text-accent-dark">Waarde</span>
+                </div>
+                <div className="flex flex-col items-center gap-1 rounded-xl bg-mist px-1.5 py-2.5 text-center">
+                  <StoreIcon className="h-4 w-4 text-accent-dark" />
+                  <span className="text-[9.5px] font-bold text-accent-dark">Verkopen</span>
+                </div>
+                <div className="flex flex-col items-center gap-1 rounded-xl bg-mist px-1.5 py-2.5 text-center">
+                  <AlertTriangleIcon className="h-4 w-4 text-accent-dark" />
+                  <span className="text-[9.5px] font-bold text-accent-dark">Fundering</span>
+                </div>
+                <div className="flex flex-col items-center gap-1 rounded-xl bg-accent-dark px-1.5 py-2.5 text-center">
+                  <span className="text-[13px] font-extrabold leading-none text-white">+</span>
+                  <span className="text-[9.5px] font-bold text-white">37 meer</span>
+                </div>
               </div>
+
+              {/* "Direct beschikbaar" en het voorbeeldrapport samen op één
+                  regel — geen prijs genoemd, alleen dat het gratis en meteen
+                  te bekijken is. */}
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EAF3DE] px-3 py-1.5 text-[11px] font-bold text-[#3B6D11]">
+                  <BoltIcon className="h-3.5 w-3.5" />
+                  Rapport direct beschikbaar
+                </span>
+                <a
+                  href="/api/rapport/voorbeeld-pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group inline-flex items-center gap-1.5 text-[11px] font-bold text-ink hover:text-accent"
+                >
+                  <FileCheckIcon className="h-3.5 w-3.5 text-accent" />
+                  Bekijk het echte voorbeeldrapport
+                  <ArrowRightIcon className="h-3 w-3 shrink-0 text-accent transition-transform group-hover:translate-x-1" />
+                </a>
+              </div>
+              <p className="mt-2 text-[11px] text-ink/55">Gratis preview, geen abonnement, geen account nodig</p>
             </div>
 
             {/* Drie gestapelde paginakaartjes i.p.v. één vlakke statskaart —
@@ -297,8 +271,12 @@ export default function HomePage() {
                 Cijfers zijn bewust dezelfde als in het voorbeeldrapport
                 (lib/pdf/voorbeeldRapport.ts, Prinsengracht 88) zodat deze
                 preview en de daadwerkelijke voorbeeld-PDF elkaar niet
-                tegenspreken. */}
-            <div className="relative mx-auto h-[300px] w-full max-w-[460px] sm:h-[320px]">
+                tegenspreken.
+                Alleen vanaf lg zichtbaar (feedback: op mobiel voegde dit
+                puur decoratieve blok, dat toch al onder de tekst gestapeld
+                werd getoond, vooral drukte toe zonder extra functie — op
+                desktop, met de ruimte ernaast, blijft het staan). */}
+            <div className="relative mx-auto hidden h-[300px] w-full max-w-[460px] lg:block lg:h-[320px]">
               <span className="absolute -top-1.5 right-2 z-10 rounded-full bg-gradient-to-br from-accent to-accent-dark px-3.5 py-1.5 text-[11px] font-bold text-white shadow-overlay">
                 8 pagina&apos;s, écht volledig
               </span>
@@ -500,6 +478,17 @@ export default function HomePage() {
               </div>
             ))}
           </div>
+        </Container>
+      </section>
+
+      {/* Vertrouwensregel — verplaatst uit de hero (stond daar eerder als
+          losse statsrij onderaan de tekstkolom) naar een eigen, rustige
+          sectie: één regel i.p.v. een blok tussen de andere hero-elementen. */}
+      <section className="border-t border-ink/10 bg-white">
+        <Container className="py-6 text-center text-[11px] text-ink/55">
+          <span className="font-bold text-ink">1.240+</span> rapporten gegenereerd ·{" "}
+          <span className="font-bold text-ink">8</span> pagina&apos;s per rapport · bronnen:{" "}
+          <span className="font-semibold text-ink">Kadaster, RVO, CBS, KCAF</span>
         </Container>
       </section>
 
