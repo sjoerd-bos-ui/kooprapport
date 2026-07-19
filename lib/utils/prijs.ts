@@ -4,11 +4,7 @@
 // hier allebei VAN afgeleid — zodat het bedrag dat de klant ziet en het
 // bedrag dat daadwerkelijk in rekening wordt gebracht nooit uit elkaar
 // kunnen lopen (zelfde "1 lijn"-principe als bij de veiligheidsscore).
-// TIJDELIJK op €1 voor de éénmalige live Mollie-test (echte sleutel, klein
-// bedrag i.p.v. de volle €11,95) — NIET VERGETEN terug te zetten naar 1195
-// zodra die test geslaagd is, dit bedrag is ook wat een echte bezoeker nu
-// zou zien/betalen.
-export const RAPPORT_PRIJS_CENTEN = 100;
+export const RAPPORT_PRIJS_CENTEN = 1195;
 
 // Weergavetekst — gebruikt in de gratis-preview vergelijkingstabel
 // (PreviewSummary), de PaywallModal en de FAQ.
