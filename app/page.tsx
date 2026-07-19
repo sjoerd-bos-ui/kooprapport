@@ -1,10 +1,13 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import Container from "@/components/ui/Container";
 import AddressSearchBar from "@/components/address/AddressSearchBar";
 import { RAPPORT_PRIJS } from "@/lib/utils/prijs";
 import { APP_BASE_URL } from "@/lib/config/payment";
 import { isVolledigLive } from "@/lib/config/launchStatus";
+import { buildReportHref, slugify } from "@/lib/utils/slug";
 import { Logo } from "@/components/ui/Logo";
+import type { AddressMeta } from "@/types/report";
 import {
   FileCheckIcon,
   ArrowRightIcon,
@@ -127,6 +130,55 @@ const VEELGESTELDE_VRAGEN = [
       "Dan zeggen we gewoon eerlijk “niet beschikbaar”. We verzinnen nooit cijfers om een rapport voller te laten lijken. Liever een lege plek dan een verzonnen getal.",
   },
 ];
+
+// SEO-fix: dit bestand had nog geen eigen metadata-export, dus draaide
+// volledig op de defaults uit app/layout.tsx. Dat werkte prima voor
+// title/description (die zijn hier ook echt goed als default), maar er
+// ontbrak een expliciete canonical/og:url voor de belangrijkste pagina van de
+// site — zonder die twee genereert Next.js hier geen <link rel="canonical">
+// of og:url meta tag. RAPPORT_PRIJS_CENTEN/APP_BASE_URL blijven de enige bron
+// voor de daadwerkelijke prijs/domein, hier alleen gebruikt om de metadata
+// consistent te houden met wat er al op de pagina staat.
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+  openGraph: { url: APP_BASE_URL },
+};
+
+// Eén REËEL, bestaand adres (hetzelfde grachtenpand als het losse PDF-
+// voorbeeldrapport, zie lib/pdf/voorbeeldRapport.ts) dat hieronder als
+// daadwerkelijke, crawlbare <a href> naar een /rapport/[slug]-pagina linkt.
+// BELANGRIJK VOOR SEO (zie de audit): zonder deze link staat er nergens op de
+// hele site een echte <a href>/<Link> naar een rapportpagina — de zoekbalk
+// navigeert namelijk via router.push() (AddressSearchBar.tsx), niet via een
+// link, en app/sitemap.ts bevat bewust geen rapportpagina's (er is geen
+// database van eerder opgevraagde adressen om op te sommen). Zonder minstens
+// één crawlbare link kan Google het rapport-sjabloon dus nooit bereiken, hoe
+// compleet de metadata/JSON-LD op die pagina zelf ook is. Dit adres is geen
+// verzinsel: getReport() haalt hier gewoon live data voor op, exact zoals
+// voor elk ander, door een bezoeker zelf opgezocht adres.
+//
+// BUGFIX: de eerste versie miste locatieserverId/adresseerbaarObjectId — de
+// twee velden die lib/services/bouwjaarLookup.ts nodig heeft om het BAG-
+// object op te zoeken (zie resolveAdresseerbaarObjectId daar: zonder één van
+// beide geeft die functie meteen null terug). Zonder bouwjaar cascadeert dat
+// door naar oppervlakte/funderingsrisico, die daar allemaal van afhangen —
+// deze pagina toonde daardoor overal "Onbekend" i.p.v. echte data, en werd om
+// die reden (vermoedelijk: te weinig unieke inhoud) door Google's live-test
+// geweigerd bij het aanvragen van indexering. Beide ID's hieronder zijn nu
+// de ECHTE waarden, opgehaald via dezelfde live PDOK-zoekopdracht die de
+// zoekbalk zelf ook gebruikt (bevestigd: dit adres heeft geen kaal huisnummer
+// 88, PDOK matcht direct door naar 88A).
+const VOORBEELD_ADRES: AddressMeta = {
+  straat: "Prinsengracht",
+  huisnummer: "88",
+  huisletter: "A",
+  postcode: "1015DZ",
+  plaats: "Amsterdam",
+  slug: slugify("Prinsengracht 88A, Amsterdam"),
+  label: "Prinsengracht 88A, Amsterdam",
+  locatieserverId: "adr-e6cae64043a6cc66b3865084d148d36f",
+  adresseerbaarObjectId: "0363010000783842",
+};
 
 export default function HomePage() {
   const volledigLive = isVolledigLive();
@@ -546,6 +598,9 @@ export default function HomePage() {
         <Container className="flex flex-col items-start gap-4 text-xs sm:flex-row sm:items-center sm:justify-between">
           <span className="font-display font-semibold text-ink">© {new Date().getFullYear()} Kooprapport</span>
           <div className="flex flex-wrap gap-4 text-ink/55">
+            <Link href={buildReportHref(VOORBEELD_ADRES)} className="underline underline-offset-2 hover:text-ink">
+              Voorbeeldrapport
+            </Link>
             <Link href="/privacy" className="underline underline-offset-2 hover:text-ink">
               Privacy
             </Link>
