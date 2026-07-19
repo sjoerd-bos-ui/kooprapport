@@ -200,8 +200,19 @@ export default function HomePage() {
       >
         <Container className="py-16 sm:py-20">
           <div className="grid items-center gap-14 lg:grid-cols-[1.05fr_0.95fr]">
-            {/* Tekstkolom */}
-            <div>
+            {/* Tekstkolom.
+                BUGFIX (mobiel): CSS Grid-items krijgen, net als flex-items,
+                standaard "min-width: auto" mee — dat betekent dat de
+                grid-track niet kleiner mag worden dan het min-content van de
+                inhoud. De zoekbalk-knop ("Bekijk rapport") heeft
+                white-space:nowrap en telt dus met zijn volledige, niet-
+                krimpbare tekstbreedte mee in dat min-content, ook al kon het
+                invoerveld ernaast zelf al wel volledig krimpen (zie de
+                eerdere min-w-0-fix in AddressSearchBar.tsx). Resultaat: deze
+                hele kolom (en dus de zoekbalk erin) werd op smalle schermen
+                breder geduwd dan de viewport. min-w-0 hier op de grid-track
+                zelf lost dat definitief op. */}
+            <div className="min-w-0">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-mist px-3 py-1.5 text-[10.5px] font-bold text-accent">
                 ✓ Onafhankelijk · gebaseerd op officiële bronnen
               </span>
