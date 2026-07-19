@@ -140,7 +140,14 @@ export default function AddressSearchBar() {
             onFocus={() => setOpen(true)}
             onBlur={() => setTimeout(() => setOpen(false), 150)}
             placeholder="Typ een postcode, straat of plaats"
-            className="flex-1 bg-transparent px-3 py-3 text-[15px] text-ink placeholder:text-ink/35 focus:outline-none"
+            // BUGFIX (mobiel): een flex-item met alleen "flex-1" krijgt van
+            // de browser standaard nog "min-width: auto" mee, wat voor een
+            // <input> neerkomt op een ingebouwde minimumbreedte die niet
+            // krimpt — op smalle schermen duwde dat de knop ernaast (die
+            // door "whitespace-nowrap" ook niet kan krimpen) letterlijk
+            // buiten het scherm. min-w-0 laat het invoerveld wél volledig
+            // meekrimpen, zodat de hele balk binnen de viewport blijft.
+            className="min-w-0 flex-1 bg-transparent px-3 py-3 text-[15px] text-ink placeholder:text-ink/35 focus:outline-none"
           />
           <button
             type="submit"
