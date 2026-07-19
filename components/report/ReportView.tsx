@@ -1310,7 +1310,14 @@ export default function ReportView({
             fundering={fundering.data}
             lonLat={core.lonLat}
           />
-          <PreviewSummary onUnlockClick={() => setShowPaywall(true)} />
+          {/* BUGFIX: dit paywall/verkoopblok (met de geblurde "Voorbeeld"-
+              waarde en de "Ontgrendel nu"-knop) werd voorheen ALTIJD getoond,
+              ook na een geslaagde betaling — de bezoeker kwam dan terug op
+              een pagina die er nog identiek uitzag aan de niet-betaalde
+              staat, met het daadwerkelijk ontgrendelde rapport (ReportTabs
+              hieronder) pas zichtbaar na scrollen. Nu, net als bij ReportTabs
+              zelf, alleen tonen zolang er nog niet ontgrendeld is. */}
+          {!isUnlocked && <PreviewSummary onUnlockClick={() => setShowPaywall(true)} />}
         </div>
 
         {/* Ontgrendeld rapport: 7 sticky tabbladen, precies de canonieke
