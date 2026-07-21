@@ -1173,7 +1173,7 @@ export default function ReportDocument({
       {/* ================================================================== */}
       <Page size="A4" style={styles.pageRow}>
         <Sidebar actief={0} />
-        <View style={[styles.content, { paddingTop: isVoorbeeld ? 46 : 26, paddingBottom: isVoorbeeld ? 74 : 40 }]}>
+        <View style={[styles.content, { paddingTop: isVoorbeeld ? 32 : 26, paddingBottom: isVoorbeeld ? 74 : 40 }]}>
           {isVoorbeeld && <VoorbeeldBanner siteUrl={siteUrl} />}
           <View style={{ position: "relative", backgroundColor: KLEUR.accentDark, borderRadius: 12, padding: 18, marginBottom: 12, overflow: "hidden" }}>
             <Svg width={160} height={64} viewBox="0 0 160 64" style={{ position: "absolute", right: 0, bottom: 0 }}>
@@ -1248,13 +1248,13 @@ export default function ReportDocument({
       {/* ================================================================== */}
       <Page size="A4" style={styles.pageRow}>
         <Sidebar actief={1} />
-        <View style={[styles.contentTinted, { paddingTop: isVoorbeeld ? 46 : 26, paddingBottom: isVoorbeeld ? 74 : 40 }]}>
+        <View style={[styles.contentTinted, { paddingTop: isVoorbeeld ? 32 : 26, paddingBottom: isVoorbeeld ? 74 : 40 }]}>
           {isVoorbeeld && <VoorbeeldBanner siteUrl={siteUrl} />}
           <Text style={styles.pageTitel}>Waarde-indicatie</Text>
           <Text style={[styles.pageSubtitel, { marginBottom: 10 }]}>Modelschatting van deze woning, geen taxatie, geen WOZ-waarde</Text>
 
           {market.data ? (
-            <View style={{ gap: 8 }}>
+            <View style={{ gap: 6 }}>
               {/* Hero: deze woning vs. buurtgemiddelde */}
               <View style={{ position: "relative", flexDirection: "row", borderRadius: 10, overflow: "hidden" }}>
                 <View style={{ flex: 1, backgroundColor: KLEUR.accent, padding: 12 }}>
@@ -1421,7 +1421,7 @@ export default function ReportDocument({
       {/* ================================================================== */}
       <Page size="A4" style={styles.pageRow}>
         <Sidebar actief={2} />
-        <View style={[styles.contentTinted, { paddingTop: isVoorbeeld ? 46 : 26, paddingBottom: isVoorbeeld ? 74 : 40 }]}>
+        <View style={[styles.contentTinted, { paddingTop: isVoorbeeld ? 32 : 26, paddingBottom: isVoorbeeld ? 74 : 40 }]}>
           {isVoorbeeld && <VoorbeeldBanner siteUrl={siteUrl} />}
           <Text style={styles.pageTitel}>Verkopen in de buurt</Text>
           <Text style={[styles.pageSubtitel, { marginBottom: 10 }]}>
@@ -1431,7 +1431,7 @@ export default function ReportDocument({
           </Text>
 
           {nearbySales.data && alleVerkopen.length > 0 ? (
-            <View style={{ gap: 8 }}>
+            <View style={{ gap: 6 }}>
               {nearbySales.data.verruimd && (
                 <Text style={{ fontSize: 7, color: "#9A6A0C", backgroundColor: "#FFF7E6", borderRadius: 6, padding: 7, lineHeight: 1.4 }}>
                   Er waren te weinig vergelijkbare verkopen in de directe buurt binnen 12 maanden. Daarom is er breder
@@ -1524,12 +1524,12 @@ export default function ReportDocument({
       {/* ================================================================== */}
       <Page size="A4" style={styles.pageRow}>
         <Sidebar actief={3} />
-        <View style={[styles.contentTinted, { paddingTop: isVoorbeeld ? 46 : 26, paddingBottom: isVoorbeeld ? 74 : 40 }]}>
+        <View style={[styles.contentTinted, { paddingTop: isVoorbeeld ? 32 : 26, paddingBottom: isVoorbeeld ? 74 : 40 }]}>
           {isVoorbeeld && <VoorbeeldBanner siteUrl={siteUrl} />}
           <Text style={styles.pageTitel}>Objectgegevens & Energieprestatie</Text>
           <Text style={[styles.pageSubtitel, { marginBottom: 10 }]}>Kenmerken van dit pand en het officieel geregistreerde energielabel</Text>
 
-          <View style={{ gap: 8 }}>
+          <View style={{ gap: 6 }}>
             {building.data ? (
               <View style={[styles.kaart, { position: "relative", overflow: "hidden" }]}>
                 <View style={[styles.row, { alignItems: "center", justifyContent: "space-between" }]}>
@@ -1653,13 +1653,13 @@ export default function ReportDocument({
       {/* ================================================================== */}
       <Page size="A4" style={styles.pageRow}>
         <Sidebar actief={4} />
-        <View style={[styles.contentTinted, { paddingTop: isVoorbeeld ? 46 : 26, paddingBottom: isVoorbeeld ? 74 : 40 }]}>
+        <View style={[styles.contentTinted, { paddingTop: isVoorbeeld ? 32 : 26, paddingBottom: isVoorbeeld ? 74 : 40 }]}>
           {isVoorbeeld && <VoorbeeldBanner siteUrl={siteUrl} />}
           <Text style={styles.pageTitel}>Funderingsrisico</Text>
           <Text style={[styles.pageSubtitel, { marginBottom: 10 }]}>Indicatie, geen funderingsonderzoek</Text>
 
           {fundering.data?.niveau ? (
-            <View style={{ gap: 8 }}>
+            <View style={{ gap: 6 }}>
               {/* Hero: tijdlijn + meter */}
               <View style={styles.kaart}>
                 <View style={[styles.row, { alignItems: "flex-start" }]}>
@@ -1796,13 +1796,13 @@ export default function ReportDocument({
       {/* ================================================================== */}
       <Page size="A4" style={styles.pageRow}>
         <Sidebar actief={5} />
-        <View style={[styles.contentTinted, { paddingTop: isVoorbeeld ? 46 : 26, paddingBottom: isVoorbeeld ? 74 : 40 }]}>
+        <View style={[styles.contentTinted, { paddingTop: isVoorbeeld ? 32 : 26, paddingBottom: isVoorbeeld ? 74 : 40 }]}>
           {isVoorbeeld && <VoorbeeldBanner siteUrl={siteUrl} />}
           <Text style={styles.pageTitel}>Buurtprofiel</Text>
           <Text style={[styles.pageSubtitel, { marginBottom: 10 }]}>{buurtSubtitel}</Text>
 
           {buurtprofiel.data ? (
-            <View style={{ gap: 8 }}>
+            <View style={{ gap: 6 }}>
               {/* Veiligheid — eigen kaart, ring + bandlabel, zelfde opbouw
                   als VeiligheidsScore.tsx in de app. */}
               <View style={[styles.kaart, { flexDirection: "row", alignItems: "center", gap: 10 }]}>
@@ -1889,7 +1889,7 @@ export default function ReportDocument({
                     const items = voorzieningItems.filter((i) => i.thema === thema);
                     if (items.length === 0) return null;
                     return (
-                      <View key={thema} style={{ marginBottom: 8 }}>
+                      <View key={thema} style={{ marginBottom: 5 }}>
                         <Text style={{ fontSize: 6.3, fontFamily: "Helvetica-Bold", color: KLEUR.inkMuted, textTransform: "uppercase", marginBottom: 5 }}>
                           {VOORZIENING_THEMA_LABEL[thema]}
                         </Text>
@@ -1898,7 +1898,7 @@ export default function ReportDocument({
                             const Icoon = VOORZIENING_ICOON[item.key] ?? IcoonPin;
                             const kleur = VOORZIENING_KLEUR[item.key] ?? KLEUR.accent;
                             return (
-                              <View key={item.key} style={{ width: "31%", backgroundColor: KLEUR.parchment, borderRadius: 8, padding: 8 }}>
+                              <View key={item.key} style={{ width: "31%", backgroundColor: KLEUR.parchment, borderRadius: 8, padding: 5 }}>
                                 <Icoon kleur={kleur} size={11} />
                                 <Text style={{ fontSize: 9.5, fontFamily: "Helvetica-Bold", color: KLEUR.ink, marginTop: 5 }}>{formatKm(item.afstandKm)}</Text>
                                 <Text style={{ fontSize: 6, color: KLEUR.inkFaint, marginTop: 2 }}>{item.label}</Text>
@@ -1943,12 +1943,12 @@ export default function ReportDocument({
       {/* ================================================================== */}
       <Page size="A4" style={styles.pageRow}>
         <Sidebar actief={6} />
-        <View style={[styles.contentTinted, { paddingTop: isVoorbeeld ? 46 : 26, paddingBottom: isVoorbeeld ? 74 : 40 }]}>
+        <View style={[styles.contentTinted, { paddingTop: isVoorbeeld ? 32 : 26, paddingBottom: isVoorbeeld ? 74 : 40 }]}>
           {isVoorbeeld && <VoorbeeldBanner siteUrl={siteUrl} />}
           <Text style={styles.pageTitel}>Samenvatting</Text>
           <Text style={[styles.pageSubtitel, { marginBottom: 10 }]}>Compacte, feitelijke afsluiting van dit rapport</Text>
 
-          <View style={{ gap: 8 }}>
+          <View style={{ gap: 6 }}>
             {/* Hero: totaalbeeld + geschatte waarde */}
             <View style={{ backgroundColor: KLEUR.accentDark, borderRadius: 9, padding: 13 }}>
               <Text style={{ fontSize: 12, fontFamily: "Helvetica-Bold", color: "#FFFFFF", lineHeight: 1.35 }}>{samenvatting.titel}</Text>
@@ -2032,7 +2032,7 @@ export default function ReportDocument({
         <View
           style={[
             styles.contentTinted,
-            { alignItems: "center", justifyContent: "center", paddingHorizontal: 60, paddingTop: isVoorbeeld ? 46 : 26, paddingBottom: isVoorbeeld ? 74 : 40 },
+            { alignItems: "center", justifyContent: "center", paddingHorizontal: 60, paddingTop: isVoorbeeld ? 32 : 26, paddingBottom: isVoorbeeld ? 74 : 40 },
           ]}
         >
           {isVoorbeeld && <VoorbeeldBanner siteUrl={siteUrl} />}
