@@ -80,6 +80,59 @@ export async function kvGet(key: string): Promise<string | null> {
 // race conditions, maar dit project draait daar toch single-process, dus een
 // simpele lees-schrijf is hier voldoende (zelfde soort pragmatisme als de
 // rest van deze store).
+// -----------------------------------------------------------------------------
+// Sorted-set-helpers -- gebruikt door de herinneringsmail-wachtrij (zie
+// app/api/rapport/preview-email/route.tsx die hier iets aan toevoegt, en
+// app/api/cron/reminder-email/route.ts die er periodiek uit leest). Score =
+// het unix-tijdstip (ms) waarop de herinnering verstuurd mag worden, zodat
+// ZRANGEBYSCORE(-inf, nu) precies teruggeeft wat "vervallen" is (klaar om
+// verzonden te worden), zonder dat er ergens een lijst van ALLE sleutels
+// bijgehouden of gescand hoeft te worden.
+//
+// In-memory fallback: gewoon een array van {score, member} per key -- dit
+// project draait daar toch al single-process van uit (zie kvIncrWithTtl
+// hierboven), dus geen race-condition-bescherming nodig.
+// -----------------------------------------------------------------------------
+
+const memoryZSets = new Map<string, { score: number; member: string }[]>();
+
+export async function kvZAdd(key: string, score: number, member: string): Promise<void> {
+  if (kvIsLive()) {
+    await upstashCommand(["ZADD", key, score, member]);
+    return;
+  }
+  const set = memoryZSets.get(key) ?? [];
+  set.push({ score, member });
+  memoryZSets.set(key, set);
+}
+
+// Geeft alle members terug met score <= maxScore (dus: klaar om te
+// verwerken), oplopend gesorteerd.
+export async function kvZRangeByScore(key: string, maxScore: number): Promise<string[]> {
+  if (kvIsLive()) {
+    const result = await upstashCommand(["ZRANGEBYSCORE", key, "-inf", maxScore]);
+    return Array.isArray(result) ? (result as string[]) : [];
+  }
+  const set = memoryZSets.get(key) ?? [];
+  return set
+    .filter((entry) => entry.score <= maxScore)
+    .sort((a, b) => a.score - b.score)
+    .map((entry) => entry.member);
+}
+
+export async function kvZRem(key: string, member: string): Promise<void> {
+  if (kvIsLive()) {
+    await upstashCommand(["ZREM", key, member]);
+    return;
+  }
+  const set = memoryZSets.get(key);
+  if (!set) return;
+  memoryZSets.set(
+    key,
+    set.filter((entry) => entry.member !== member)
+  );
+}
+
 export async function kvIncrWithTtl(key: string, ttlSeconds: number): Promise<number> {
   if (kvIsLive()) {
     const result = await upstashCommand(["INCR", key]);

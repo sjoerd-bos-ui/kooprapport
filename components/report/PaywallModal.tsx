@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { TrendingUpIcon, BoltIcon, HistoryIcon, AlertTriangleIcon, BuildingIcon, ShieldCheckIcon, FileCheckIcon, FlagIcon } from "./icons";
 import { RAPPORT_PRIJS } from "@/lib/utils/prijs";
@@ -46,6 +46,7 @@ export default function PaywallModal({
   onConfirm,
   address,
   price = RAPPORT_PRIJS,
+  kortingToken,
 }: {
   open: boolean;
   onClose: () => void;
@@ -56,9 +57,42 @@ export default function PaywallModal({
   onConfirm: (bestellingId: string) => void | Promise<void>;
   address: AddressMeta;
   price?: string;
+  // Uit de ?korting=-queryparam (zie ReportPageClient.tsx), afkomstig uit de
+  // herinneringsmail. Wordt hier ALLEEN gebruikt om de prijs te tonen na
+  // server-side verificatie (/api/betaling/korting, geen bijwerkingen) — het
+  // daadwerkelijk toegepaste bedrag wordt bij het afrekenen zelf opnieuw en
+  // onafhankelijk geverifieerd door /api/betaling/aanmaken.
+  kortingToken?: string;
 }) {
   const [paying, setPaying] = useState(false);
   const [fout, setFout] = useState<string | null>(null);
+  const [kortingPrijs, setKortingPrijs] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!kortingToken) return;
+    let cancelled = false;
+    fetch("/api/betaling/korting", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: kortingToken, address }),
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { geldig: boolean; bedragCenten?: number } | null) => {
+        if (cancelled || !data?.geldig || data.bedragCenten == null) return;
+        setKortingPrijs(`€${(data.bedragCenten / 100).toFixed(2).replace(".", ",")}`);
+      })
+      .catch(() => {
+        // Stil falen: zonder geldige korting toont de modal gewoon de
+        // normale prijs, geen foutmelding nodig voor iets wat optioneel is.
+      });
+    return () => {
+      cancelled = true;
+    };
+    // address bewust niet in de dependency-array: verandert niet terwijl
+    // deze modal open staat (één adres per rapportpagina), en zou anders bij
+    // elke re-render opnieuw een netwerkaanroep triggeren.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kortingToken]);
   // Verplichte bevestiging vóór betalen — algemene "akkoord met de
   // voorwaarden"-checkbox, met de herroepingsrecht-melding er expliciet in
   // verwerkt (niet alleen een link): dat laatste operationaliseert artikel 7
@@ -77,7 +111,7 @@ export default function PaywallModal({
       const res = await fetch("/api/betaling/aanmaken", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ address }),
+        body: JSON.stringify({ address, kortingToken }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
@@ -135,8 +169,17 @@ export default function PaywallModal({
             ✕
           </button>
         </div>
-        <p className="relative mt-3 font-display text-5xl font-extrabold text-ink">{price}</p>
-        <p className="relative mt-1 text-sm text-ink/45">Eenmalig, geen abonnement · direct toegang</p>
+        {kortingPrijs ? (
+          <div className="relative mt-3 flex items-baseline gap-2.5">
+            <p className="font-display text-2xl font-semibold text-ink/35 line-through">{price}</p>
+            <p className="font-display text-5xl font-extrabold text-ink">{kortingPrijs}</p>
+          </div>
+        ) : (
+          <p className="relative mt-3 font-display text-5xl font-extrabold text-ink">{price}</p>
+        )}
+        <p className="relative mt-1 text-sm text-ink/45">
+          {kortingPrijs ? "Tijdelijke korting · eenmalig · direct toegang" : "Eenmalig, geen abonnement · direct toegang"}
+        </p>
 
         <div className="relative mt-6 border-t border-ink/10 pt-6">
           <p className="mb-2.5 text-[11px] font-semibold text-ink/45">Alle 7 onderdelen, volledig</p>

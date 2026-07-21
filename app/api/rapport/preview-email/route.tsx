@@ -2,6 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/services/rateLimit";
 import { isGeldigEmailadres, stuurPreviewEmail } from "@/lib/services/email";
 import { APP_BASE_URL } from "@/lib/config/payment";
+import { canonicalAddressKey } from "@/lib/utils/slug";
+import { kvZAdd } from "@/lib/services/kvStore";
+
+// Hoelang na deze preview-mail de herinnering verstuurd mag worden. De
+// kortingstoken zelf wordt pas in de cron-route gegenereerd (zie
+// app/api/cron/reminder-email/route.ts) -- pas op het moment dat de mail
+// daadwerkelijk verstuurd wordt weten we exact vanaf wanneer die 24 uur
+// geldig moet zijn.
+const HERINNERING_NA_MS = 48 * 60 * 60 * 1000;
+const REMINDER_QUEUE_KEY = "reminder:queue";
 
 // -----------------------------------------------------------------------------
 // "Bewaar dit rapport in uw mail" op de GRATIS preview — vóór ontgrendelen,
@@ -46,6 +56,27 @@ export async function POST(req: NextRequest) {
   const resultaat = await stuurPreviewEmail({ naar: email, adresLabel, previewUrl });
   if (!resultaat.ok) {
     return NextResponse.json({ error: resultaat.error ?? "Versturen is niet gelukt." }, { status: 502 });
+  }
+
+  // Herinnering inplannen -- BEST-EFFORT: als dit om wat voor reden dan ook
+  // faalt (bv. queryparams ontbreken, KV-fout), mag dat de al gelukte
+  // preview-mail hierboven niet alsnog als mislukt laten terugkomen. De
+  // gebruiker heeft zijn mail al, de herinnering is een bonus, geen
+  // kernfunctie van deze aanvraag.
+  try {
+    const parsedUrl = new URL(previewUrl);
+    const addressKey = canonicalAddressKey({
+      postcode: parsedUrl.searchParams.get("postcode") ?? undefined,
+      huisnummer: parsedUrl.searchParams.get("huisnummer") ?? undefined,
+      huisletter: parsedUrl.searchParams.get("huisletter") ?? undefined,
+      toevoeging: parsedUrl.searchParams.get("toevoeging") ?? undefined,
+    });
+    if (addressKey) {
+      const job = JSON.stringify({ email, adresLabel, previewPath, addressKey });
+      await kvZAdd(REMINDER_QUEUE_KEY, Date.now() + HERINNERING_NA_MS, job);
+    }
+  } catch (err) {
+    console.error("[preview-email] herinnering inplannen mislukt (niet-kritiek):", err);
   }
 
   return NextResponse.json({ ok: true });

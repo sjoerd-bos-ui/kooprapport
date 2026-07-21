@@ -1,5 +1,5 @@
 import { BETAAL_MODE, MOLLIE_API_BASE_URL, MOLLIE_API_KEY, APP_BASE_URL } from "@/lib/config/payment";
-import { rapportPrijsAlsMollieBedrag } from "@/lib/utils/prijs";
+import { centenAlsMollieBedrag } from "@/lib/utils/prijs";
 import { koppelMolliePaymentId, zetStatus, type BestellingStatus } from "@/lib/payments/bestellingen";
 
 // -----------------------------------------------------------------------------
@@ -22,6 +22,7 @@ export interface MollieBetalingAanvraag {
   bestellingId: string;
   omschrijving: string;
   redirectPad: string; // bv. "/rapport/herengracht-210-1015-cw-amsterdam"
+  bedragCenten: number;
 }
 
 export interface MollieBetalingResultaat {
@@ -59,7 +60,7 @@ export async function maakBetaling(aanvraag: MollieBetalingAanvraag): Promise<Mo
     },
     body: JSON.stringify({
       description: aanvraag.omschrijving,
-      amount: rapportPrijsAlsMollieBedrag(),
+      amount: centenAlsMollieBedrag(aanvraag.bedragCenten),
       redirectUrl,
       // webhookUrl moet van buitenaf bereikbaar zijn — Mollie accepteert
       // geen localhost. Op APP_BASE_URL=http://localhost:... (het lokale

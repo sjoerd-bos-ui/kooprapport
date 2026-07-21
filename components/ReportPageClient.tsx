@@ -228,6 +228,7 @@ export default function ReportPageClient({
         isUnlocked={isUnlocked}
         isConfirmingPayment={betalingTerugkeer === "controleren"}
         onUnlock={handleUnlock}
+        kortingToken={searchParams.get("korting") ?? undefined}
       />
     </>
   );

@@ -5,6 +5,7 @@ import { maakBetaling } from "@/lib/payments/mollie";
 import { RAPPORT_PRIJS_CENTEN } from "@/lib/utils/prijs";
 import { checkRateLimit } from "@/lib/services/rateLimit";
 import { canonicalAddressKey, buildReportHref } from "@/lib/utils/slug";
+import { verifieerKortingToken } from "@/lib/utils/kortingToken";
 
 // -----------------------------------------------------------------------------
 // Stap 1 van de betaalflow: een bestelling aanmaken op het moment dat de
@@ -32,8 +33,9 @@ export async function POST(req: NextRequest) {
   }
 
   let address: AddressMeta;
+  let kortingToken: string | undefined;
   try {
-    ({ address } = (await req.json()) as { address: AddressMeta });
+    ({ address, kortingToken } = (await req.json()) as { address: AddressMeta; kortingToken?: string });
   } catch {
     return NextResponse.json({ error: "Ongeldige aanvraag: geen geldige JSON-body." }, { status: 400 });
   }
@@ -55,7 +57,16 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const bestelling = await maakBestelling(addressKey, RAPPORT_PRIJS_CENTEN);
+  // BEVEILIGING: het bedrag komt NOOIT rechtstreeks van de client (dat zou
+  // een bezoeker een willekeurig bedrag laten invullen) -- alleen een geldig,
+  // ondertekend kortingstoken (uit de herinneringsmail, zie
+  // lib/utils/kortingToken.ts) kan de prijs verlagen, en dat wordt hier
+  // opnieuw en onafhankelijk geverifieerd, los van wat /api/betaling/korting
+  // eerder al liet zien.
+  const korting = verifieerKortingToken(kortingToken, addressKey);
+  const bedragCenten = korting.geldig && korting.bedragCenten != null ? korting.bedragCenten : RAPPORT_PRIJS_CENTEN;
+
+  const bestelling = await maakBestelling(addressKey, bedragCenten);
 
   try {
     // BUGFIX: redirectPad moet het adres zelf meegeven (straat/huisnummer/
@@ -77,6 +88,7 @@ export async function POST(req: NextRequest) {
       bestellingId: bestelling.id,
       omschrijving: `Kooprapport voor ${address.label}`,
       redirectPad: buildReportHref(address),
+      bedragCenten,
     });
 
     // Na maakBetaling() kan de status al "paid" zijn (mock-modus) — dus
@@ -88,6 +100,7 @@ export async function POST(req: NextRequest) {
       bestellingId: actueel.id,
       status: actueel.status,
       checkoutUrl,
+      bedragCenten,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Onbekende fout bij het aanmaken van de betaling.";

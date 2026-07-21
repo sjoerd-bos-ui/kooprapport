@@ -406,6 +406,7 @@ export default function ReportView({
   isUnlocked,
   isConfirmingPayment = false,
   onUnlock,
+  kortingToken,
 }: {
   report: Report;
   isUnlocked: boolean;
@@ -421,6 +422,8 @@ export default function ReportView({
   // bestellingId van de zojuist afgeronde betaling mee, zodat die route
   // server-side kan verifiëren dat er écht is betaald.
   onUnlock: (bestellingId: string) => void | Promise<void>;
+  // Uit de ?korting=-queryparam (herinneringsmail) -- zie ReportPageClient.tsx.
+  kortingToken?: string;
 }) {
   const [showPaywall, setShowPaywall] = useState(false);
   // Welk tabblad actief is — ReportTabs is nu een controlled component, zodat
@@ -1460,6 +1463,7 @@ export default function ReportView({
         open={showPaywall}
         onClose={() => setShowPaywall(false)}
         address={core.address}
+        kortingToken={kortingToken}
         onConfirm={async (bestellingId) => {
           await onUnlock(bestellingId);
           setShowPaywall(false);

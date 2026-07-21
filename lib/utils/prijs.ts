@@ -16,3 +16,12 @@ export const RAPPORT_PRIJS = `€${(RAPPORT_PRIJS_CENTEN / 100).toFixed(2).repla
 export function rapportPrijsAlsMollieBedrag(): { currency: "EUR"; value: string } {
   return { currency: "EUR", value: (RAPPORT_PRIJS_CENTEN / 100).toFixed(2) };
 }
+
+// Zelfde als hierboven, maar voor een AFWIJKEND bedrag (bv. een geldig
+// kortingstoken uit de herinneringsmail, zie lib/utils/kortingToken.ts) --
+// nooit rapportPrijsAlsMollieBedrag() gebruiken zodra er een korting is
+// geverifieerd, anders wordt bij Mollie alsnog de volle prijs in rekening
+// gebracht terwijl de klant een korting te zien kreeg.
+export function centenAlsMollieBedrag(centen: number): { currency: "EUR"; value: string } {
+  return { currency: "EUR", value: (centen / 100).toFixed(2) };
+}
