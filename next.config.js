@@ -71,6 +71,23 @@ const nextConfig = {
       },
     ];
   },
+  // SEO-fix: een SEO-check signaleerde dat kooprapport.nl zowel via www als
+  // non-www bereikbaar was zonder redirect -- twee volledig werkende URLs
+  // voor dezelfde inhoud, wat crawlers als duplicate content kunnen zien en
+  // de ranking-waarde over twee varianten versnippert i.p.v. op één canonieke
+  // URL te bundelen. Canoniek is non-www (zie APP_BASE_URL in
+  // lib/config/payment.ts en alle metadata/sitemap-code), dus www wordt hier
+  // permanent (308) doorgestuurd naar non-www, met behoud van het pad.
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "www.kooprapport.nl" }],
+        destination: "https://kooprapport.nl/:path*",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig;

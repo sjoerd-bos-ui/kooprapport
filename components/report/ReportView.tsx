@@ -1362,7 +1362,7 @@ export default function ReportView({
               die al heeft afgerekend alsnog kort "Ontgrendel nu voor €11,95"
               te zien krijgen. */}
           {!isUnlocked && !isConfirmingPayment && (
-            <PreviewSummary onUnlockClick={() => setShowPaywall(true)} />
+            <PreviewSummary onUnlockClick={() => setShowPaywall(true)} adresLabel={report.core.address.label} />
           )}
           {isConfirmingPayment && (
             <div className="border-t border-ink/10 bg-white px-5 py-10 text-center sm:px-6">

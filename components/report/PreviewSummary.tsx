@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { CheckIcon, LockIcon } from "./icons";
 import { RAPPORT_PRIJS } from "@/lib/utils/prijs";
+import EmailBewaarOptie from "./EmailBewaarOptie";
 
 // 20 voorbeeldreacties — fictieve voornaam + plaats. Bewust geen achternamen,
 // foto's of sterrenscores (dat zou nog meer op een geverifieerde review
@@ -70,36 +71,13 @@ const VOORBEELDSITUATIES = [
 // cijfer bestaat pas na ontgrendelen. Zelfde onderscheid als het bestaande
 // "mockdata ter illustratie"-label elders in de app.
 
-function VergelijkRij({
-  label,
-  gratis,
-  zebra,
+export default function PreviewSummary({
+  onUnlockClick,
+  adresLabel,
 }: {
-  label: string;
-  gratis: { type: "check" | "tekst"; tekst: string };
-  zebra: boolean;
+  onUnlockClick: () => void;
+  adresLabel: string;
 }) {
-  return (
-    <div
-      className="grid grid-cols-[1.7fr_0.65fr_0.9fr] items-center px-4 py-2.5"
-      style={{ backgroundColor: zebra ? "#F9F9FC" : "#FFFFFF" }}
-    >
-      <span className="text-[12.5px] text-ink">{label}</span>
-      <span className="flex items-center justify-center">
-        {gratis.type === "check" ? (
-          <CheckIcon className="h-3.5 w-3.5 text-[#0F766E]" />
-        ) : (
-          <span className="text-[11px] text-ink/40">{gratis.tekst}</span>
-        )}
-      </span>
-      <span className="flex items-center justify-center bg-mist">
-        <CheckIcon className="h-3.5 w-3.5 text-accent" />
-      </span>
-    </div>
-  );
-}
-
-export default function PreviewSummary({ onUnlockClick }: { onUnlockClick: () => void }) {
   // Eén willekeurige situatie per keer dat de pagina laadt — geen "volgende"-
   // knop meer, dus geen doorklikbare carousel.
   //
@@ -253,36 +231,9 @@ export default function PreviewSummary({ onUnlockClick }: { onUnlockClick: () =>
           Ontgrendel nu voor {RAPPORT_PRIJS}
         </button>
         <p className="mt-2 text-center text-[10px] text-ink/40">Eenmalig · geen abonnement · veilig via iDEAL</p>
+        <EmailBewaarOptie adresLabel={adresLabel} />
+        <p className="mt-3 text-center text-[10px] text-ink/30">Bronnen: BAG, RVO, Altum AI, Kadaster</p>
       </div>
-
-      {/* De uitgebreide vergelijkingstabel staat nu ingeklapt achter een
-          <details> i.p.v. altijd volledig getoond — voor wie de details per
-          onderdeel wil zien, zonder dat het de pagina drukker maakt voor wie
-          dat niet wil. */}
-      <details className="group mt-4">
-        <summary className="cursor-pointer list-none text-center text-[11.5px] font-bold text-accent [&::-webkit-details-marker]:hidden">
-          Bekijk volledige vergelijking gratis vs. premium
-          <span className="ml-1 inline-block transition-transform group-open:rotate-180">▾</span>
-        </summary>
-        <div className="mt-3 overflow-hidden rounded-xl border border-ink/10">
-          <div className="grid grid-cols-[1.7fr_0.65fr_0.9fr] bg-white px-4 py-2.5">
-            <span className="text-[10px] font-bold uppercase tracking-wide text-ink/40">Gratis versus premium</span>
-            <span className="text-center text-[10px] font-bold uppercase tracking-wide text-ink/40">Gratis</span>
-            <span className="text-center text-[10px] font-bold uppercase tracking-wide text-accent">Premium</span>
-          </div>
-          <VergelijkRij label="Rapportoverzicht" gratis={{ type: "tekst", tekst: "basis" }} zebra />
-          <VergelijkRij label="Waarde-indicatie" gratis={{ type: "tekst", tekst: "Nee" }} zebra={false} />
-          <VergelijkRij label="Verkopen in de buurt" gratis={{ type: "tekst", tekst: "Nee" }} zebra />
-          <VergelijkRij label="Objectgegevens" gratis={{ type: "check", tekst: "" }} zebra={false} />
-          <VergelijkRij label="Energieprestatie en label" gratis={{ type: "check", tekst: "" }} zebra />
-          <VergelijkRij label="Funderingsrisico" gratis={{ type: "tekst", tekst: "indicatie" }} zebra={false} />
-          <VergelijkRij label="Buurtprofiel" gratis={{ type: "tekst", tekst: "Nee" }} zebra />
-        </div>
-      </details>
-
-      <p className="mt-3 text-center text-[10.5px] text-ink/40">
-        Bronnen: BAG, RVO, Altum AI, Kadaster
-      </p>
     </div>
   );
 }
