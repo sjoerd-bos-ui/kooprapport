@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Bricolage_Grotesque, Inter } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import { APP_BASE_URL } from "@/lib/config/payment";
 import "./globals.css";
 
@@ -63,7 +64,15 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="nl" className={`${display.variable} ${inter.variable}`}>
-      <body className="min-h-screen bg-parchment font-sans text-ink antialiased">{children}</body>
+      <body className="min-h-screen bg-parchment font-sans text-ink antialiased">
+        {children}
+        {/* Vercel Web Analytics — géén cookies, dus geen cookie-toestemmingsbanner
+            nodig (in tegenstelling tot Google Analytics). Script en meetpunten
+            lopen via /_vercel/insights/* op het eigen domein, dus de bestaande
+            strikte CSP in next.config.js (script-src/connect-src 'self') hoeft
+            hier niet voor aangepast te worden. */}
+        <Analytics />
+      </body>
     </html>
   );
 }
