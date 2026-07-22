@@ -407,6 +407,7 @@ export default function ReportView({
   isConfirmingPayment = false,
   onUnlock,
   kortingToken,
+  bestellingId = null,
 }: {
   report: Report;
   isUnlocked: boolean;
@@ -424,6 +425,12 @@ export default function ReportView({
   onUnlock: (bestellingId: string) => void | Promise<void>;
   // Uit de ?korting=-queryparam (herinneringsmail) -- zie ReportPageClient.tsx.
   kortingToken?: string;
+  // bestellingId van de zojuist afgeronde betaling (ReportPageClient bewaart
+  // dit nu in state, zie handleUnlock) — nodig voor "Download aankoopbewijs"
+  // hieronder. null zolang er nog niet ontgrendeld is, of (zeldzaam) als het
+  // rapport op een andere manier ontgrendeld raakte zonder dat we een
+  // bestellingId kregen.
+  bestellingId?: string | null;
 }) {
   const [showPaywall, setShowPaywall] = useState(false);
   // Welk tabblad actief is — ReportTabs is nu een controlled component, zodat
@@ -444,6 +451,11 @@ export default function ReportView({
   // aanroep, geen risico dat de PDF andere cijfers toont dan wat hierboven
   // al te zien is.
   const [downloadingPdf, setDownloadingPdf] = useState(false);
+  // "Download aankoopbewijs" — apart van de PDF-download hierboven, zie
+  // app/api/rapport/bon/route.tsx. Stuurt bewust alleen address+bestellingId
+  // mee (geen bedrag): het bedrag/de datum komen server-side uit het
+  // Bestelling-record zelf, nooit uit iets dat hier clientside te vinden is.
+  const [downloadingBon, setDownloadingBon] = useState(false);
   // "Verstuur naar e-mail" bij de "Rapport gereed"-kaart — zelfde
   // vertrouwensmodel als de PDF-download hierboven (het al opgehaalde
   // `report`-object gaat mee, zie app/api/rapport/email/route.tsx).
@@ -477,6 +489,30 @@ export default function ReportView({
       alert("De PDF kon nu niet worden gemaakt. Probeer het straks opnieuw.");
     } finally {
       setDownloadingPdf(false);
+    }
+  }
+
+  async function handleDownloadBon() {
+    if (!bestellingId) return;
+    setDownloadingBon(true);
+    try {
+      const res = await fetch("/api/rapport/bon", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address: core.address, bestellingId }),
+      });
+      if (!res.ok) throw new Error("Aankoopbewijs-aanvraag gaf HTTP " + res.status);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `aankoopbewijs-${bestellingId.slice(0, 8)}.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      alert("Het aankoopbewijs kon nu niet worden gemaakt. Probeer het straks opnieuw.");
+    } finally {
+      setDownloadingBon(false);
     }
   }
 
@@ -1406,10 +1442,10 @@ export default function ReportView({
                 </span>
                 <div>
                   <p className="font-display text-lg font-bold text-ink">Rapport gereed</p>
-                  <p className="mt-0.5 text-sm text-ink/50">Download de PDF, of ontvang 'm per e-mail.</p>
+                  <p className="mt-0.5 text-sm text-ink/50">Download de PDF, ontvang 'm per e-mail, of bewaar uw aankoopbewijs.</p>
                 </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button variant="secondary" onClick={handleDownloadPdf} disabled={downloadingPdf}>
                   {downloadingPdf ? "PDF wordt gemaakt…" : "Download PDF"}
                 </Button>
@@ -1425,6 +1461,11 @@ export default function ReportView({
                     Verstuur naar mail
                   </span>
                 </Button>
+                {bestellingId && (
+                  <Button variant="secondary" onClick={handleDownloadBon} disabled={downloadingBon}>
+                    {downloadingBon ? "Aankoopbewijs wordt gemaakt…" : "Download aankoopbewijs"}
+                  </Button>
+                )}
               </div>
             </div>
 

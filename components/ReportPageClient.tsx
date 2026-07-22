@@ -46,6 +46,11 @@ export default function ReportPageClient({
   const [completedSteps, setCompletedSteps] = useState<ReportProgressStep[]>(initialReport ? STEP_ORDER : []);
   const [report, setReport] = useState<Report | null>(initialReport);
   const [isUnlocked, setIsUnlocked] = useState(false);
+  // Bewaard voor het "Download aankoopbewijs"-knopje (zie ReportView.tsx) —
+  // handleUnlock() zelf kreeg dit al als parameter, maar gaf het nooit door
+  // aan state, dus was het na het ontgrendelen nergens anders meer
+  // beschikbaar dan in die ene functieaanroep zelf.
+  const [bestellingId, setBestellingId] = useState<string | null>(null);
   // Alleen relevant net na een terugkeer van Mollie (live-modus): laat zien
   // dat we de betaling nog aan het bevestigen zijn, i.p.v. stil niets te
   // doen totdat het rapport plotseling ontgrendelt (of, bij een probleem,
@@ -148,6 +153,7 @@ export default function ReportPageClient({
         };
         setReport((prev) => (prev ? { ...prev, market, nearbySales } : prev));
         setIsUnlocked(true);
+        setBestellingId(bestellingId);
       }
       // Een falende aanvraag (bv. 402: geen geldige betaalde bestelling)
       // ontgrendelt bewust NIET — dat is precies het verschil met vroeger,
@@ -241,6 +247,7 @@ export default function ReportPageClient({
         isConfirmingPayment={betalingTerugkeer === "controleren"}
         onUnlock={handleUnlock}
         kortingToken={searchParams.get("korting") ?? undefined}
+        bestellingId={bestellingId}
       />
     </>
   );
