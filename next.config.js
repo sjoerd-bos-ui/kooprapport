@@ -1,3 +1,5 @@
+const { withSentryConfig } = require("@sentry/nextjs");
+
 /** @type {import('next').NextConfig} */
 // -----------------------------------------------------------------------------
 // Security headers — er was voorheen helemaal geen next.config.js, dus draaide
@@ -59,13 +61,21 @@ const GOOGLE_ANALYTICS_CONNECT_SRC =
 const GOOGLE_ANALYTICS_IMG_SRC =
   "https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com";
 
+// Sentry (zie instrumentation-client.ts) stuurt fouten/traces naar een
+// org-specifiek ingest-subdomein (bv. o123456.ingest.us.sentry.io) — een
+// wildcard-hostbron (*.sentry.io) in CSP matcht in browsers ELK subdomeinniveau
+// hieronder, dus dekt dat automatisch, ongeacht regio/org-id. Geleerde les van
+// de GA4-CSP-bug hierboven: dit nu meteen goed zetten i.p.v. achteraf
+// ontdekken dat de eigen CSP ook Sentry's eigen meldingen blokkeert.
+const SENTRY_CONNECT_SRC = "https://*.sentry.io";
+
 const CSP = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline' ${GOOGLE_ANALYTICS_SCRIPT_SRC}${isDev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
   `img-src 'self' data: blob: ${GOOGLE_ANALYTICS_IMG_SRC}`,
   "font-src 'self' data:",
-  `connect-src 'self' https://api.pdok.nl ${GOOGLE_ANALYTICS_CONNECT_SRC}${isDev ? " ws://localhost:* http://localhost:*" : ""}`,
+  `connect-src 'self' https://api.pdok.nl ${GOOGLE_ANALYTICS_CONNECT_SRC} ${SENTRY_CONNECT_SRC}${isDev ? " ws://localhost:* http://localhost:*" : ""}`,
   "frame-src 'none'",
   "object-src 'none'",
   "base-uri 'self'",
@@ -111,4 +121,17 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+// withSentryConfig voegt build-time source-map-upload en request-tracing toe.
+// org/project zijn de slugs uit je Sentry.io-project-URL
+// (sentry.io/organizations/<org>/projects/<project>/) — vul die na het
+// aanmaken van je Sentry-account/project hieronder in. Zonder een geldig
+// SENTRY_AUTH_TOKEN (env var, alleen nodig in Vercel voor source maps) slaat
+// de build de upload-stap gewoon over — de app blijft dan gewoon werken,
+// alleen zie je in Sentry geen leesbare stack traces (wel gewoon de fouten).
+module.exports = withSentryConfig(nextConfig, {
+  org: "<jouw-sentry-org-slug>",
+  project: "<jouw-sentry-project-slug>",
+  silent: !process.env.CI,
+  widenClientFileUpload: true,
+  disableLogger: true,
+});

@@ -119,13 +119,16 @@ export default function AddressSearchBar() {
   return (
     <div className="w-full max-w-xl">
       <form onSubmit={handleSubmit} className="relative">
-        {/* Indigo SaaS-stijl: witte pil met een amber actieknop i.p.v. de
-            zwarte "power"-knop van de rest van de site — dit component wordt
-            uitsluitend op de homepage gebruikt, dus deze restyle raakt geen
-            enkele andere pagina. De knop is bewust amber i.p.v. dezelfde
-            indigo als de rest van de merkidentiteit: met één indigo-tint
-            door de hele pagina steekt geen enkele knop er als dé hoofdactie
-            uit — amber geeft de zoekknop een eigen, herkenbare "ga"-kleur. */}
+        {/* BUGFIX (merkconsistentie, audit): stond hier bewust op amber
+            (#D97706) i.p.v. de indigo accentkleur van de rest van de site —
+            de redenering destijds was dat één indigo-tint door de hele
+            pagina geen enkele knop meer als hoofdactie zou laten opvallen.
+            In de praktijk zorgde dat er juist voor dat de belangrijkste knop
+            op de hele site (de eerste actie die iemand neemt) merkbaar
+            afweek van elke andere CTA (Button.tsx, PaywallModal) — precies
+            de knop die het meest met Kooprapport geassocieerd zou moeten
+            worden, oogde daardoor los van de rest. Nu dezelfde accent/
+            accent-dark-tokens als overal elders. */}
         <div className="flex items-stretch overflow-hidden rounded-xl bg-white shadow-overlay">
           <span className="flex items-center pl-4 text-ink/30" aria-hidden>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -151,7 +154,7 @@ export default function AddressSearchBar() {
           />
           <button
             type="submit"
-            className="whitespace-nowrap bg-[#D97706] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#B45309]"
+            className="whitespace-nowrap bg-accent px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-dark"
           >
             Bekijk rapport
           </button>
