@@ -79,6 +79,16 @@ export async function maakBetaling(aanvraag: MollieBetalingAanvraag): Promise<Mo
 
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
+    // Vriendelijke, begrijpelijke melding voor de meest voorkomende oorzaak
+    // (een korting die het bedrag onder Mollie's eigen minimum per
+    // betaalmethode brengt) -- de rest blijft de rauwe Mollie-foutmelding,
+    // want die is voor onszelf (in de logs) precies genoeg om te debuggen.
+    if (detail.includes("lower than the minimum")) {
+      console.error(`[mollie] bedrag onder minimum (${res.status}):`, detail);
+      throw new Error(
+        "Dit bedrag is te laag om via iDEAL te verwerken. Bij een korting die zo dicht bij gratis komt, kan Mollie de betaling niet meer verwerken."
+      );
+    }
     throw new Error(`Mollie wees de betaalaanvraag af (${res.status})${detail ? `: ${detail}` : ""}`);
   }
 

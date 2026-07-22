@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { AddressMeta } from "@/types/report";
-import { maakBestelling, haalBestelling } from "@/lib/payments/bestellingen";
+import { maakBestelling, haalBestelling, zetStatus } from "@/lib/payments/bestellingen";
 import { maakBetaling } from "@/lib/payments/mollie";
 import { RAPPORT_PRIJS_CENTEN } from "@/lib/utils/prijs";
 import { checkRateLimit } from "@/lib/services/rateLimit";
 import { canonicalAddressKey, buildReportHref } from "@/lib/utils/slug";
 import { verifieerKortingToken } from "@/lib/utils/kortingToken";
+import { verifieerEnVerbruikKortingscode } from "@/lib/utils/kortingscode";
 
 // -----------------------------------------------------------------------------
 // Stap 1 van de betaalflow: een bestelling aanmaken op het moment dat de
@@ -34,8 +35,13 @@ export async function POST(req: NextRequest) {
 
   let address: AddressMeta;
   let kortingToken: string | undefined;
+  let kortingscode: string | undefined;
   try {
-    ({ address, kortingToken } = (await req.json()) as { address: AddressMeta; kortingToken?: string });
+    ({ address, kortingToken, kortingscode } = (await req.json()) as {
+      address: AddressMeta;
+      kortingToken?: string;
+      kortingscode?: string;
+    });
   } catch {
     return NextResponse.json({ error: "Ongeldige aanvraag: geen geldige JSON-body." }, { status: 400 });
   }
@@ -58,15 +64,44 @@ export async function POST(req: NextRequest) {
   }
 
   // BEVEILIGING: het bedrag komt NOOIT rechtstreeks van de client (dat zou
-  // een bezoeker een willekeurig bedrag laten invullen) -- alleen een geldig,
-  // ondertekend kortingstoken (uit de herinneringsmail, zie
-  // lib/utils/kortingToken.ts) kan de prijs verlagen, en dat wordt hier
-  // opnieuw en onafhankelijk geverifieerd, los van wat /api/betaling/korting
-  // eerder al liet zien.
-  const korting = verifieerKortingToken(kortingToken, addressKey);
+  // een bezoeker een willekeurig bedrag laten invullen) -- alleen een geldig
+  // kortingsmiddel wordt hier, ONAFHANKELIJK van wat de verify-only routes
+  // (/api/betaling/korting, /api/betaling/kortingscode) al lieten zien,
+  // opnieuw gecontroleerd. Twee mogelijke bronnen, een handmatig ingevoerde
+  // code krijgt voorrang (dat is een bewuste keuze van de klant op dit
+  // moment) boven een token uit een oudere herinneringsmail-link:
+  // - kortingscode: handmatig ingetypt, verbruikt hier ook meteen 1 gebruik
+  //   van die code (zie kortingscode.ts) -- dus alleen aanroepen als we ook
+  //   echt doorgaan met het aanmaken van de bestelling.
+  // - kortingToken: automatisch, per adres, uit de herinneringsmail.
+  let korting: { geldig: boolean; bedragCenten?: number } = { geldig: false };
+  if (kortingscode) {
+    korting = await verifieerEnVerbruikKortingscode(kortingscode);
+  } else if (kortingToken) {
+    korting = verifieerKortingToken(kortingToken, addressKey);
+  }
   const bedragCenten = korting.geldig && korting.bedragCenten != null ? korting.bedragCenten : RAPPORT_PRIJS_CENTEN;
 
   const bestelling = await maakBestelling(addressKey, bedragCenten);
+
+  // BUGFIX: een 100%-kortingscode (of een andere korting die tot vrijwel
+  // niets herleidt) levert een bedrag van 0 (of vrijwel 0) op -- en Mollie
+  // wijst elke betaalaanvraag onder zijn eigen minimumbedrag per
+  // betaalmethode af (422 "The amount is lower than the minimum"). Een
+  // volledig gratis rapport (100% korting) is geen betaalfout, het is
+  // precies wat de korting beloofde: gewoon direct als betaald markeren en
+  // Mollie hier niet eens bij betrekken, zelfde principe als PAYMENT_MODE=mock
+  // hierboven al doet voor een andere reden.
+  if (bedragCenten <= 0) {
+    await zetStatus(bestelling.id, "paid");
+    const actueel = (await haalBestelling(bestelling.id)) ?? bestelling;
+    return NextResponse.json({
+      bestellingId: actueel.id,
+      status: actueel.status,
+      checkoutUrl: null,
+      bedragCenten,
+    });
+  }
 
   try {
     // BUGFIX: redirectPad moet het adres zelf meegeven (straat/huisnummer/
