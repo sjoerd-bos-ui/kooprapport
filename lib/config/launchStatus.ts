@@ -33,9 +33,25 @@ import { BETAAL_MODE } from "@/lib/config/payment";
 // mee in "alle bronnen live" hieronder: die check zou anders de banner laten
 // staan (of, omgekeerd, verkeerd doen verdwijnen) op basis van een label dat
 // niets zegt over of de getoonde data echt is.
+//
+// BESTEMMINGSPLAN/OMGEVINGSPLAN-NUANCE (zelfde soort uitzondering als BAG,
+// andere reden): deze twee bronnen vereisen een losse, los aan te vragen
+// DSO-sleutel (developer.omgevingswet.overheid.nl) die er bewust nog niet is
+// — een keuze van de eigenaar, geen half afgebouwde koppeling. In mock-modus
+// tonen ze GEEN verzonnen bestemming (zie generateMock() in
+// lib/data-sources/bestemming.ts: "geen gegokte bestemming"), alleen eerlijk
+// lege data. Dat is fundamenteel anders dan de Altum-sandbox hierboven (die
+// wél een plausibel ogend, verzonnen cijfer teruggaf) — een bezoeker wordt
+// hier dus niet iets neps voorgespiegeld, alleen een sectie die (nog) niets
+// laat zien. Om die reden tellen deze twee bewust NIET mee in "alle bronnen
+// live": anders zou de banner permanent blijven staan voor een losstaande,
+// eerlijk-lege sectie, terwijl de rest van het rapport (energielabel,
+// woningwaarde, buurtverkopen) allang op echte data draait.
+const GEEN_NEP_DATA_BIJ_MOCK: readonly string[] = ["bag", "bestemmingsplan", "omgevingsplan"];
+
 export function isVolledigLive(): boolean {
   const alleOverigeBronnenLive = Object.entries(DATA_SOURCE_CONFIG).every(
-    ([key, config]) => key === "bag" || config.mode === "live"
+    ([key, config]) => GEEN_NEP_DATA_BIJ_MOCK.includes(key) || config.mode === "live"
   );
   const altumEchtNietSandbox = process.env.ALTUM_SANDBOX !== "true";
   return alleOverigeBronnenLive && altumEchtNietSandbox && BETAAL_MODE === "live";
