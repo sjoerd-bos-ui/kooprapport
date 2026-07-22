@@ -38,13 +38,22 @@
 // -----------------------------------------------------------------------------
 const isDev = process.env.NODE_ENV !== "production";
 
+// Google Analytics (GA4, zie components/analytics/CookieConsent.tsx) laadt
+// pas na actieve toestemming, maar de CSP zelf is statisch per response —
+// die kan niet pas ná een klik van de bezoeker aangepast worden. Google's
+// domeinen staan hier daarom altijd toegestaan; of het script daadwerkelijk
+// laadt/verzendt hangt uitsluitend af van de toestemmingskeuze in
+// CookieConsent.tsx, niet van deze CSP.
+const GOOGLE_ANALYTICS_SCRIPT_SRC = "https://www.googletagmanager.com";
+const GOOGLE_ANALYTICS_CONNECT_SRC = "https://www.google-analytics.com https://www.googletagmanager.com";
+
 const CSP = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+  `script-src 'self' 'unsafe-inline' ${GOOGLE_ANALYTICS_SCRIPT_SRC}${isDev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
-  `connect-src 'self' https://api.pdok.nl${isDev ? " ws://localhost:* http://localhost:*" : ""}`,
+  `connect-src 'self' https://api.pdok.nl ${GOOGLE_ANALYTICS_CONNECT_SRC}${isDev ? " ws://localhost:* http://localhost:*" : ""}`,
   "frame-src 'none'",
   "object-src 'none'",
   "base-uri 'self'",

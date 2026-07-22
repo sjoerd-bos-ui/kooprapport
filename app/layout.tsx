@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Bricolage_Grotesque, Inter } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import CookieConsent from "@/components/analytics/CookieConsent";
 import { APP_BASE_URL } from "@/lib/config/payment";
 import "./globals.css";
 
@@ -66,12 +67,18 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="nl" className={`${display.variable} ${inter.variable}`}>
       <body className="min-h-screen bg-parchment font-sans text-ink antialiased">
         {children}
-        {/* Vercel Web Analytics — géén cookies, dus geen cookie-toestemmingsbanner
-            nodig (in tegenstelling tot Google Analytics). Script en meetpunten
-            lopen via /_vercel/insights/* op het eigen domein, dus de bestaande
-            strikte CSP in next.config.js (script-src/connect-src 'self') hoeft
-            hier niet voor aangepast te worden. */}
+        {/* Vercel Web Analytics — géén cookies, blijft altijd actief als
+            cookievrije basismeting, ook als een bezoeker Google Analytics
+            hieronder weigert. Script en meetpunten lopen via
+            /_vercel/insights/* op het eigen domein, dus de bestaande strikte
+            CSP in next.config.js (script-src/connect-src 'self') hoeft hier
+            niet voor aangepast te worden. */}
         <Analytics />
+        {/* Google Analytics (GA4) — ALLEEN na actieve toestemming, zie
+            CookieConsent.tsx. Rijkere inzichten (custom events, trafficbronnen,
+            funnels) dan Vercel Analytics, maar vereist daarom wél een
+            toestemmingsbanner. */}
+        <CookieConsent />
       </body>
     </html>
   );

@@ -30,7 +30,7 @@ import Container from "@/components/ui/Container";
 // -----------------------------------------------------------------------------
 
 const CANONICAL_PATH = "/privacy";
-const LAATST_BIJGEWERKT = "18 juli 2026";
+const LAATST_BIJGEWERKT = "22 juli 2026";
 
 export const metadata: Metadata = {
   title: "Privacyverklaring",
@@ -64,7 +64,8 @@ export default function PrivacyPage() {
             preview bekijkt of een volledig rapport koopt, met wie die gegevens worden gedeeld en welke rechten u
             daarbij heeft onder de Algemene Verordening Gegevensbescherming (AVG/GDPR). Kooprapport verwerkt zo min
             mogelijk persoonsgegevens: voor het overgrote deel van deze site is dat alleen het adres dat u zelf
-            opzoekt, niet uw naam, e-mailadres of betaalgegevens.
+            opzoekt. Alleen als u er zelf voor kiest om een preview of kortingsherinnering per e-mail te ontvangen
+            (zie sectie 2), vragen we uw e-mailadres; uw naam en betaalgegevens vraagt Kooprapport nooit.
           </p>
 
           <div className="mt-10 flex flex-col gap-8">
@@ -104,24 +105,38 @@ export default function PrivacyPage() {
                 bestelnummer en het opgezochte adres.
               </p>
               <p>
-                Kooprapport vraagt op geen enkel moment om uw naam of e-mailadres: er is geen account, geen
-                registratie en geen inlog nodig om een rapport te bekijken of te kopen.
+                <strong className="font-semibold text-ink">E-mailadres (alleen als u dat zelf invult).</strong> Er is
+                geen account, geen registratie en geen inlog nodig om een rapport te bekijken of te kopen. Op twee
+                specifieke momenten kunt u er wél zelf voor kiezen uw e-mailadres achter te laten: (1) om een gratis
+                preview van een rapport toegestuurd te krijgen, en (2) om, als u dat rapport nog niet heeft
+                afgerond, eenmalig een herinnering met eventuele tijdelijke korting te ontvangen. Dit gebeurt nooit
+                automatisch — alleen na uw eigen invoer. Zie sectie 5 voor hoe lang we dit bewaren.
               </p>
             </Sectie>
 
             <Sectie id="cookies" titel="3. Cookies en vergelijkbare technieken">
               <p>
-                Kooprapport plaatst zelf geen tracking-, marketing- of analytics-cookies. Er wordt geen bezoekgedrag
-                bijgehouden met bijvoorbeeld Google Analytics of vergelijkbare tools.
+                <strong className="font-semibold text-ink">Vercel Analytics (altijd actief, geen cookies).</strong>{" "}
+                Voor algemene, geaggregeerde bezoekstatistieken (bv. hoeveel bezoekers, welke pagina's) gebruikt
+                Kooprapport Vercel Analytics. Dit plaatst geen cookies en houdt u niet individueel bij tussen
+                bezoeken, en vereist daarom geen toestemming.
+              </p>
+              <p>
+                <strong className="font-semibold text-ink">Google Analytics (alleen na uw toestemming).</strong>{" "}
+                Onderaan de pagina kunt u ervoor kiezen Google Analytics toe te staan, voor uitgebreidere inzichten
+                (bv. welke pagina's tot een aankoop leiden). Google Analytics plaatst wél cookies en wordt daarom
+                pas geladen nádat u zelf op "Accepteren" klikt in de melding onderaan de pagina; kiest u "Weigeren"
+                (of maakt u geen keuze), dan wordt er niets van Google geladen en blijft alleen Vercel Analytics
+                actief. Uw keuze wordt lokaal in uw browser onthouden (niet in een cookie) zodat de melding niet
+                telkens terugkomt.
               </p>
               <p>
                 De "Kaart →"-knop op de rapportpagina is een gewone uitgaande link die Google Maps in een nieuw
-                tabblad opent — geen ingesloten kaart op onze eigen pagina. Zolang u op kooprapport.nl blijft, zet
-                Google dus geen cookies en ontvangt Google geen gegevens van u; pas als u zelf op die knop klikt en
-                naar maps.google.com gaat, geldt daar Google's eigen privacybeleid. Bij het afrekenen wordt u op
-                dezelfde manier doorgestuurd naar mollie.com, waar het eigen cookie- en privacybeleid van Mollie
-                geldt. Wijzigt dit in de toekomst (bijvoorbeeld door een ingesloten kaart of analytics toe te
-                voegen), dan wordt deze verklaring bijgewerkt en waar nodig vooraf om toestemming gevraagd.
+                tabblad opent — geen ingesloten kaart op onze eigen pagina. Zolang u op kooprapport.nl blijft en geen
+                toestemming geeft voor Google Analytics, zet Google dus geen cookies en ontvangt Google geen gegevens
+                van u; pas als u zelf op die knop klikt en naar maps.google.com gaat, geldt daar Google's eigen
+                privacybeleid. Bij het afrekenen wordt u op dezelfde manier doorgestuurd naar mollie.com, waar het
+                eigen cookie- en privacybeleid van Mollie geldt.
               </p>
             </Sectie>
 
@@ -181,9 +196,31 @@ export default function PrivacyPage() {
                       <td className="px-4 py-2.5 text-ink/65">Verwerken van de betaling</td>
                     </tr>
                     <tr>
-                      <td className="px-4 py-2.5 font-medium text-ink">Onze hostingpartij</td>
+                      <td className="px-4 py-2.5 font-medium text-ink">Resend</td>
+                      <td className="px-4 py-2.5 text-ink/65">E-mailadres (alleen als u dat zelf invult)</td>
+                      <td className="px-4 py-2.5 text-ink/65">Versturen van de preview-mail of herinneringsmail</td>
+                    </tr>
+                    <tr>
+                      <td className="px-4 py-2.5 font-medium text-ink">Upstash</td>
+                      <td className="px-4 py-2.5 text-ink/65">
+                        E-mailadres + opgezocht adres (tijdelijk, alleen bij herinneringsmail)
+                      </td>
+                      <td className="px-4 py-2.5 text-ink/65">
+                        Tijdelijke wachtrij om de eenmalige herinnering na 48 uur te versturen
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="px-4 py-2.5 font-medium text-ink">Google (Google Analytics)</td>
+                      <td className="px-4 py-2.5 text-ink/65">Technische bezoekgegevens, alleen na uw toestemming</td>
+                      <td className="px-4 py-2.5 text-ink/65">Uitgebreidere bezoekstatistieken (zie sectie 3)</td>
+                    </tr>
+                    <tr>
+                      <td className="px-4 py-2.5 font-medium text-ink">Vercel</td>
                       <td className="px-4 py-2.5 text-ink/65">Technische verkeersgegevens (o.a. IP-adres)</td>
-                      <td className="px-4 py-2.5 text-ink/65">Hosten en beschikbaar houden van de website</td>
+                      <td className="px-4 py-2.5 text-ink/65">
+                        Hosten en beschikbaar houden van de website, en geaggregeerde bezoekstatistieken (Vercel
+                        Analytics, zie sectie 3)
+                      </td>
                     </tr>
                   </tbody>
                 </table>
