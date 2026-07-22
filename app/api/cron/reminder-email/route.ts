@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { kvZRangeByScore, kvZRem } from "@/lib/services/kvStore";
 import { stuurHerinneringEmail } from "@/lib/services/email";
 import { kortingBeschikbaar, kortingWeergave, maakKortingToken } from "@/lib/utils/kortingToken";
+import { maakAfmeldPad } from "@/lib/utils/afmeldLink";
+import { isAfgemeldVoorHerinnering } from "@/lib/services/afmeldlijst";
 import { APP_BASE_URL } from "@/lib/config/payment";
 
 // -----------------------------------------------------------------------------
@@ -58,6 +60,7 @@ export async function GET(req: NextRequest) {
 
   let verstuurd = 0;
   let mislukt = 0;
+  let overgeslagenAfgemeld = 0;
 
   for (const ruw of teVerwerken) {
     // Ongeacht of het versturen hieronder lukt: deze job altijd uit de
@@ -71,6 +74,15 @@ export async function GET(req: NextRequest) {
       job = JSON.parse(ruw);
     } catch {
       mislukt++;
+      continue;
+    }
+
+    // Opnieuw checken op het moment van verzenden, niet alleen bij het
+    // inplannen (preview-email/route.tsx) -- iemand kan zich tussen die twee
+    // momenten (tot 48 uur) alsnog hebben afgemeld, bv. via een eerdere
+    // herinnering voor een ander adres.
+    if (await isAfgemeldVoorHerinnering(job.email)) {
+      overgeslagenAfgemeld++;
       continue;
     }
 
@@ -92,6 +104,7 @@ export async function GET(req: NextRequest) {
       adresLabel: job.adresLabel,
       previewUrl,
       korting: kortingWeergave() ?? undefined,
+      afmeldUrl: new URL(maakAfmeldPad(job.email), APP_BASE_URL).toString(),
     });
 
     if (resultaat.ok) {
@@ -102,5 +115,11 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true, verstuurd, mislukt, resterend: jobsRuw.length - teVerwerken.length });
+  return NextResponse.json({
+    ok: true,
+    verstuurd,
+    mislukt,
+    overgeslagenAfgemeld,
+    resterend: jobsRuw.length - teVerwerken.length,
+  });
 }

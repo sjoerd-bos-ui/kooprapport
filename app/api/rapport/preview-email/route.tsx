@@ -4,6 +4,7 @@ import { isGeldigEmailadres, stuurPreviewEmail } from "@/lib/services/email";
 import { APP_BASE_URL } from "@/lib/config/payment";
 import { canonicalAddressKey } from "@/lib/utils/slug";
 import { kvZAdd } from "@/lib/services/kvStore";
+import { isAfgemeldVoorHerinnering } from "@/lib/services/afmeldlijst";
 
 // Hoelang na deze preview-mail de herinnering verstuurd mag worden. De
 // kortingstoken zelf wordt pas in de cron-route gegenereerd (zie
@@ -64,6 +65,14 @@ export async function POST(req: NextRequest) {
   // gebruiker heeft zijn mail al, de herinnering is een bonus, geen
   // kernfunctie van deze aanvraag.
   try {
+    // Al afgemeld voor de herinnering (bv. via een eerdere preview-aanvraag,
+    // ander adres)? Dan niet opnieuw inplannen -- respecteert de keuze meteen,
+    // i.p.v. te wachten tot de cron het 48 uur later alsnog overslaat (zie
+    // app/api/cron/reminder-email/route.ts, die dit ook zelf nogmaals checkt
+    // als extra vangnet).
+    if (await isAfgemeldVoorHerinnering(email)) {
+      return NextResponse.json({ ok: true });
+    }
     const parsedUrl = new URL(previewUrl);
     const addressKey = canonicalAddressKey({
       postcode: parsedUrl.searchParams.get("postcode") ?? undefined,

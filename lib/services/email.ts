@@ -197,6 +197,13 @@ export interface StuurHerinneringEmailInput {
   // korting tonen die bij het afrekenen niet ook echt wordt gehonoreerd, zie
   // lib/utils/kortingToken.ts.
   korting?: { percentage: number; bedragCenten: number };
+  // Volledige URL (incl. APP_BASE_URL) naar app/afmelden/route.ts — verplicht,
+  // geen optionele/weggelaten afmeldlink: dit is de enige e-mail in de app die
+  // ongevraagd (48u later, zonder nieuwe actie van de klant) opnieuw contact
+  // opneemt en een kortingsactie bevat, en hoort daarom altijd een opt-out te
+  // hebben. Zie app/api/cron/reminder-email/route.ts voor hoe deze wordt
+  // opgebouwd (lib/utils/afmeldLink.ts).
+  afmeldUrl: string;
 }
 
 // -----------------------------------------------------------------------------
@@ -216,7 +223,7 @@ export async function stuurHerinneringEmail(input: StuurHerinneringEmailInput): 
     return { ok: false, error: "E-mailverzending is nog niet geconfigureerd." };
   }
 
-  const html = buildHerinneringEmailHtml(input.adresLabel, input.previewUrl, input.korting);
+  const html = buildHerinneringEmailHtml(input.adresLabel, input.previewUrl, input.korting, input.afmeldUrl);
   const onderwerp = input.korting
     ? `Nog interesse in ${input.adresLabel}? ${input.korting.percentage}% korting, 24 uur geldig`
     : `Uw rapport voor ${input.adresLabel} wacht nog op u`;
@@ -247,10 +254,12 @@ export async function stuurHerinneringEmail(input: StuurHerinneringEmailInput): 
 function buildHerinneringEmailHtml(
   adresLabel: string,
   previewUrl: string,
-  korting: { percentage: number; bedragCenten: number } | undefined
+  korting: { percentage: number; bedragCenten: number } | undefined,
+  afmeldUrl: string
 ): string {
   const adres = escapeHtml(adresLabel);
   const link = escapeHtml(previewUrl);
+  const afmeld = escapeHtml(afmeldUrl);
   const logoUrl = `${APP_BASE_URL}/logo-email.png`;
 
   const kortingBlok = korting
@@ -324,9 +333,12 @@ function buildHerinneringEmailHtml(
                 <p style="margin:0 0 4px;font-size:12px;line-height:1.6;color:#9CA3AF;">
                   Kooprapport · KvK 87451387 · Pleinweg 66D, 3083 EH Rotterdam
                 </p>
-                <p style="margin:0;font-size:12px;line-height:1.6;color:#9CA3AF;">
+                <p style="margin:0 0 8px;font-size:12px;line-height:1.6;color:#9CA3AF;">
                   <a href="mailto:info@kooprapport.nl" style="color:#4F46E5;text-decoration:none;">info@kooprapport.nl</a> ·
                   <a href="https://kooprapport.nl" style="color:#4F46E5;text-decoration:none;">kooprapport.nl</a>
+                </p>
+                <p style="margin:0;font-size:12px;line-height:1.6;color:#9CA3AF;">
+                  <a href="${afmeld}" style="color:#9CA3AF;text-decoration:underline;">Geen herinnering meer ontvangen</a>
                 </p>
               </td>
             </tr>
