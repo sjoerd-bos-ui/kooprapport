@@ -240,6 +240,14 @@ export default function PrivacyPage() {
                 7 jaar te bewaren; dit loopt via de reguliere boekhouding, niet via een aparte database met uw
                 persoonsgegevens. Technische serverlogs worden na een beperkte periode automatisch opgeschoond.
               </p>
+              <p>
+                Vraagt u een preview of een herinnering per e-mail aan, dan staat uw e-mailadres uitsluitend tijdelijk
+                in een wachtrij totdat die ene e-mail is verstuurd (maximaal 48 uur), en wordt daarna verwijderd. Meldt
+                u zich af voor de herinnering, dan bewaren we geen e-mailadres, maar uitsluitend een onomkeerbare hash
+                daarvan — genoeg om te herkennen dat u zich afmeldde, niet om uw adres zelf uit af te leiden. Deze
+                afmelding bewaren we voor onbepaalde tijd, uitsluitend om uw keuze te kunnen blijven respecteren (zie
+                ook sectie 7, "recht op verwijdering").
+              </p>
             </Sectie>
 
             <Sectie id="beveiliging" titel="6. Hoe we uw gegevens beveiligen">
@@ -265,6 +273,11 @@ export default function PrivacyPage() {
               <p>
                 U kunt hiervoor contact opnemen via de gegevens in sectie 10. We reageren binnen de wettelijke
                 termijn van vier weken.
+              </p>
+              <p>
+                Eén specifieke uitzondering op "verwijderen": meldt u zich af voor de herinneringsmail, dan blijft de
+                (onomkeerbare hash van de) afmelding zelf bewaard — juist om uw wens blijvend te kunnen respecteren.
+                Zonder die ene uitzondering zouden we anders per ongeluk opnieuw kunnen mailen na een verwijdering.
               </p>
             </Sectie>
 
