@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from "crypto";
 import { canonicalAddressKey } from "@/lib/utils/slug";
-import { RAPPORT_PRIJS_CENTEN } from "@/lib/utils/prijs";
+import { berekenKortingBedragCenten } from "@/lib/utils/prijs";
 
 // -----------------------------------------------------------------------------
 // Ondertekende kortingstoken voor de herinneringsmail (48 uur na de gratis
@@ -53,7 +53,7 @@ export function kortingWeergave(): { percentage: number; bedragCenten: number } 
   if (!kortingBeschikbaar()) return null;
   return {
     percentage: KORTING_PERCENTAGE,
-    bedragCenten: Math.round(RAPPORT_PRIJS_CENTEN * (1 - KORTING_PERCENTAGE / 100)),
+    bedragCenten: berekenKortingBedragCenten(KORTING_PERCENTAGE),
   };
 }
 
@@ -109,7 +109,7 @@ export function verifieerKortingToken(token: string | null | undefined, addressK
   if (typeof payload.t !== "number" || Date.now() > payload.t) return { geldig: false };
   const percentage = typeof payload.p === "number" ? payload.p : KORTING_PERCENTAGE;
 
-  const bedragCenten = Math.round(RAPPORT_PRIJS_CENTEN * (1 - percentage / 100));
+  const bedragCenten = berekenKortingBedragCenten(percentage);
   return { geldig: true, kortingsPercentage: percentage, bedragCenten };
 }
 

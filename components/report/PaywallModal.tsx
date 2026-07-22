@@ -68,6 +68,15 @@ export default function PaywallModal({
   const [fout, setFout] = useState<string | null>(null);
   const [kortingPrijs, setKortingPrijs] = useState<string | null>(null);
 
+  // Handmatig ingevoerde kortingscode -- LOS van kortingToken hierboven (die
+  // komt automatisch uit een herinneringsmail-link). Dit is voor codes die
+  // Sjoerd zelf verzint en uitdeelt (aan zichzelf om te testen, of aan
+  // mensen). Zie lib/utils/kortingscode.ts.
+  const [codeOpen, setCodeOpen] = useState(false);
+  const [codeInvoer, setCodeInvoer] = useState("");
+  const [codeStatus, setCodeStatus] = useState<"idle" | "controleren" | "geldig" | "ongeldig">("idle");
+  const [codeBedragCenten, setCodeBedragCenten] = useState<number | null>(null);
+
   useEffect(() => {
     if (!kortingToken) return;
     let cancelled = false;
@@ -93,6 +102,37 @@ export default function PaywallModal({
     // elke re-render opnieuw een netwerkaanroep triggeren.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kortingToken]);
+
+  async function checkCode() {
+    if (!codeInvoer.trim()) return;
+    setCodeStatus("controleren");
+    try {
+      const res = await fetch("/api/betaling/kortingscode", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: codeInvoer }),
+      });
+      const data = (await res.json()) as { geldig: boolean; bedragCenten?: number };
+      if (data.geldig && data.bedragCenten != null) {
+        setCodeBedragCenten(data.bedragCenten);
+        setCodeStatus("geldig");
+      } else {
+        setCodeBedragCenten(null);
+        setCodeStatus("ongeldig");
+      }
+    } catch {
+      setCodeBedragCenten(null);
+      setCodeStatus("ongeldig");
+    }
+  }
+
+  // Een handmatig ingevoerde, geldige code krijgt voorrang op de tonen boven
+  // een eventuele tokenkorting -- zelfde volgorde als /api/betaling/aanmaken
+  // hanteert bij het daadwerkelijk afrekenen.
+  const actievePrijs =
+    codeStatus === "geldig" && codeBedragCenten != null
+      ? `€${(codeBedragCenten / 100).toFixed(2).replace(".", ",")}`
+      : kortingPrijs;
   // Verplichte bevestiging vóór betalen — algemene "akkoord met de
   // voorwaarden"-checkbox, met de herroepingsrecht-melding er expliciet in
   // verwerkt (niet alleen een link): dat laatste operationaliseert artikel 7
@@ -111,7 +151,11 @@ export default function PaywallModal({
       const res = await fetch("/api/betaling/aanmaken", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ address, kortingToken }),
+        body: JSON.stringify({
+          address,
+          kortingToken,
+          kortingscode: codeStatus === "geldig" ? codeInvoer : undefined,
+        }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
@@ -169,17 +213,63 @@ export default function PaywallModal({
             ✕
           </button>
         </div>
-        {kortingPrijs ? (
+        {actievePrijs ? (
           <div className="relative mt-3 flex items-baseline gap-2.5">
             <p className="font-display text-2xl font-semibold text-ink/35 line-through">{price}</p>
-            <p className="font-display text-5xl font-extrabold text-ink">{kortingPrijs}</p>
+            <p className="font-display text-5xl font-extrabold text-ink">{actievePrijs}</p>
           </div>
         ) : (
           <p className="relative mt-3 font-display text-5xl font-extrabold text-ink">{price}</p>
         )}
         <p className="relative mt-1 text-sm text-ink/45">
-          {kortingPrijs ? "Tijdelijke korting · eenmalig · direct toegang" : "Eenmalig, geen abonnement · direct toegang"}
+          {actievePrijs ? "Tijdelijke korting · eenmalig · direct toegang" : "Eenmalig, geen abonnement · direct toegang"}
         </p>
+
+        {/* Handmatige kortingscode -- rustige tekstlink, klapt open naar een
+            klein invoerveld. Bewust geen prominente knop: dit mag niet
+            concurreren met de "Betaal met iDEAL"-knop hieronder, zelfde
+            terughoudendheidsprincipe als de e-mail-bewaaroptie op de
+            preview-pagina. */}
+        <div className="relative mt-3">
+          {!codeOpen ? (
+            <button
+              type="button"
+              onClick={() => setCodeOpen(true)}
+              className="text-xs text-ink/40 underline underline-offset-2 hover:text-ink"
+            >
+              Heeft u een kortingscode?
+            </button>
+          ) : (
+            <div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={codeInvoer}
+                  onChange={(e) => {
+                    setCodeInvoer(e.target.value);
+                    setCodeStatus("idle");
+                  }}
+                  placeholder="Kortingscode"
+                  className="min-w-0 flex-1 rounded-lg border border-ink/15 px-3 py-1.5 text-xs uppercase tracking-wide text-ink focus:border-accent focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={checkCode}
+                  disabled={codeStatus === "controleren" || !codeInvoer.trim()}
+                  className="shrink-0 rounded-lg bg-ink/5 px-3 py-1.5 text-xs font-semibold text-ink hover:bg-ink/10 disabled:opacity-50"
+                >
+                  {codeStatus === "controleren" ? "Checken…" : "Toepassen"}
+                </button>
+              </div>
+              {codeStatus === "geldig" && (
+                <p className="mt-1.5 text-xs font-semibold text-accent-dark">Code toegepast.</p>
+              )}
+              {codeStatus === "ongeldig" && (
+                <p className="mt-1.5 text-xs text-rust">Deze code is niet (meer) geldig.</p>
+              )}
+            </div>
+          )}
+        </div>
 
         <div className="relative mt-6 border-t border-ink/10 pt-6">
           <p className="mb-2.5 text-[11px] font-semibold text-ink/45">Alle 7 onderdelen, volledig</p>

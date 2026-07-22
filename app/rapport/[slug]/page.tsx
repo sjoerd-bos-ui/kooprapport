@@ -15,6 +15,15 @@ import { APP_BASE_URL } from "@/lib/config/payment";
 
 type SearchParams = { [key: string]: string | string[] | undefined };
 
+// Knipt op een woordgrens af (nooit midden in een woord) en voegt "…" toe
+// als er daadwerkelijk iets wegvalt — puur voor de meta-description hieronder.
+function kortAf(tekst: string, max: number): string {
+  if (tekst.length <= max) return tekst;
+  const afgekapt = tekst.slice(0, max);
+  const laatsteSpatie = afgekapt.lastIndexOf(" ");
+  return `${afgekapt.slice(0, laatsteSpatie > 0 ? laatsteSpatie : max)}…`;
+}
+
 // -----------------------------------------------------------------------------
 // SEO-fix (zie de audit): deze pagina toonde eerder ALLEEN een client-side
 // laadscherm in de server-gerenderde HTML — het echte rapport (bouwjaar,
@@ -90,10 +99,17 @@ export async function generateMetadata({
   if (fundering?.label) feiten.push(`funderingsrisico ${fundering.label.toLowerCase()}`);
 
   const title = address.label;
-  const description =
+  const ruweDescription =
     feiten.length > 0
       ? `Gratis preview voor ${address.label}: ${feiten.join(", ")}. Ontgrendel het volledige rapport met waarde-indicatie, buurtverkopen en funderingsrisico voor ${RAPPORT_PRIJS}.`
       : `Bekijk de gratis preview voor ${address.label} en ontgrendel het volledige woningrapport met waarde-indicatie, buurtverkopen en funderingsrisico voor ${RAPPORT_PRIJS}.`;
+  // SEO-fix: bij een lang adreslabel + alle 4 gevonden feiten kan deze zin
+  // ruim boven de ±155-160 tekens komen die Google doorgaans in het
+  // zoekresultaat toont — geen indexatiefout, maar Google knipt 'm dan zelf
+  // ergens midden in een woord af, wat er rommelig uitziet. Hier expliciet
+  // en voorspelbaar afkappen op een woordgrens i.p.v. dat aan Google over te
+  // laten.
+  const description = kortAf(ruweDescription, 157);
 
   const canonicalPath = buildCanonicalReportPath(address);
 
@@ -150,6 +166,12 @@ export default async function RapportPage({
     "@type": "Product",
     name: `Kooprapport voor ${address.label}`,
     description: `Volledig woningrapport voor ${address.label}: waarde-indicatie, buurtverkopen, energieprestatie, funderingsrisico en buurtprofiel.`,
+    // SEO-fix: image is een VEREIST veld voor Google's Product-rich-results
+    // (merchant listing/shopping), dat ontbrak volledig. Er is geen los
+    // productfoto per adres (dit is een rapport, geen fysiek product) — de
+    // site-brede OG-afbeelding (app/opengraph-image.tsx) is hier een
+    // eerlijke, bestaande afbeelding om naar te verwijzen, geen verzonnen URL.
+    image: `${APP_BASE_URL}/opengraph-image`,
     brand: { "@type": "Brand", name: "Kooprapport" },
     offers: {
       "@type": "Offer",

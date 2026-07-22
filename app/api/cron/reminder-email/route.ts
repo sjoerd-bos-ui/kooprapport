@@ -43,7 +43,17 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Niet geautoriseerd." }, { status: 401 });
   }
 
-  const jobsRuw = await kvZRangeByScore(REMINDER_QUEUE_KEY, Date.now());
+  // Test-bypass, ALLEEN buiten productie: normaal staat een net aangemaakte
+  // taak 48 uur in de toekomst (zie preview-email/route.tsx), dus zonder dit
+  // zou lokaal testen altijd "0 verstuurd" opleveren totdat je echt 48 uur
+  // wacht. ?test=1 doet net alsof "nu" ver in de toekomst ligt, zodat elke
+  // openstaande taak meteen als vervallen telt. process.env.NODE_ENV-check
+  // zorgt dat deze query-param op de live site nooit iets doet, zelfs niet
+  // per ongeluk.
+  const testBypass = process.env.NODE_ENV !== "production" && req.nextUrl.searchParams.get("test") === "1";
+  const grens = testBypass ? Number.MAX_SAFE_INTEGER : Date.now();
+
+  const jobsRuw = await kvZRangeByScore(REMINDER_QUEUE_KEY, grens);
   const teVerwerken = jobsRuw.slice(0, BATCH_LIMIET);
 
   let verstuurd = 0;

@@ -55,10 +55,10 @@ export default async function Image() {
             lineHeight: 1.15,
           }}
         >
-          Ken de feiten. Vóórdat u beslist.
+          Alles wat u moet weten over een woning, op één plek.
         </div>
         <div style={{ marginTop: 24, fontSize: 28, color: "rgba(255,255,255,0.85)" }}>
-          Waarde-indicatie · buurtverkopen · energielabel · funderingsrisico
+          Waarde, verkopen in de buurt, fundering en nog veel meer, per adres
         </div>
       </div>
     ),

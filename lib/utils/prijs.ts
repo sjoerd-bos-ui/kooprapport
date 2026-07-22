@@ -25,3 +25,12 @@ export function rapportPrijsAlsMollieBedrag(): { currency: "EUR"; value: string 
 export function centenAlsMollieBedrag(centen: number): { currency: "EUR"; value: string } {
   return { currency: "EUR", value: (centen / 100).toFixed(2) };
 }
+
+// Eén formule voor "X% korting op het rapport" — gebruikt door zowel het
+// ondertekende kortingstoken (lib/utils/kortingToken.ts, herinneringsmail)
+// als de handmatig invoerbare kortingscode (lib/utils/kortingscode.ts) --
+// zodat 15% korting via de ene of de andere route nooit een ander bedrag
+// oplevert door een losse, licht afwijkende berekening.
+export function berekenKortingBedragCenten(percentage: number): number {
+  return Math.round(RAPPORT_PRIJS_CENTEN * (1 - percentage / 100));
+}
