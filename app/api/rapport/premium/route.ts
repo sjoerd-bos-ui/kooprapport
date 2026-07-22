@@ -3,6 +3,7 @@ import type { AddressMeta } from "@/types/report";
 import { fetchPremiumOnUnlock } from "@/lib/services/reportService";
 import { isBetaaldVoorAdres } from "@/lib/payments/bestellingen";
 import { canonicalAddressKey } from "@/lib/utils/slug";
+import { kvGet, kvSet } from "@/lib/services/kvStore";
 
 // -----------------------------------------------------------------------------
 // BELANGRIJK (kostenbeheersing): dit is de ENIGE plek in de app die de Altum
@@ -26,7 +27,26 @@ import { canonicalAddressKey } from "@/lib/utils/slug";
 // rechtstreeks aanriep, kreeg de kostenveroorzakende Altum-data gratis. Dat
 // is nu dichtgezet: zonder een bestellingId die hier, server-side, écht als
 // "paid" voor DIT adres bekendstaat, wordt er niets opgehaald.
+//
+// BUGFIX (kostenrisico): ReportPageClient blijft na een geslaagde betaling
+// ?bestellingId=... in de adresbalk houden (nergens opgeschoond) — een
+// simpele paginaherlaad op precies die URL triggert daardoor opnieuw de
+// polling-/ontgrendel-logica, die dan opnieuw déze route aanroept. Zonder
+// onderstaande cache zou dat, voor precies dezelfde al-betaalde bestelling,
+// telkens opnieuw echte (en betaalde) Altum-aanroepen doen. Het resultaat
+// wordt daarom hier, één keer, per bestellingId bewaard — elke volgende
+// aanroep voor diezelfde bestelling krijgt het bewaarde resultaat terug
+// zonder Altum nogmaals te bevragen. TTL gelijk aan de bewaartermijn van de
+// bestelling zelf (zie bestellingen.ts) — langer bewaren heeft geen zin,
+// want zonder bestelling-record wijst isBetaaldVoorAdres() de aanvraag toch
+// al af.
 // -----------------------------------------------------------------------------
+
+const PREMIUM_CACHE_TTL_SECONDEN = 60 * 60 * 24; // 24 uur, zie bestellingen.ts#BESTELLING_TTL_SECONDEN
+
+function premiumCacheKey(bestellingId: string): string {
+  return `premium-resultaat:${bestellingId}`;
+}
 
 export async function POST(req: NextRequest) {
   let body: { address?: AddressMeta; oppervlakteM2?: number; bestellingId?: string };
@@ -53,6 +73,13 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const cacheKey = premiumCacheKey(body.bestellingId);
+  const cached = await kvGet(cacheKey);
+  if (cached) {
+    return NextResponse.json(JSON.parse(cached));
+  }
+
   const result = await fetchPremiumOnUnlock(address, body.oppervlakteM2);
+  await kvSet(cacheKey, JSON.stringify(result), PREMIUM_CACHE_TTL_SECONDEN);
   return NextResponse.json(result);
 }

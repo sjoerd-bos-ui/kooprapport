@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { AddressMeta, MarketData, NearbySalesData, Report, ReportProgressStep } from "@/types/report";
 import type { SourceResult } from "@/types/dataSource";
 import LoadingAnalysis from "@/components/report/LoadingAnalysis";
@@ -40,6 +40,8 @@ export default function ReportPageClient({
   initialReport?: Report | null;
 }) {
   const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
   const [status, setStatus] = useState<"loading" | "ready">(initialReport ? "ready" : "loading");
   const [completedSteps, setCompletedSteps] = useState<ReportProgressStep[]>(initialReport ? STEP_ORDER : []);
   const [report, setReport] = useState<Report | null>(initialReport);
@@ -179,6 +181,16 @@ export default function ReportPageClient({
           if (betaalStatus === "paid") {
             await handleUnlock(bestellingId!);
             if (!cancelled) setBetalingTerugkeer(null);
+            // BUGFIX (kostenrisico): bestellingId bewust uit de adresbalk
+            // halen na een geslaagde ontgrendeling — anders triggert een
+            // simpele paginaherlaad deze hele poll-/ontgrendel-logica
+            // opnieuw (zie premium/route.ts voor de servergecachte
+            // vangnet-fix; dit voorkomt bovendien de onnodige extra
+            // status-/premium-aanroepen die daaraan voorafgaan).
+            const schoneParams = new URLSearchParams(searchParams.toString());
+            schoneParams.delete("bestellingId");
+            const schoneUrl = schoneParams.toString() ? `${pathname}?${schoneParams.toString()}` : pathname;
+            router.replace(schoneUrl, { scroll: false });
             return;
           }
           if (betaalStatus === "failed" || betaalStatus === "expired") {
