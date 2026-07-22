@@ -44,14 +44,26 @@ const isDev = process.env.NODE_ENV !== "production";
 // domeinen staan hier daarom altijd toegestaan; of het script daadwerkelijk
 // laadt/verzendt hangt uitsluitend af van de toestemmingskeuze in
 // CookieConsent.tsx, niet van deze CSP.
+//
+// BUGFIX: gtag.js stuurt de daadwerkelijke meting NIET naar het kale
+// www.google-analytics.com, maar (afhankelijk van de regio van de bezoeker)
+// naar een specifiek subdomein zoals region1/region2/region3.google-
+// analytics.com, of naar analytics.google.com/g/collect. Met alleen
+// www.google-analytics.com in connect-src werd dat regionale verzoek door de
+// browser zelf geblokkeerd — GA4 liet daardoor "nog geen gegevens ontvangen"
+// zien, op elk apparaat/netwerk, want de blokkade zat in onze eigen CSP, niet
+// bij de bezoeker. Zie https://developers.google.com/tag-platform/security/guides/csp.
 const GOOGLE_ANALYTICS_SCRIPT_SRC = "https://www.googletagmanager.com";
-const GOOGLE_ANALYTICS_CONNECT_SRC = "https://www.google-analytics.com https://www.googletagmanager.com";
+const GOOGLE_ANALYTICS_CONNECT_SRC =
+  "https://www.google-analytics.com https://*.google-analytics.com https://analytics.google.com https://www.googletagmanager.com";
+const GOOGLE_ANALYTICS_IMG_SRC =
+  "https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com";
 
 const CSP = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline' ${GOOGLE_ANALYTICS_SCRIPT_SRC}${isDev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
+  `img-src 'self' data: blob: ${GOOGLE_ANALYTICS_IMG_SRC}`,
   "font-src 'self' data:",
   `connect-src 'self' https://api.pdok.nl ${GOOGLE_ANALYTICS_CONNECT_SRC}${isDev ? " ws://localhost:* http://localhost:*" : ""}`,
   "frame-src 'none'",
