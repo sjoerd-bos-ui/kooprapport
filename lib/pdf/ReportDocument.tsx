@@ -140,16 +140,21 @@ const styles = StyleSheet.create({
     color: KLEUR.ink,
   },
   kicker: {
-    fontSize: 8.5,
+    fontSize: 8,
     fontFamily: "Inter",
     fontWeight: 500,
     letterSpacing: 1,
     textTransform: "uppercase",
     color: KLEUR.accent,
-    marginBottom: 5,
+    marginBottom: 4,
   },
+  // BUGFIX: was fontSize 20 met ruimere marges — op de inhoudsrijkste pagina
+  // (Buurtprofiel) tikte de totale paginahoogte daardoor net over de rand,
+  // met een overlappende voettekst en een bijna lege vervolgpagina tot
+  // gevolg. Iets compacter (17pt, krappere marges) geeft elke pagina die
+  // marge terug zonder dat de kop merkbaar kleiner oogt.
   pageHeading: {
-    fontSize: 20,
+    fontSize: 17,
     fontFamily: "Bricolage Grotesque",
     fontWeight: 800,
     color: KLEUR.ink,
@@ -157,15 +162,15 @@ const styles = StyleSheet.create({
   pageHeadingSub: {
     fontSize: 9,
     color: KLEUR.inkMuted,
-    marginTop: 4,
+    marginTop: 3,
   },
   amberRule: {
-    width: 26,
+    width: 24,
     height: 3,
     borderRadius: 1.5,
     backgroundColor: KLEUR.amber,
-    marginTop: 10,
-    marginBottom: 12,
+    marginTop: 8,
+    marginBottom: 10,
   },
   sidebar: {
     width: SIDEBAR_BREEDTE,
@@ -1121,7 +1126,7 @@ function Handtekening() {
 // homepage-tagline (app/page.tsx) — zie ook de bewuste keuze in
 // lib/services/samenvatting.ts om nooit koper-specifiek te formuleren.
 const WELKOMSTBRIEF_PARAGRAFEN = [
-  "oen ik zelf een huis kocht in Rotterdam, merkte ik hoe verspreid de informatie was. Het energielabel stond in het ene register, het funderingsrisico moest ik zelf bij de gemeente opzoeken, en niemand kon mij met cijfers onderbouwen of de vraagprijs reëel was. Ik wilde gewoon één duidelijk overzicht, niet tien losse bronnen.",
+  "Toen ik zelf een huis kocht in Rotterdam, merkte ik hoe verspreid de informatie was. Het energielabel stond in het ene register, het funderingsrisico moest ik zelf bij de gemeente opzoeken, en niemand kon mij met cijfers onderbouwen of de vraagprijs reëel was. Ik wilde gewoon één duidelijk overzicht, niet tien losse bronnen.",
   "Die zoektocht was de aanleiding voor Kooprapport: één plek waar de belangrijkste feiten over een adres bij elkaar staan, met bronvermelding en zonder aannames die niet kloppen.",
   "Dit rapport is gemaakt voor iedereen die een adres beter wil begrijpen: kopers die een bod voorbereiden, verkopers die hun vraagprijs willen onderbouwen, en eigenaren die gewoon willen weten waar ze wonen.",
   "Ik hoop dat het je helpt bij een weloverwogen beslissing.",
@@ -1370,26 +1375,24 @@ export default function ReportDocument({
           <Text style={styles.pageHeading}>Waarom Kooprapport bestaat</Text>
           <View style={styles.amberRule} />
 
-          {/* BUGFIX: de eerste versie had hier een sterk vergrote (26pt)
-              inline drop-cap-letter binnen dezelfde Text als de 9.5pt/1.75
-              lopende tekst. @react-pdf/renderer berekent de regelhoogte dan
-              op basis van de kleinere basisstijl, niet op het grotere inline
-              lettertype — waardoor de tekstregels daarna over elkaar heen
-              geschreven werden (zichtbaar als onleesbare, gestapelde tekst op
-              de live PDF). Nu een veel bescheidener sprong (11 i.p.v. 26pt,
-              nog altijd vet + accentkleur) die wél binnen de regelhoogte past. */}
-          <View style={{ gap: 12 }}>
+          {/* BUGFIX: de eerste versie mengde een sterk vergrote (26pt, later
+              verkleind naar 11pt) inline drop-cap-letter binnen dezelfde Text
+              als de lopende tekst. Elke afwijkende inline lettergrootte
+              binnen één Text-regel bleek @react-pdf/renderer's regelhoogte-
+              berekening te verstoren — op de live PDF zichtbaar als
+              overlappende tekst én als alinea's/de handtekening die van de
+              pagina afvielen (niet zichtbaar). Nu bewust GEEN inline
+              grootteverschil meer: elke alinea is één uniforme Text, de
+              nadruk op "Een persoonlijk woord" zit al in de kicker erboven. */}
+          <View style={{ gap: 10 }}>
             {WELKOMSTBRIEF_PARAGRAFEN.map((paragraaf, i) => (
-              <Text key={i} style={{ fontSize: 9.5, color: KLEUR.ink, lineHeight: 1.75 }}>
-                {i === 0 && (
-                  <Text style={{ fontSize: 11, fontFamily: "Bricolage Grotesque", fontWeight: 800, color: KLEUR.accentDark }}>T</Text>
-                )}
+              <Text key={i} style={{ fontSize: 9.5, color: KLEUR.ink, lineHeight: 1.6 }}>
                 {paragraaf}
               </Text>
             ))}
           </View>
 
-          <View style={{ marginTop: 24, flexDirection: "row", alignItems: "flex-end", gap: 14 }}>
+          <View style={{ marginTop: 18, flexDirection: "row", alignItems: "flex-end", gap: 14 }}>
             <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: KLEUR.mist, alignItems: "center", justifyContent: "center" }}>
               <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: KLEUR.accentDark }}>SB</Text>
             </View>
@@ -2128,8 +2131,15 @@ export default function ReportDocument({
           {isVoorbeeld && <VoorbeeldBanner siteUrl={siteUrl} />}
           <PaginaKop kicker="08 · buurt" titel="Buurtprofiel" subtitel={buurtSubtitel} />
 
+          {/* BUGFIX: dit is de inhoudsrijkste pagina van het rapport (tot 5
+              kaarten + tips + duidingpaneel). Op de voorbeelddata (met alle 9
+              voorzieningen + 4 kernpunten) tikte de totale hoogte net over de
+              paginagrens — zichtbaar als tekst die over de vaste voettekst
+              heen viel, gevolgd door een bijna lege vervolgpagina. Hieronder
+              iets krappere marges/gaps dan de rest van het rapport, specifiek
+              voor deze pagina, om dat overloop-scenario te voorkomen. */}
           {buurtprofiel.data ? (
-            <View style={{ gap: 6 }}>
+            <View style={{ gap: 5 }}>
               {/* Veiligheid — eigen kaart, ring + bandlabel, zelfde opbouw
                   als VeiligheidsScore.tsx in de app. */}
               <View style={[styles.kaart, { flexDirection: "row", alignItems: "center", gap: 10 }]}>
@@ -2169,8 +2179,8 @@ export default function ReportDocument({
               {/* Bebouwing — eigen kaart, gestapelde balk i.p.v. ring (zelfde
                   weergave als de app, die bebouwing nooit als ring toont). */}
               {bebouwingEengezinsPct != null && (
-                <View style={styles.kaart}>
-                  <View style={[styles.row, { justifyContent: "space-between", alignItems: "center", marginBottom: 8 }]}>
+                <View style={[styles.kaart, { padding: 10 }]}>
+                  <View style={[styles.row, { justifyContent: "space-between", alignItems: "center", marginBottom: 6 }]}>
                     <Text style={{ fontSize: 12, fontFamily: "Helvetica-Bold", color: KLEUR.ink }}>
                       {fysiek?.bevolkingsdichtheid != null ? `${rond(fysiek.bevolkingsdichtheid)} inwoners/km²` : "Bebouwingsdichtheid"}
                     </Text>
@@ -2192,9 +2202,9 @@ export default function ReportDocument({
               {/* Bevolking — statcijfers, zelfde vijf als de app (was eerder
                   onvolledig: alleen twee percentages als balk). */}
               {(sociaal?.inwoners != null || sociaal?.huishoudens != null) && (
-                <View style={styles.kaart}>
-                  <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: KLEUR.ink, marginBottom: 8 }}>Bevolking en huishoudens</Text>
-                  <View style={[styles.row, { flexWrap: "wrap", gap: 12 }]}>
+                <View style={[styles.kaart, { padding: 10 }]}>
+                  <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: KLEUR.ink, marginBottom: 6 }}>Bevolking en huishoudens</Text>
+                  <View style={[styles.row, { flexWrap: "wrap", gap: 10 }]}>
                     {sociaal?.inwoners != null && <BevolkingStat waarde={rond(sociaal.inwoners)} label="Inwoners" />}
                     {sociaal?.huishoudens != null && <BevolkingStat waarde={rond(sociaal.huishoudens)} label="Huishoudens" />}
                     {sociaal?.gemiddeldeHuishoudensgrootte != null && (
@@ -2210,25 +2220,25 @@ export default function ReportDocument({
                   indeling en kleuren als de app (VOORZIENING_KLEUR gedeeld
                   via lib/utils/voorzieningenStijl.ts). */}
               {voorzieningItems.length > 0 && (
-                <View style={styles.kaart}>
-                  <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: KLEUR.ink, marginBottom: 8 }}>Voorzieningen</Text>
+                <View style={[styles.kaart, { padding: 10 }]}>
+                  <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: KLEUR.ink, marginBottom: 6 }}>Voorzieningen</Text>
                   {VOORZIENING_THEMA_VOLGORDE.map((thema) => {
                     const items = voorzieningItems.filter((i) => i.thema === thema);
                     if (items.length === 0) return null;
                     return (
-                      <View key={thema} style={{ marginBottom: 5 }}>
-                        <Text style={{ fontSize: 6.3, fontFamily: "Helvetica-Bold", color: KLEUR.inkMuted, textTransform: "uppercase", marginBottom: 5 }}>
+                      <View key={thema} style={{ marginBottom: 4 }}>
+                        <Text style={{ fontSize: 6.3, fontFamily: "Helvetica-Bold", color: KLEUR.inkMuted, textTransform: "uppercase", marginBottom: 4 }}>
                           {VOORZIENING_THEMA_LABEL[thema]}
                         </Text>
-                        <View style={[styles.row, { flexWrap: "wrap", gap: 6 }]}>
+                        <View style={[styles.row, { flexWrap: "wrap", gap: 5 }]}>
                           {items.map((item) => {
                             const Icoon = VOORZIENING_ICOON[item.key] ?? IcoonPin;
                             const kleur = VOORZIENING_KLEUR[item.key] ?? KLEUR.accent;
                             return (
-                              <View key={item.key} style={{ width: "31%", backgroundColor: KLEUR.parchment, borderRadius: 8, padding: 5 }}>
-                                <Icoon kleur={kleur} size={11} />
-                                <Text style={{ fontSize: 9.5, fontFamily: "Helvetica-Bold", color: KLEUR.ink, marginTop: 5 }}>{formatKm(item.afstandKm)}</Text>
-                                <Text style={{ fontSize: 6, color: KLEUR.inkFaint, marginTop: 2 }}>{item.label}</Text>
+                              <View key={item.key} style={{ width: "31%", backgroundColor: KLEUR.parchment, borderRadius: 7, padding: 4 }}>
+                                <Icoon kleur={kleur} size={10} />
+                                <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: KLEUR.ink, marginTop: 3 }}>{formatKm(item.afstandKm)}</Text>
+                                <Text style={{ fontSize: 5.7, color: KLEUR.inkFaint, marginTop: 1 }}>{item.label}</Text>
                               </View>
                             );
                           })}
@@ -2246,9 +2256,9 @@ export default function ReportDocument({
               />
 
               {buurtKernpunten.length > 0 && (
-                <View style={styles.duidingPaneel}>
-                  <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: KLEUR.accentDark, marginBottom: 7 }}>Wat dit betekent voor deze buurt</Text>
-                  <View style={{ gap: 6 }}>
+                <View style={[styles.duidingPaneel, { padding: 9 }]}>
+                  <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: KLEUR.accentDark, marginBottom: 5 }}>Wat dit betekent voor deze buurt</Text>
+                  <View style={{ gap: 5 }}>
                     {buurtKernpunten.map((punt, i) => (
                       <Kernpunt key={i} icoon={punt.icoon} tekst={punt.tekst} />
                     ))}
