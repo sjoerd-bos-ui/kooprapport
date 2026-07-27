@@ -303,6 +303,60 @@ export interface BestemmingData {
   bron: "bestemmingsplan" | "omgevingsplan" | null;
 }
 
+// Verduurzamingsadvies — Altum AI Verduurzaming API v2 (NTA 8800-methodiek).
+// Bewust een DERDE Altum-domein naast market/nearbySales, geen uitbreiding
+// van EnergyData: EnergyData is het bevestigde, geregistreerde EP-Online-
+// label van dit pand (of niets); VerduurzamingData is een modelmatig ADVIES
+// (huidig geschat label, haalbaar label, kosten/baten van concrete
+// maatregelen) — twee verschillende soorten gegevens over hetzelfde
+// onderwerp, die nooit door elkaar gepresenteerd mogen worden.
+//
+// Zelfde kostenlogica als market/nearbySales (zie reportService.ts): dit
+// kost credits per aanroep bij Altum, dus ook dit veld is tijdens een
+// gewone paginaweergave een "nog niet opgevraagd"-placeholder (zie
+// deferredVerduurzamingResult) en wordt pas écht opgehaald bij ontgrendelen
+// (fetchPremiumOnUnlock), samen met market/nearbySales — zelfde
+// ALTUM_API_KEY, zelfde ontgrendel-moment.
+export interface VerduurzamingMaatregel {
+  // Altum's eigen maatregelcode (bv. "wall_insulation", "instalation",
+  // "solar_panels") — stabiele identifier voor styling/iconen in de UI.
+  key: string;
+  label: string; // Nederlandse weergavenaam, bv. "Gevelisolatie"
+  // "van"/"naar" komen rechtstreeks uit Altum's eigen Nederlandstalige
+  // omschrijving (bv. "Matig" -> "Goed") — nooit zelf vertaald/verzonnen.
+  van: string;
+  naar: string;
+  investering: number; // Investeringskosten van deze specifieke maatregel, in €
+  besparingPerJaar: number; // Jaarlijkse besparing op energiekosten als gevolg van deze maatregel, in €
+  co2ReductieKg: number | null;
+}
+
+export interface VerduurzamingData {
+  huidigLabel: string | null; // label.current — Altum's modelmatige inschatting, GEEN EP-Online-registratie
+  haalbaarLabel: string | null; // label.potential — het label dat met alle geadviseerde maatregelen haalbaar is
+  investering: number | null; // financial.total_investment — totale investering voor alle geadviseerde maatregelen samen
+  besparingPerJaar: number | null; // financial.total_saving(s) — jaarlijkse besparing wanneer ALLE maatregelen zijn uitgevoerd
+  terugverdientijdMaanden: number | null; // financial.months_to_pay_off
+  // Ecowaarde: geschatte marktwaardestijging door de labelverbetering,
+  // gebaseerd op dezelfde Woningwaarde-API als market.geschatteWaarde. Null
+  // als Altum dit niet kon berekenen (eco_delta=0 of onvoldoende data) — dan
+  // toont de UI gewoon geen waardestijging-kaart i.p.v. een gegokt cijfer.
+  waardestijging: number | null;
+  energierekeningHuidigPerJaar: number | null;
+  energierekeningNaPerJaar: number | null;
+  // CO2.current - CO2.potential (kg/jaar) — alleen gezet als beide bekend
+  // zijn EN potential lager is dan current (nooit een negatieve "reductie"
+  // tonen als het model per ongeluk een hogere uitstoot na de maatregelen
+  // teruggeeft, bv. bij overstap naar een warmtepomp met hoger stroomverbruik
+  // dat niet volledig door minder gas wordt gecompenseerd).
+  co2ReductieKg: number | null;
+  // Alleen maatregelen waar Altum daadwerkelijk een wijziging adviseert
+  // (before.desc !== after.desc, of investering > 0) — "geen wijziging"-
+  // regels (bv. beglazing die al voldoet) worden hier al uitgefilterd, zie
+  // mapSustainabilityResponse().
+  maatregelen: VerduurzamingMaatregel[];
+}
+
 export type InsightToon = "positief" | "negatief" | "neutraal";
 
 // Een inzicht wordt alleen gegenereerd als de onderliggende data er echt is —
@@ -345,6 +399,7 @@ export interface Report {
   energy: SourceResult<EnergyData>;
   market: SourceResult<MarketData>;
   nearbySales: SourceResult<NearbySalesData>;
+  verduurzaming: SourceResult<VerduurzamingData>;
   buurtprofiel: SourceResult<BuurtprofielData>;
   fundering: SourceResult<FunderingData>;
   kavel: SourceResult<KavelData>;
@@ -359,6 +414,7 @@ export type ReportProgressStep =
   | "energy"
   | "market"
   | "nearbySales"
+  | "verduurzaming"
   | "buurtprofiel"
   | "fundering"
   | "kavel"

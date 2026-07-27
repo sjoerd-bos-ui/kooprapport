@@ -61,6 +61,13 @@ const GOOGLE_ANALYTICS_CONNECT_SRC =
 const GOOGLE_ANALYTICS_IMG_SRC =
   "https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com";
 
+// Google Ads-conversietracking (optioneel, zie lib/analytics/trackAankoop.ts
+// en NEXT_PUBLIC_GOOGLE_ADS_ID in .env.example) stuurt conversies naar andere
+// domeinen dan gewone GA4-events -- alvast toegestaan, óók als er nog geen
+// Ads-account is, zodat dit straks niet dezelfde CSP-blokkade-bug wordt als
+// bij GA4 hierboven.
+const GOOGLE_ADS_CONNECT_SRC = "https://www.googleadservices.com https://googleads.g.doubleclick.net";
+
 // Sentry (zie instrumentation-client.ts) stuurt fouten/traces naar een
 // org-specifiek ingest-subdomein (bv. o123456.ingest.us.sentry.io) — een
 // wildcard-hostbron (*.sentry.io) in CSP matcht in browsers ELK subdomeinniveau
@@ -75,7 +82,7 @@ const CSP = [
   "style-src 'self' 'unsafe-inline'",
   `img-src 'self' data: blob: ${GOOGLE_ANALYTICS_IMG_SRC}`,
   "font-src 'self' data:",
-  `connect-src 'self' https://api.pdok.nl ${GOOGLE_ANALYTICS_CONNECT_SRC} ${SENTRY_CONNECT_SRC}${isDev ? " ws://localhost:* http://localhost:*" : ""}`,
+  `connect-src 'self' https://api.pdok.nl ${GOOGLE_ANALYTICS_CONNECT_SRC} ${GOOGLE_ADS_CONNECT_SRC} ${SENTRY_CONNECT_SRC}${isDev ? " ws://localhost:* http://localhost:*" : ""}`,
   "frame-src 'none'",
   "object-src 'none'",
   "base-uri 'self'",

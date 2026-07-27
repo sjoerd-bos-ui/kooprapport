@@ -49,6 +49,8 @@ import {
   KavelIcon,
   BestemmingIcon,
   MailIcon,
+  LeafIcon,
+  SunIcon,
 } from "@/components/report/icons";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
 import { duidEnergielabel, ENERGIELABEL_SCHAAL, ENERGIELABEL_KLEUREN } from "@/lib/utils/energielabel";
@@ -463,7 +465,7 @@ export default function ReportView({
   const [emailInput, setEmailInput] = useState("");
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailStatus, setEmailStatus] = useState<{ kind: "success" | "error"; message: string } | null>(null);
-  const { core, building, energy, market, nearbySales, buurtprofiel, fundering, kavel, bestemming } = report;
+  const { core, building, energy, market, nearbySales, verduurzaming, buurtprofiel, fundering, kavel, bestemming } = report;
   // Compacte, feitelijke eindsamenvatting (Samenvatting-tabblad + laatste
   // stuk van de PDF) — bouwt uitsluitend voort op velden die al hierboven in
   // `report` staan, zie lib/services/samenvatting.ts voor de regels.
@@ -1041,6 +1043,18 @@ export default function ReportView({
   // dít pand, zie lib/utils/energielabel.ts).
   const energieDuiding = energy.data?.klasse ? duidEnergielabel(energy.data.klasse) : null;
 
+  // Terugverdientijd als "X jaar Y mnd" i.p.v. kaal aantal maanden — leesbaarder
+  // op een stat-kaart. Nooit een gok: blijft "Onbekend" als het brongegeven
+  // ontbreekt.
+  const verduurzamingTerugverdientijd = (() => {
+    const maanden = verduurzaming.data?.terugverdientijdMaanden;
+    if (maanden == null) return "Onbekend";
+    const jaren = Math.floor(maanden / 12);
+    const restMaanden = maanden % 12;
+    if (jaren <= 0) return `${maanden} mnd`;
+    return restMaanden > 0 ? `${jaren} jaar ${restMaanden} mnd` : `${jaren} jaar`;
+  })();
+
   const energieprestatieTab = (
     <>
       <ReportSection title="Energieprestatie en label" meta={energy.meta} hasData={energy.data !== null}>
@@ -1131,6 +1145,165 @@ export default function ReportView({
                 )}
               </div>
             )}
+          </div>
+        )}
+      </ReportSection>
+    </>
+  );
+
+  const verduurzamingTab = (
+    <>
+      <ReportSection
+        title="Verduurzamingsadvies"
+        subtitle="Modelmatige inschatting op basis van de NTA 8800-norm (Altum AI)"
+        meta={verduurzaming.meta}
+        hasData={verduurzaming.data?.huidigLabel != null && verduurzaming.data?.haalbaarLabel != null}
+      >
+        {verduurzaming.data && (
+          <div className="flex flex-col gap-6">
+            <div className="rounded-2xl bg-parchment p-6 sm:p-8">
+              <div className="mb-4 flex flex-wrap items-center gap-2">
+                <StatusChip toon="neutraal">Huidig label {verduurzaming.data.huidigLabel ?? "onbekend"}</StatusChip>
+                <ArrowRightIcon className="h-3.5 w-3.5 text-ink/30" />
+                <StatusChip toon="gunstig">Haalbaar label {verduurzaming.data.haalbaarLabel ?? "onbekend"}</StatusChip>
+              </div>
+
+              <div className="flex gap-[3px]">
+                {ENERGIELABEL_SCHAAL.map((klasse, i) => {
+                  const isHuidig = klasse === verduurzaming.data!.huidigLabel;
+                  const isHaalbaar = klasse === verduurzaming.data!.haalbaarLabel;
+                  return (
+                    <div
+                      key={klasse}
+                      className={`relative flex h-9 flex-1 items-center justify-center ${i === 0 ? "rounded-l-xl" : ""} ${
+                        i === ENERGIELABEL_SCHAAL.length - 1 ? "rounded-r-xl" : ""
+                      } ${isHaalbaar ? "ring-2 ring-inset ring-white" : ""}`}
+                      style={{ backgroundColor: ENERGIELABEL_KLEUREN[i] }}
+                    >
+                      {isHaalbaar && (
+                        <span className="absolute -top-5 left-1/2 -translate-x-1/2 whitespace-nowrap text-[9px] font-semibold text-ink/45">
+                          haalbaar
+                        </span>
+                      )}
+                      {(isHuidig || isHaalbaar) && <span className="text-sm font-bold text-white">{klasse}</span>}
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="mt-1.5 flex justify-between text-[9.5px] text-ink/35">
+                {ENERGIELABEL_SCHAAL.map((klasse) => (
+                  <span key={klasse}>{klasse}</span>
+                ))}
+              </div>
+
+              <div className="mt-5 grid gap-2.5 sm:grid-cols-4">
+                <DataCard
+                  icon={<LeafIcon className="h-4 w-4" />}
+                  iconColor="#0F766E"
+                  label="Investering"
+                  value={verduurzaming.data.investering != null ? formatCurrency(verduurzaming.data.investering) : "Onbekend"}
+                  hint="Voor alle geadviseerde maatregelen samen"
+                />
+                <DataCard
+                  icon={<BoltIcon className="h-4 w-4" />}
+                  iconColor="#4F46E5"
+                  label="Besparing per jaar"
+                  value={verduurzaming.data.besparingPerJaar != null ? formatCurrency(verduurzaming.data.besparingPerJaar) : "Onbekend"}
+                />
+                <DataCard icon={<CalendarIcon className="h-4 w-4" />} iconColor="#9A6A0C" label="Terugverdientijd" value={verduurzamingTerugverdientijd} />
+                <DataCard
+                  icon={<TrendingUpIcon className="h-4 w-4" />}
+                  iconColor="#0D9488"
+                  label="Waardestijging"
+                  value={verduurzaming.data.waardestijging != null ? formatCurrency(verduurzaming.data.waardestijging) : "Onbekend"}
+                  hint="Ecowaarde"
+                />
+              </div>
+
+              {verduurzaming.data.energierekeningHuidigPerJaar != null && verduurzaming.data.energierekeningNaPerJaar != null && (
+                <p className="mt-4 text-[12.5px] leading-relaxed text-ink/55">
+                  Van gemiddeld <strong>{formatCurrency(verduurzaming.data.energierekeningHuidigPerJaar)}</strong> naar circa{" "}
+                  <strong>{formatCurrency(verduurzaming.data.energierekeningNaPerJaar)}</strong> per jaar aan energiekosten
+                  {verduurzaming.data.co2ReductieKg != null && (
+                    <> — samen met circa {verduurzaming.data.co2ReductieKg.toLocaleString("nl-NL")} kg minder CO₂-uitstoot per jaar.</>
+                  )}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <SubKop icon={LeafIcon}>Concrete maatregelen</SubKop>
+              {verduurzaming.data.maatregelen.length > 0 ? (
+                <div className="flex flex-col gap-2">
+                  {verduurzaming.data.maatregelen.map((m) => (
+                    <div key={m.key} className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-parchment p-3.5">
+                      <div className="flex items-center gap-2.5">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#EEF0FF] text-accent">
+                          {m.key === "solar_panels" ? <SunIcon className="h-4 w-4" /> : <LeafIcon className="h-4 w-4" />}
+                        </span>
+                        <div>
+                          <p className="text-[13px] font-semibold text-ink">{m.label}</p>
+                          <p className="mt-0.5 flex items-center gap-1 text-[11.5px] text-ink/45">
+                            {m.van}
+                            <ArrowRightIcon className="h-2.5 w-2.5 text-ink/30" />
+                            {m.naar}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[13px] font-semibold text-ink">{formatCurrency(m.investering)}</p>
+                        <p className="text-[11px] text-ink/45">bespaart {formatCurrency(m.besparingPerJaar)}/jaar</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[12.5px] text-ink/45">Geen concrete maatregelen geadviseerd voor dit adres.</p>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-ink/10 bg-paper p-5">
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#E6FBF7] text-[#0F766E]">
+                  <LeafIcon className="h-4 w-4" />
+                </span>
+                <p className="font-display text-[15px] font-bold text-ink">Subsidiemogelijkheden (ISDE)</p>
+              </div>
+              <p className="mt-3 text-[12.5px] leading-relaxed text-ink/60">
+                Voor een deel van de maatregelen hierboven kunt u in aanmerking komen voor de landelijke ISDE-subsidie: tot €520 voor
+                vloerisolatie en tot €3.417 voor een zonneboiler, met een hoger bedrag wanneer u 2 of meer maatregelen combineert (of
+                isolatie combineert met een warmtepomp, zonneboiler of aansluiting op een warmtenet) binnen 24 maanden. Voor 2026 is
+                €511 miljoen beschikbaar.
+              </p>
+              <a
+                href="https://www.rvo.nl/subsidies-financiering/isde/woningeigenaren/rekentool"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 inline-flex items-center gap-1 text-[12.5px] font-semibold text-accent hover:underline"
+              >
+                Bereken uw subsidie via de officiële RVO-rekentool
+                <ArrowRightIcon className="h-3 w-3" />
+              </a>
+            </div>
+
+            <div className="rounded-2xl border border-ink/10 bg-paper p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="font-display text-[15px] font-bold text-ink">Klaar om te beginnen?</p>
+                  <p className="mt-1 text-[12.5px] text-ink/50">Vraag vrijblijvend offertes op bij erkende installateurs.</p>
+                </div>
+                <Button variant="secondary">
+                  <span className="flex items-center gap-1.5">
+                    Offertes vergelijken <ArrowRightIcon className="h-3.5 w-3.5" />
+                  </span>
+                </Button>
+              </div>
+              <p className="mt-3 text-[11px] leading-relaxed text-ink/35">
+                Modelmatige inschatting op basis van de NTA 8800-norm (Altum AI), geen vervanging voor een officieel energieadvies.
+                Vraagt u via &quot;Offertes vergelijken&quot; een offerte aan, dan kan Kooprapport hiervoor een vergoeding ontvangen —
+                dit heeft geen invloed op de cijfers hierboven.
+              </p>
+            </div>
           </div>
         )}
       </ReportSection>
@@ -1412,10 +1585,11 @@ export default function ReportView({
           )}
         </div>
 
-        {/* Ontgrendeld rapport: 7 sticky tabbladen, precies de canonieke
-            7-delige naamgeving die ook in de vergelijkingstabel en het
-            inkijkje wordt gebruikt — i.p.v. 4 tabbladen die meerdere van die
-            onderdelen samen groepeerden. */}
+        {/* Ontgrendeld rapport: sticky tabbladen, met dezelfde naamgeving die
+            ook in de vergelijkingstabel en het inkijkje wordt gebruikt —
+            i.p.v. 4 tabbladen die meerdere van die onderdelen samen
+            groepeerden. "Verduurzamingsadvies" is de nieuwste toevoeging
+            (Altum AI Verduurzaming API v2, zie reportService.ts). */}
         {isUnlocked && (
           <ReportTabs
             activeId={activeTabId}
@@ -1426,6 +1600,7 @@ export default function ReportView({
               { id: "verkopen", label: "Verkopen in de buurt", content: verkopenBuurtTab },
               { id: "object", label: "Objectgegevens", content: objectgegevensTab },
               { id: "energie", label: "Energieprestatie en label", content: energieprestatieTab },
+              { id: "verduurzaming", label: "Verduurzamingsadvies", content: verduurzamingTab },
               { id: "fundering", label: "Funderingsrisico", content: funderingsrisicoTab },
               { id: "buurt", label: "Buurtprofiel", content: buurtTab },
               { id: "samenvatting", label: "Samenvatting", content: samenvattingTab },

@@ -1,25 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { AddressMeta } from "@/types/report";
 import { fetchPremiumOnUnlock } from "@/lib/services/reportService";
-import { isBetaaldVoorAdres } from "@/lib/payments/bestellingen";
+import { haalBestelling, isBetaaldVoorAdres } from "@/lib/payments/bestellingen";
 import { canonicalAddressKey } from "@/lib/utils/slug";
 import { kvGet, kvSet } from "@/lib/services/kvStore";
 
 // -----------------------------------------------------------------------------
 // BELANGRIJK (kostenbeheersing): dit is de ENIGE plek in de app die de Altum
-// AI-API's (Woningwaarde/AVM én Woningreferentie/buurtverkopen) daadwerkelijk
-// aanroept. Beide kosten credits/geld per keer en gebruiken dezelfde
-// ALTUM_API_KEY — daarom worden ze niet meer bij een gewone paginaweergave
-// gedaan (zie app/api/rapport/route.ts, die geeft voor allebei een "nog niet
-// opgevraagd"-placeholder terug), maar uitsluitend hier, in één gezamenlijke
-// aanroep, op het moment dat iemand het rapport daadwerkelijk ontgrendelt/
-// betaalt (zie ReportPageClient.handleUnlock). Draait server-side, net als
-// de hoofd-route, dus de sleutel blijft uit de browserbundel.
+// AI-API's (Woningwaarde/AVM, Woningreferentie/buurtverkopen én Verduurzaming/
+// NTA 8800) daadwerkelijk aanroept. Alle drie kosten credits/geld per keer en
+// gebruiken dezelfde ALTUM_API_KEY — daarom worden ze niet meer bij een
+// gewone paginaweergave gedaan (zie app/api/rapport/route.ts, die geeft voor
+// alle drie een "nog niet opgevraagd"-placeholder terug), maar uitsluitend
+// hier, in één gezamenlijke aanroep, op het moment dat iemand het rapport
+// daadwerkelijk ontgrendelt/betaalt (zie ReportPageClient.handleUnlock).
+// Draait server-side, net als de hoofd-route, dus de sleutel blijft uit de
+// browserbundel.
 //
 // Vervangt de eerdere aparte /api/rapport/woningwaarde-route: die dekte
 // alleen woningwaarde, waardoor buurtverkopen abusievelijk al bij de gewone
-// (onbetaalde) paginaweergave werd opgehaald. Nu delen beide premium-bronnen
-// hetzelfde ontgrendel-moment.
+// (onbetaalde) paginaweergave werd opgehaald. Nu delen alle drie premium-
+// bronnen hetzelfde ontgrendel-moment.
 //
 // BEVEILIGING: vóór de betaalflow (zie app/api/betaling/*) was "ontgrendeld"
 // puur client-side state (ReportPageClient's isUnlocked) — deze route zelf
@@ -49,9 +50,9 @@ function premiumCacheKey(bestellingId: string): string {
 }
 
 export async function POST(req: NextRequest) {
-  let body: { address?: AddressMeta; oppervlakteM2?: number; bestellingId?: string };
+  let body: { address?: AddressMeta; oppervlakteM2?: number; bouwjaar?: number; bestellingId?: string };
   try {
-    body = (await req.json()) as { address?: AddressMeta; oppervlakteM2?: number; bestellingId?: string };
+    body = (await req.json()) as { address?: AddressMeta; oppervlakteM2?: number; bouwjaar?: number; bestellingId?: string };
   } catch {
     return NextResponse.json({ error: "Ongeldige aanvraag: geen geldige JSON-body." }, { status: 400 });
   }
@@ -73,13 +74,22 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // bedragCenten hier apart opgehaald (i.p.v. in de cache hieronder bewaard)
+  // zodat bestaande gecachte resultaten van vóór deze wijziging niet ineens
+  // een ontbrekend veld missen -- goedkope extra KV-read, geen Altum-kosten.
+  // Gebruikt door de client (zie ReportPageClient#handleUnlock) om een
+  // GA4/Google Ads-conversie-event met het echte, server-geverifieerde
+  // bedrag te versturen i.p.v. een geraden/client-bedrag te vertrouwen.
+  const bestelling = await haalBestelling(body.bestellingId);
+  const bedragCenten = bestelling?.bedragCenten ?? null;
+
   const cacheKey = premiumCacheKey(body.bestellingId);
   const cached = await kvGet(cacheKey);
   if (cached) {
-    return NextResponse.json(JSON.parse(cached));
+    return NextResponse.json({ ...JSON.parse(cached), bedragCenten });
   }
 
-  const result = await fetchPremiumOnUnlock(address, body.oppervlakteM2);
+  const result = await fetchPremiumOnUnlock(address, body.oppervlakteM2, body.bouwjaar);
   await kvSet(cacheKey, JSON.stringify(result), PREMIUM_CACHE_TTL_SECONDEN);
-  return NextResponse.json(result);
+  return NextResponse.json({ ...result, bedragCenten });
 }

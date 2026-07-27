@@ -333,3 +333,32 @@ export function BestemmingIcon({ className }: { className?: string }) {
     </svg>
   );
 }
+
+// Verduurzaming/energiebesparing — een blad, hoort bij het
+// Verduurzamingsadvies-tabblad (lib/data-sources/verduurzaming.ts).
+export function LeafIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} className={className}>
+      <path
+        d="M20 4c.6 7-2.2 12.5-7 14.5C8 20.4 3.6 17.8 4 12.2 4.4 6.7 9.7 4.2 20 4Z"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M18.5 5.5 8 16" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+// Zonnepanelen — hoort bij een specifieke maatregel op het
+// Verduurzamingsadvies-tabblad.
+export function SunIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} className={className}>
+      <circle cx="12" cy="12" r="4" />
+      <path
+        d="M12 2.5v3M12 18.5v3M21.5 12h-3M5.5 12h-3M18.5 5.5l-2 2M7.5 16.5l-2 2M18.5 18.5l-2-2M7.5 7.5l-2-2"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}

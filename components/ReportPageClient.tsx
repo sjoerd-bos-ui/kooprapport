@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import type { AddressMeta, MarketData, NearbySalesData, Report, ReportProgressStep } from "@/types/report";
+import type { AddressMeta, MarketData, NearbySalesData, Report, ReportProgressStep, VerduurzamingData } from "@/types/report";
 import type { SourceResult } from "@/types/dataSource";
 import LoadingAnalysis from "@/components/report/LoadingAnalysis";
 import ReportView from "@/components/report/ReportView";
+import { trackAankoop } from "@/lib/analytics/trackAankoop";
 
 // Volgorde waarin de stappen in LoadingAnalysis oplichten. Dit is bewust een
 // getimede animatie (geen live per-bron voortgang meer): het echte werk
@@ -13,7 +14,7 @@ import ReportView from "@/components/report/ReportView";
 // API-sleutels nooit in de browserbundel belanden. Alle bronnen komen dus
 // feitelijk gelijktijdig terug in één respons — deze animatie is puur
 // cosmetisch, geen (onterechte) claim over welke bron als eerste klaar was.
-const STEP_ORDER: ReportProgressStep[] = ["building", "energy", "market", "nearbySales"];
+const STEP_ORDER: ReportProgressStep[] = ["building", "energy", "market", "nearbySales", "verduurzaming"];
 
 // Hoe vaak/lang we pollen op de betaalstatus nadat de klant terugkomt van
 // Mollie's checkout-pagina (zie de useEffect hieronder). 10x om de 1,5s =
@@ -56,6 +57,12 @@ export default function ReportPageClient({
   // doen totdat het rapport plotseling ontgrendelt (of, bij een probleem,
   // helemaal niets zichtbaar verandert).
   const [betalingTerugkeer, setBetalingTerugkeer] = useState<"controleren" | "mislukt" | null>(null);
+  // Voorkomt een dubbel conversie-event: handleUnlock kan zowel rechtstreeks
+  // (mock-modus, zie ReportView) als via de Mollie-terugkeer-poll hieronder
+  // worden aangeroepen -- zonder deze guard zou een toevallige dubbele
+  // aanroep voor dezelfde bestelling ook tweemaal "aankoop" naar GA4/Ads
+  // sturen, wat de omzetcijfers daar zou vertekenen.
+  const getrackteBestellingen = useRef<Set<string>>(new Set());
 
   // Onthoudt voor WELK adres initialReport gold, puur om de fetch hieronder
   // precies één keer te mogen overslaan (bij mount, voor dit ene adres).
@@ -144,16 +151,30 @@ export default function ReportPageClient({
       const res = await fetch("/api/rapport/premium", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ address, oppervlakteM2: report?.building.data?.oppervlakteM2, bestellingId }),
+        body: JSON.stringify({
+          address,
+          oppervlakteM2: report?.building.data?.oppervlakteM2,
+          bouwjaar: report?.building.data?.bouwjaar,
+          bestellingId,
+        }),
       });
       if (res.ok) {
-        const { market, nearbySales } = (await res.json()) as {
+        const { market, nearbySales, verduurzaming, bedragCenten } = (await res.json()) as {
           market: SourceResult<MarketData>;
           nearbySales: SourceResult<NearbySalesData>;
+          verduurzaming: SourceResult<VerduurzamingData>;
+          bedragCenten: number | null;
         };
-        setReport((prev) => (prev ? { ...prev, market, nearbySales } : prev));
+        setReport((prev) => (prev ? { ...prev, market, nearbySales, verduurzaming } : prev));
         setIsUnlocked(true);
         setBestellingId(bestellingId);
+        // Conversie-tracking: bedragCenten komt van de server (afgeleid van
+        // de echte, betaalde Bestelling), nooit van iets dat de client zelf
+        // verzint -- zelfde vertrouwensmodel als de rest van de betaalflow.
+        if (bedragCenten != null && !getrackteBestellingen.current.has(bestellingId)) {
+          getrackteBestellingen.current.add(bestellingId);
+          trackAankoop({ bestellingId, bedragCenten });
+        }
       }
       // Een falende aanvraag (bv. 402: geen geldige betaalde bestelling)
       // ontgrendelt bewust NIET — dat is precies het verschil met vroeger,

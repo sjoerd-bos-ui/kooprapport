@@ -16,7 +16,14 @@ function readMode(envVar: string): DataMode {
   return process.env[envVar] === "live" ? "live" : "mock";
 }
 
-export type DataSourceKey = "bag" | "energielabel" | "woningwaarde" | "buurtverkopen" | "bestemmingsplan" | "omgevingsplan";
+export type DataSourceKey =
+  | "bag"
+  | "energielabel"
+  | "woningwaarde"
+  | "buurtverkopen"
+  | "verduurzaming"
+  | "bestemmingsplan"
+  | "omgevingsplan";
 
 export const DATA_SOURCE_CONFIG: Record<DataSourceKey, SourceConfig> = {
   bag: {
@@ -58,6 +65,19 @@ export const DATA_SOURCE_CONFIG: Record<DataSourceKey, SourceConfig> = {
     // toggle als de Woningwaarde-adapter (één Altum-account/sleutel dekt
     // alle Altum-API's) — zie lib/data-sources/buurtverkopen.ts.
     mode: readMode("BUURTVERKOPEN_MODE"),
+    enabled: true,
+    baseUrl: process.env.ALTUM_API_BASE_URL ?? "https://api.altum.ai",
+    apiKeyEnvVar: "ALTUM_API_KEY",
+    timeoutMs: 8000,
+  },
+  verduurzaming: {
+    // Altum AI Verduurzaming API v2 (NTA 8800) — huidig/haalbaar energielabel
+    // plus concrete verduurzamingsmaatregelen en Ecowaarde (marktwaarde-
+    // stijging). Zelfde ALTUM_API_KEY/ALTUM_SANDBOX als woningwaarde en
+    // buurtverkopen (één Altum-account dekt alle Altum-API's), eigen
+    // dedicated mode-var zodat deze bron onafhankelijk van de andere
+    // twee op "live" gezet kan worden. Zie lib/data-sources/verduurzaming.ts.
+    mode: readMode("VERDUURZAMING_MODE"),
     enabled: true,
     baseUrl: process.env.ALTUM_API_BASE_URL ?? "https://api.altum.ai",
     apiKeyEnvVar: "ALTUM_API_KEY",

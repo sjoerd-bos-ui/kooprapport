@@ -26,6 +26,12 @@ import { Button } from "@/components/ui/Button";
 const CONSENT_KEY = "kooprapport-cookie-consent";
 type Consent = "onbekend" | "granted" | "denied";
 const GA_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
+// Optioneel: pas ingevuld zodra er een Google Ads-account is (zie
+// .env.example) -- zonder deze var wordt er hier verder niets aan
+// toegevoegd, gtag blijft dan puur GA4. Zelfde gtag.js-lading wordt hergebruikt
+// (Google's eigen aanbevolen patroon: één script, meerdere gtag('config', ...)
+// aanroepen), dus geen los, tweede script-tag nodig.
+const GOOGLE_ADS_ID = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID;
 
 export default function CookieConsent() {
   const [consent, setConsent] = useState<Consent>("onbekend");
@@ -55,6 +61,7 @@ export default function CookieConsent() {
               function gtag(){dataLayer.push(arguments);}
               gtag('js', new Date());
               gtag('config', '${GA_ID}', { anonymize_ip: true });
+              ${GOOGLE_ADS_ID ? `gtag('config', '${GOOGLE_ADS_ID}');` : ""}
             `}
           </Script>
         </>

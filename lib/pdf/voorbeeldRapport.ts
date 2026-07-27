@@ -145,6 +145,53 @@ export const voorbeeldRapport: Report = {
     }
   ),
 
+  verduurzaming: successResult(
+    "verduurzaming",
+    "Verduurzamingsadvies (Altum AI, NTA 8800)",
+    "mock",
+    "mock",
+    {
+      huidigLabel: "B",
+      haalbaarLabel: "A",
+      investering: 18400,
+      besparingPerJaar: 620,
+      terugverdientijdMaanden: 356,
+      waardestijging: 15800,
+      energierekeningHuidigPerJaar: 2180,
+      energierekeningNaPerJaar: 1560,
+      co2ReductieKg: 980,
+      maatregelen: [
+        {
+          key: "solar_panels",
+          label: "Zonnepanelen",
+          van: "0",
+          naar: "14",
+          investering: 7200,
+          besparingPerJaar: 340,
+          co2ReductieKg: 520,
+        },
+        {
+          key: "floor_insulation",
+          label: "Vloerisolatie",
+          van: "Matig",
+          naar: "Zeer goed",
+          investering: 3600,
+          besparingPerJaar: 130,
+          co2ReductieKg: 210,
+        },
+        {
+          key: "installation",
+          label: "Verwarmingsinstallatie",
+          van: "HR-combi",
+          naar: "Hybride warmtepomp",
+          investering: 7600,
+          besparingPerJaar: 150,
+          co2ReductieKg: 250,
+        },
+      ],
+    }
+  ),
+
   buurtprofiel: successResult(
     "buurtprofiel",
     "CBS wijk- en buurtcijfers / politie",

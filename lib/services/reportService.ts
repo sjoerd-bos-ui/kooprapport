@@ -4,6 +4,7 @@ import { fetchBuilding } from "@/lib/data-sources/bag";
 import { fetchEnergy } from "@/lib/data-sources/energielabel";
 import { fetchMarket } from "@/lib/data-sources/woningwaarde";
 import { fetchNearbySales } from "@/lib/data-sources/buurtverkopen";
+import { fetchVerduurzaming } from "@/lib/data-sources/verduurzaming";
 import { fetchBuurtprofiel } from "@/lib/data-sources/buurtprofiel";
 import { fetchFundering } from "@/lib/data-sources/fundering";
 import { fetchKavel } from "@/lib/data-sources/kavel";
@@ -12,7 +13,7 @@ import { resolveBuurtcode } from "@/lib/services/buurtcodeLookup";
 import { buildCore, buildDataQuality, buildInsights, enrichNearbySales } from "@/lib/services/insights";
 import { cached } from "@/lib/utils/ttlCache";
 import { canonicalAddressKey } from "@/lib/utils/slug";
-import type { BestemmingData, BuildingData, BuurtprofielData, EnergyData, FunderingData, KavelData, MarketData, NearbySalesData, NearbySalesDataRaw } from "@/types/report";
+import type { BestemmingData, BuildingData, BuurtprofielData, EnergyData, FunderingData, KavelData, MarketData, NearbySalesData, NearbySalesDataRaw, VerduurzamingData } from "@/types/report";
 
 // Placeholder-resultaat voor de geschatte woningwaarde vóórdat het rapport is
 // ontgrendeld. BELANGRIJK (kostenbeheersing): de Altum AI Woningwaarde API
@@ -62,6 +63,24 @@ function deferredNearbySalesResult(): SourceResult<NearbySalesDataRaw> {
   };
 }
 
+// Zelfde uitstel-redenering als hierboven, nu voor het Verduurzamingsadvies
+// (Altum AI Verduurzaming API v2) — een DERDE Altum-product dat evenzeer
+// credits per aanroep kost en dezelfde ALTUM_API_KEY gebruikt. Zie
+// fetchPremiumOnUnlock() voor de daadwerkelijke aanroep bij ontgrendelen.
+function deferredVerduurzamingResult(): SourceResult<VerduurzamingData> {
+  return {
+    data: null,
+    meta: {
+      source: "verduurzaming",
+      label: "Verduurzamingsadvies (Altum AI, NTA 8800)",
+      mode: "live",
+      status: "premium",
+      state: "unavailable",
+      fetchedAt: new Date().toISOString(),
+    },
+  };
+}
+
 // Eén aggregatiepunt voor de UI. Roept alle databron-adapters PARALLEL aan
 // (een trage of falende bron mag de andere niet blokkeren — dat is ook hoe
 // dit straks server-side tegen echte APIs zou draaien), mapt elk resultaat
@@ -91,10 +110,11 @@ const GRATIS_BRON_TTL_MS = 24 * 60 * 60 * 1000;
 export async function getReport(
   address: AddressMeta,
   onProgress?: (step: ReportProgressStep) => void,
-  options?: { deferMarket?: boolean; deferNearbySales?: boolean }
+  options?: { deferMarket?: boolean; deferNearbySales?: boolean; deferVerduurzaming?: boolean }
 ): Promise<Report> {
   const deferMarket = options?.deferMarket ?? true;
   const deferNearbySales = options?.deferNearbySales ?? true;
+  const deferVerduurzaming = options?.deferVerduurzaming ?? true;
   // BEVEILIGING (zie de audit): cache-sleutels op basis van postcode/
   // huisnummer i.p.v. het (door de aanroeper vrij te kiezen) address.slug —
   // anders zou een verzoek met een verzonnen adres maar een bestaand slug-
@@ -133,7 +153,7 @@ export async function getReport(
       })
     );
 
-    const [building, energy, market, nearbySalesRaw, buurtprofiel, fundering, kavel, bestemming, locatie] = await Promise.all([
+    const [building, energy, market, nearbySalesRaw, verduurzaming, buurtprofiel, fundering, kavel, bestemming, locatie] = await Promise.all([
       buildingPromise,
       cached(`energy:${cacheKey}`, GRATIS_BRON_TTL_MS, () => fetchEnergy(address)).then((r) => {
         onProgress?.("energy");
@@ -157,6 +177,21 @@ export async function getReport(
             onProgress?.("nearbySales");
             return r;
           }),
+      deferVerduurzaming
+        ? Promise.resolve(deferredVerduurzamingResult()).then((r) => {
+            onProgress?.("verduurzaming");
+            return r;
+          })
+        : // Wacht op buildingPromise (i.p.v. de nog niet bestaande destructured
+          // `building`-variabele hierboven) zodat, in het zeldzame geval dat dit
+          // ooit met deferVerduurzaming=false wordt aangeroepen, bouwjaar/
+          // oppervlakte uit dezelfde BAG-data meegaan als bij een deferred call.
+          buildingPromise.then((b) =>
+            fetchVerduurzaming(address, { bouwjaar: b.data?.bouwjaar, oppervlakteM2: b.data?.oppervlakteM2 }).then((r) => {
+              onProgress?.("verduurzaming");
+              return r;
+            })
+          ),
       cached(
         `buurtprofiel:${cacheKey}`,
         GRATIS_BRON_TTL_MS,
@@ -221,6 +256,7 @@ export async function getReport(
       energy.meta,
       market.meta,
       nearbySales.meta,
+      verduurzaming.meta,
       buurtprofiel.meta,
       fundering.meta,
       kavel.meta,
@@ -236,6 +272,7 @@ export async function getReport(
       energy,
       market,
       nearbySales,
+      verduurzaming,
       buurtprofiel,
       fundering,
       kavel,
@@ -282,11 +319,18 @@ const ZOEKPOGINGEN: { strictBuurt: boolean; dateLimitMonths: number }[] = [
 
 export async function fetchPremiumOnUnlock(
   address: AddressMeta,
-  oppervlakteM2?: number
-): Promise<{ market: SourceResult<MarketData>; nearbySales: SourceResult<NearbySalesData> }> {
+  oppervlakteM2?: number,
+  bouwjaar?: number
+): Promise<{ market: SourceResult<MarketData>; nearbySales: SourceResult<NearbySalesData>; verduurzaming: SourceResult<VerduurzamingData> }> {
   // Los van de verruim-lus hieronder, zodat de woningwaarde-aanroep niet op
   // buurtverkopen hoeft te wachten (en andersom).
   const marketPromise = fetchMarket(address);
+  // Verduurzamingsadvies is een DERDE, onafhankelijk Altum-product (eigen
+  // endpoint, eigen credits) — ook los opgehaald, zodat een trage/falende
+  // aanroep hier de andere twee niet blokkeert. bouwjaar/oppervlakteM2 komen
+  // van de al bekende (gratis) BAG-data uit het bestaande rapport, precies
+  // zoals oppervlakteM2 dat ook al voor buurtverkopen deed.
+  const verduurzamingPromise = fetchVerduurzaming(address, { bouwjaar, oppervlakteM2 });
 
   let nearbySalesRaw = await fetchNearbySales(address, ZOEKPOGINGEN[0]);
   let nearbySalesData = enrichNearbySales(nearbySalesRaw.data, { oppervlakteM2 });
@@ -311,9 +355,12 @@ export async function fetchPremiumOnUnlock(
     prijsPerM2: subjectPrijsPerM2,
   });
 
+  const verduurzaming = await verduurzamingPromise;
+
   return {
     market,
     nearbySales: { data: finalNearbySalesData, meta: nearbySalesRaw.meta },
+    verduurzaming,
   };
 }
 
@@ -339,6 +386,7 @@ function buildFailedReport(address: AddressMeta, err: unknown): Report {
   const energy = failed<EnergyData>("energy", "RVO Energielabel (EP-Online)");
   const market = failed<MarketData>("market", "Geschatte woningwaarde (model)");
   const nearbySales = failed<NearbySalesData>("nearbySales", "Buurtverkopen (Altum AI Woningreferentie, bron: Kadaster)");
+  const verduurzaming = failed<VerduurzamingData>("verduurzaming", "Verduurzamingsadvies (Altum AI, NTA 8800)");
   const buurtprofiel = failed<BuurtprofielData>("buurtprofiel", "CBS wijk- en buurtcijfers");
   const fundering = failed<FunderingData>("fundering", "Funderingsrisico-indicatie (bouwjaar + KCAF/RVO bodemgesteldheid)");
   const kavel = failed<KavelData>("kavel", "Kavelgrootte (Kadaster, PDOK Kadastrale Kaart)");
@@ -350,6 +398,7 @@ function buildFailedReport(address: AddressMeta, err: unknown): Report {
     energy,
     market,
     nearbySales,
+    verduurzaming,
     buurtprofiel,
     fundering,
     kavel,
@@ -360,6 +409,7 @@ function buildFailedReport(address: AddressMeta, err: unknown): Report {
       energy.meta,
       market.meta,
       nearbySales.meta,
+      verduurzaming.meta,
       buurtprofiel.meta,
       fundering.meta,
       kavel.meta,
