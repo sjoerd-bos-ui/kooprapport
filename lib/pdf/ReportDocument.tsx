@@ -1370,11 +1370,19 @@ export default function ReportDocument({
           <Text style={styles.pageHeading}>Waarom Kooprapport bestaat</Text>
           <View style={styles.amberRule} />
 
+          {/* BUGFIX: de eerste versie had hier een sterk vergrote (26pt)
+              inline drop-cap-letter binnen dezelfde Text als de 9.5pt/1.75
+              lopende tekst. @react-pdf/renderer berekent de regelhoogte dan
+              op basis van de kleinere basisstijl, niet op het grotere inline
+              lettertype — waardoor de tekstregels daarna over elkaar heen
+              geschreven werden (zichtbaar als onleesbare, gestapelde tekst op
+              de live PDF). Nu een veel bescheidener sprong (11 i.p.v. 26pt,
+              nog altijd vet + accentkleur) die wél binnen de regelhoogte past. */}
           <View style={{ gap: 12 }}>
             {WELKOMSTBRIEF_PARAGRAFEN.map((paragraaf, i) => (
               <Text key={i} style={{ fontSize: 9.5, color: KLEUR.ink, lineHeight: 1.75 }}>
                 {i === 0 && (
-                  <Text style={{ fontSize: 26, fontFamily: "Bricolage Grotesque", fontWeight: 800, color: KLEUR.accentDark }}>T</Text>
+                  <Text style={{ fontSize: 11, fontFamily: "Bricolage Grotesque", fontWeight: 800, color: KLEUR.accentDark }}>T</Text>
                 )}
                 {paragraaf}
               </Text>
@@ -2363,11 +2371,18 @@ export default function ReportDocument({
             },
           ]}
         >
+          {/* BUGFIX: eerst fill="#FFFFFF0F" (8-cijferige RGBA-hex) — dat wordt
+              door @react-pdf/renderer's onderliggende PDFKit-tekenaar NIET
+              correct als "wit, bijna onzichtbaar" geïnterpreteerd (bevestigd
+              op de live PDF: een fel groen golfvlak i.p.v. een subtiele
+              lichte tint). PDFKit/react-pdf ondersteunt in Svg-fills alleen
+              standaard 3/6-cijferige hex of named colors; transparantie moet
+              via de aparte fillOpacity-prop, niet in de hex-string zelf. */}
           <Svg width={468} height={120} viewBox="0 0 468 120" style={{ position: "absolute", top: 0, left: 0 }}>
-            <Path d="M0,38 C110,100 350,-15 468,45 L468,0 L0,0 Z" fill="#FFFFFF0F" />
+            <Path d="M0,38 C110,100 350,-15 468,45 L468,0 L0,0 Z" fill="#FFFFFF" fillOpacity={0.06} />
           </Svg>
           <Svg width={468} height={150} viewBox="0 0 468 150" style={{ position: "absolute", bottom: 0, left: 0 }}>
-            <Path d="M0,112 C130,38 330,168 468,84 L468,150 L0,150 Z" fill="#FFFFFF0F" />
+            <Path d="M0,112 C130,38 330,168 468,84 L468,150 L0,150 Z" fill="#FFFFFF" fillOpacity={0.06} />
           </Svg>
 
           {isVoorbeeld && <VoorbeeldBanner siteUrl={siteUrl} />}
