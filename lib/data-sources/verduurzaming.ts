@@ -269,6 +269,29 @@ async function fetchLive(address: AddressMeta, opts?: { bouwjaar?: number; opper
     // maatregelen te suggereren e.d.) — geen storing, eerlijk "geen data".
     return {} as VerduurzamingData;
   }
+  if (res.status === 301) {
+    // BELANGRIJK: dit is GEEN echte HTTP-redirect, ondanks de statuscode.
+    // Altum documenteert 301 als een bewust, eigen foutsignaal specifiek
+    // voor appartementen: { "detail": "Unable to check apartment." } —
+    // de Verduurzaming API v2 kan (nog) geen advies berekenen voor
+    // appartementen (Altum heeft hiervoor een aparte, nog jongere
+    // API-variant: "Verduurzaming API v2 Appartementen", niet hier
+    // geïntegreerd). Eerlijke, herkenbare melding i.p.v. een generieke
+    // "status 301"-foutmelding — bevestigd via docs.altum.ai op 27-07-2026,
+    // en in de praktijk teruggezien bij een echt appartementadres.
+    let detail = "";
+    try {
+      const body = await res.json();
+      detail = typeof body === "object" && body?.detail ? String(body.detail) : "";
+    } catch {
+      // negeren, val terug op de generieke tekst hieronder
+    }
+    throw new Error(
+      `Voor appartementen kan Altum nog geen verduurzamingsadvies berekenen (dit is bij Altum nog in ontwikkeling).${
+        detail ? ` (${detail})` : ""
+      }`
+    );
+  }
   if (res.status === 401 || res.status === 403) {
     throw new Error("Altum wees de sleutel af (401/403). Controleer of de sleutel correct is overgenomen.");
   }
