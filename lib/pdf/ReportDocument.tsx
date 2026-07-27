@@ -1120,16 +1120,19 @@ function Handtekening() {
   );
 }
 
-// Founder-brief (Pagina 2) — persoonlijk verhaal van Sjoerd, bewust géén
-// koper-specifieke taal (geen "bod", geen "bezichtiging"): dit rapport is
-// voor kopers, verkopers én woningeigenaren, zelfde drie doelgroepen als de
-// homepage-tagline (app/page.tsx) — zie ook de bewuste keuze in
-// lib/services/samenvatting.ts om nooit koper-specifiek te formuleren.
+// Founder-brief (Pagina 2) — het echte, door Sjoerd zelf aangeleverde
+// verhaal (27-07-2026). Bevat op een paar plekken bewust "koper"-specifieke
+// taal (autobiografisch: hij was zelf woningzoekende) — dat is een bewuste
+// keuze van de auteur over zijn eigen verhaal, dus hier ongewijzigd
+// overgenomen i.p.v. zelf verder te verbreden naar kopers/verkopers/
+// eigenaren zoals elders in het rapport (lib/services/samenvatting.ts,
+// homepage-tagline).
 const WELKOMSTBRIEF_PARAGRAFEN = [
-  "Toen ik zelf een huis kocht in Rotterdam, merkte ik hoe verspreid de informatie was. Het energielabel stond in het ene register, het funderingsrisico moest ik zelf bij de gemeente opzoeken, en niemand kon mij met cijfers onderbouwen of de vraagprijs reëel was. Ik wilde gewoon één duidelijk overzicht, niet tien losse bronnen.",
-  "Die zoektocht was de aanleiding voor Kooprapport: één plek waar de belangrijkste feiten over een adres bij elkaar staan, met bronvermelding en zonder aannames die niet kloppen.",
-  "Dit rapport is gemaakt voor iedereen die een adres beter wil begrijpen: kopers die een bod voorbereiden, verkopers die hun vraagprijs willen onderbouwen, en eigenaren die gewoon willen weten waar ze wonen.",
-  "Ik hoop dat het je helpt bij een weloverwogen beslissing.",
+  "Een huis kopen is voor veel mensen een van de grootste beslissingen in hun leven. Dat merkte ik zelf ook toen ik op zoek ging naar een woning in Rotterdam. Je denkt in het begin dat je vooral moet kijken naar de prijs en de uitstraling van een huis, maar al snel kom je erachter dat er veel meer bij komt kijken. Er zijn allerlei bronnen die je moet raadplegen, verschillende gegevens die je moet vergelijken en details die je eigenlijk pas later goed begint te begrijpen. Juist in dat proces ontdekte ik hoe lastig het kan zijn om snel een compleet beeld te krijgen van een woning.",
+  "Tijdens mijn zoektocht liep ik er steeds vaker tegenaan dat informatie versnipperd was. De ene site liet iets zien over de buurt, de andere over de woningwaarde, weer een andere over vergelijkbare huizen of eerdere verkopen. Als je nog niet precies weet waar je op moet letten, voelt dat al snel als een enorme puzzel. Daarom is het verstandig om niet alleen naar de vraagprijs te kijken, maar naar het totaalplaatje: vergelijk de woning met soortgelijke huizen in de buurt, let op buurtverkopen en andere relevante prijsindicatoren, en bekijk eventuele bijzonderheden die invloed kunnen hebben op de waarde.",
+  "Dat was precies het moment waarop het idee voor Kooprapport ontstond. Ik wilde een oplossing maken voor dat gevoel van onzekerheid en versnippering. Een plek waar woninginformatie samenkomt in één helder rapport, zodat je als koper niet zelf alles hoeft uit te zoeken. Niet meer eindeloos zoeken naar losse bronnen, maar direct inzicht in de belangrijkste gegevens die je nodig hebt om een goede keuze te maken.",
+  "Kooprapport is dus ontstaan vanuit een echte behoefte. Niet vanuit theorie, maar vanuit mijn eigen ervaring als woningzoeker die merkte hoeveel tijd, energie en twijfel er komt kijken bij het kopen van een huis. En juist daarom vind ik het belangrijk dat een koper snel overzicht krijgt. Zie het rapport als een hulpmiddel om sneller te begrijpen wat je ziet, zodat je beter kunt inschatten of een woning echt bij je past.",
+  "Met Kooprapport wil ik dat proces overzichtelijker, slimmer en toegankelijker maken. Zodat je niet alleen sneller tot informatie komt, maar vooral beter begrijpt wat die informatie betekent. Dat is voor mij de reden geweest om hiermee te starten, en precies dat vormt nog steeds de basis van het platform.",
 ];
 
 export default function ReportDocument({
@@ -1372,7 +1375,7 @@ export default function ReportDocument({
           {isVoorbeeld && <VoorbeeldBanner siteUrl={siteUrl} />}
 
           <Text style={styles.kicker}>Een persoonlijk woord</Text>
-          <Text style={styles.pageHeading}>Waarom Kooprapport bestaat</Text>
+          <Text style={styles.pageHeading}>Welkom bij Kooprapport</Text>
           <View style={styles.amberRule} />
 
           {/* BUGFIX: de eerste versie mengde een sterk vergrote (26pt, later
@@ -1383,22 +1386,28 @@ export default function ReportDocument({
               overlappende tekst én als alinea's/de handtekening die van de
               pagina afvielen (niet zichtbaar). Nu bewust GEEN inline
               grootteverschil meer: elke alinea is één uniforme Text, de
-              nadruk op "Een persoonlijk woord" zit al in de kicker erboven. */}
-          <View style={{ gap: 10 }}>
+              nadruk op "Een persoonlijk woord" zit al in de kicker erboven.
+              Lettergrootte/regelhoogte/gap ook iets krapper dan de eerdere
+              placeholdertekst: de echte brief (27-07-2026) is aanzienlijk
+              langer, dus dit houdt ruim marge over t.o.v. de paginagrens. */}
+          <View style={{ gap: 8 }}>
             {WELKOMSTBRIEF_PARAGRAFEN.map((paragraaf, i) => (
-              <Text key={i} style={{ fontSize: 9.5, color: KLEUR.ink, lineHeight: 1.6 }}>
+              <Text key={i} style={{ fontSize: 9, color: KLEUR.ink, lineHeight: 1.5 }}>
                 {paragraaf}
               </Text>
             ))}
           </View>
 
-          <View style={{ marginTop: 18, flexDirection: "row", alignItems: "flex-end", gap: 14 }}>
-            <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: KLEUR.mist, alignItems: "center", justifyContent: "center" }}>
-              <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: KLEUR.accentDark }}>SB</Text>
-            </View>
-            <View>
-              <Handtekening />
-              <Text style={{ fontSize: 7.5, color: KLEUR.inkFaint, marginTop: 2 }}>Oprichter, Kooprapport</Text>
+          <View style={{ marginTop: 16 }}>
+            <Text style={{ fontSize: 8.5, color: KLEUR.inkMuted }}>Met vriendelijke groet,</Text>
+            <View style={{ marginTop: 6, flexDirection: "row", alignItems: "flex-end", gap: 14 }}>
+              <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: KLEUR.mist, alignItems: "center", justifyContent: "center" }}>
+                <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: KLEUR.accentDark }}>SB</Text>
+              </View>
+              <View>
+                <Handtekening />
+                <Text style={{ fontSize: 7.5, color: KLEUR.inkFaint, marginTop: 2 }}>Oprichter, Kooprapport</Text>
+              </View>
             </View>
           </View>
 

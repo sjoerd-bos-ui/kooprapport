@@ -7,10 +7,9 @@ import { APP_BASE_URL } from "@/lib/config/payment";
 import { isVolledigLive } from "@/lib/config/launchStatus";
 import { buildReportHref, slugify } from "@/lib/utils/slug";
 import { Logo } from "@/components/ui/Logo";
+import VoorbeeldrapportSlider from "@/components/VoorbeeldrapportSlider";
 import type { AddressMeta } from "@/types/report";
 import {
-  FileCheckIcon,
-  ArrowRightIcon,
   ChevronDownIcon,
   StoreIcon,
   RulerIcon,
@@ -309,22 +308,16 @@ export default function HomePage() {
 
               {/* "Direct beschikbaar" en het voorbeeldrapport samen op één
                   regel — geen prijs genoemd, alleen dat het gratis en meteen
-                  te bekijken is. */}
+                  te bekijken is. De knop opent nu de doorklikbare
+                  VoorbeeldrapportSlider (alle 10 pagina's, zelfde stijl als
+                  het echte rapport) i.p.v. direct de PDF te openen; de PDF
+                  blijft binnen die modal als aparte downloadlink bereikbaar. */}
               <div className="mt-4 flex flex-wrap items-center gap-3">
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EAF3DE] px-3 py-1.5 text-[11px] font-bold text-[#3B6D11]">
                   <BoltIcon className="h-3.5 w-3.5" />
                   Rapport direct beschikbaar
                 </span>
-                <a
-                  href="/api/rapport/voorbeeld-pdf"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group inline-flex items-center gap-1.5 text-[11px] font-bold text-ink hover:text-accent"
-                >
-                  <FileCheckIcon className="h-3.5 w-3.5 text-accent" />
-                  Bekijk het echte voorbeeldrapport
-                  <ArrowRightIcon className="h-3 w-3 shrink-0 text-accent transition-transform group-hover:translate-x-1" />
-                </a>
+                <VoorbeeldrapportSlider />
               </div>
               <p className="mt-2 text-[11px] text-ink/55">Gratis preview, geen abonnement, geen account nodig</p>
             </div>
