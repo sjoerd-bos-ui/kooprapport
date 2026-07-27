@@ -170,7 +170,7 @@ export default function PreviewSummary({
               <p className="mt-1 text-[8px] font-extrabold text-white">Prinsengracht 88</p>
             </div>
             <div className="bg-white p-2 text-[5.5px] leading-[1.7] text-ink/45">
-              8 pagina&apos;s
+              10 pagina&apos;s
               <br />
               PDF incl.
               <br />
@@ -185,6 +185,7 @@ export default function PreviewSummary({
               "Verkopen in de buurt",
               "Objectgegevens",
               "Energieprestatie en label",
+              "Verduurzamingsadvies",
               "Funderingsrisico + advies",
               "Buurtprofiel",
               "Samenvatting",

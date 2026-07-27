@@ -7,35 +7,48 @@ import { duidEnergielabel, ENERGIELABEL_SCHAAL, ENERGIELABEL_KLEUREN } from "@/l
 import { berekenVeiligheidsscore, bepaalVeiligheidsBand, VEILIGHEID_BAND } from "@/lib/utils/veiligheidsscore";
 import { buildSamenvatting, type SamenvattingKernstat } from "@/lib/services/samenvatting";
 import { VOORZIENING_THEMA_VOLGORDE, VOORZIENING_THEMA_LABEL, VOORZIENING_KLEUR } from "@/lib/utils/voorzieningenStijl";
+import { buildCanonicalReportPath } from "@/lib/utils/slug";
 
 // -----------------------------------------------------------------------------
 // PDF-versie van het rapport — bewust een EIGEN, op zichzelf staande opmaak
 // (via @react-pdf/renderer), niet een screenshot/print van de webpagina zelf.
 //
-// v8 — acht aparte pagina's (opgebouwd via meerdere visualize-rondes met de
-// gebruiker), elk gewijd aan precies één onderdeel zodat elke pagina zijn
-// eigen volle, rustig leesbare ruimte krijgt i.p.v. twee onderdelen samen op
-// één pagina te persen:
-//   1) Cover — adres, kernquote + "bekijk online", vraag-gestileerde
-//      inhoudsopgave (1 regel per volgende pagina).
-//   2) Waarde-indicatie — hero (deze woning vs. buurtgemiddelde), duiding,
+// v9 — tien aparte pagina's (v8 had er acht; deze ronde voegt een echte
+// cover-make-over, een persoonlijke welkomstbrief en een eigen
+// Verduurzamingsadvies-pagina toe, en tilt de typografie van "Helvetica
+// overal" naar Bricolage Grotesque/Inter — zelfde twee lettertypes als de
+// webapp). Elke pagina is gewijd aan precies één onderdeel zodat elke pagina
+// zijn eigen volle, rustig leesbare ruimte krijgt i.p.v. twee onderdelen
+// samen op één pagina te persen:
+//   1) Cover — centraal logo/wordmark, groot adres, amber accentlijn,
+//      echte klikbare "bekijk online"-link (was voorheen decoratief).
+//   2) Welkomstbrief — persoonlijk woord van de oprichter (waarom
+//      Kooprapport bestaat), met fictieve handtekening (Caveat-lettertype
+//      + SVG-zwiersstreek).
+//   3) Waarde-indicatie — hero (deze woning vs. buurtgemiddelde), duiding,
 //      stepper-onderbouwing, bandbreedte, "wat kun je hiermee"-tips,
 //      uitlegpaneel.
-//   3) Verkopen in de buurt — kerncijfers, vergelijkbare verkopen
+//   4) Verkopen in de buurt — kerncijfers, vergelijkbare verkopen
 //      uitgelicht, overige verkopen gedempt, duiding "wat is vergelijkbaar".
-//   4) Objectgegevens & Energieprestatie — objecthero met kenmerken,
+//   5) Objectgegevens & Energieprestatie — objecthero met kenmerken,
 //      losse energieblokken (klasse+meter, schaal, stookkosten, vaststelling
-//      + geldigheid, isolatie, verduurzamingstips).
-//   5) Funderingsrisico — tijdlijn + meter, doorlopende toelichting
+//      + geldigheid, isolatie), met een doorverwijskaart naar Pagina 6 i.p.v.
+//      de vorige, generieke verduurzamingstips (alleen als daar ook echt
+//      premium data voor is).
+//   6) Verduurzamingsadvies — huidig/haalbaar energielabel, investering/
+//      besparing/terugverdientijd/waardestijging, concrete maatregelen,
+//      zelfde brongegevens (lib/data-sources/verduurzaming.ts) als het
+//      gelijknamige tabblad in ReportView.tsx.
+//   7) Funderingsrisico — tijdlijn + meter, doorlopende toelichting
 //      (bodem/wat we niet weten/conclusie/percentage), algemene signalen,
 //      advies bij twijfel.
-//   6) Buurtprofiel — veiligheid- en bebouwingsring, bevolking +
+//   8) Buurtprofiel — veiligheid- en bebouwingsring, bevolking +
 //      voorzieningen, algemene tips, duiding.
-//   7) Samenvatting — compacte, visuele eindsamenvatting (totaalbeeld,
+//   9) Samenvatting — compacte, visuele eindsamenvatting (totaalbeeld,
 //      kernstat-ringen, pluspunten/aandachtspunten/gebruiksblok,
 //      eindconclusie). Bouwt uitsluitend voort op velden die op de andere
 //      pagina's al staan (lib/services/samenvatting.ts) — geen nieuw feit.
-//   8) Afsluiting — decoratief, geen data.
+//   10) Afsluiting — decoratief, geen data, indigo achtergrond met golfmotief.
 //
 // Kleuren/getallen komen bewust uit dezelfde gedeelde bronnen als de
 // webweergave (lib/utils/toonKleuren.ts, lib/utils/energielabel.ts,
@@ -57,12 +70,12 @@ import { VOORZIENING_THEMA_VOLGORDE, VOORZIENING_THEMA_LABEL, VOORZIENING_KLEUR 
 // en isolatie" in components/report/ReportView.tsx).
 //
 // BEKENDE BEPERKING — QR-code: de cover verwijst naar de online versie via
-// een tekstuele "bekijk online"-pil, GEEN echte QR-afbeelding. Een QR-code
-// genereren vereist een pakket (bv. "qrcode") dat niet geïnstalleerd kon
-// worden vanuit deze sandbox (geen toegang tot de npm-registry). Voer lokaal
-// `npm install qrcode` uit, dan kan ik de echte, scanbare QR-code alsnog
-// toevoegen — een nagemaakt QR-patroon dat niet scant zou hier erger zijn
-// dan geen QR-code tonen.
+// een echte, klikbare tekstpil (Link naar siteUrl + buildCanonicalReportPath),
+// GEEN echte QR-afbeelding. Een QR-code genereren vereist een pakket (bv.
+// "qrcode") dat niet geïnstalleerd kon worden vanuit deze sandbox (geen
+// toegang tot de npm-registry). Voer lokaal `npm install qrcode` uit, dan kan
+// ik de echte, scanbare QR-code alsnog toevoegen — een nagemaakt QR-patroon
+// dat niet scant zou hier erger zijn dan geen QR-code tonen.
 //
 // Deze component ontvangt het AL OPGEHAALDE Report-object vanuit de client —
 // er wordt hier niets opnieuw bij Altum/BAG/CBS opgehaald.
@@ -70,9 +83,39 @@ import { VOORZIENING_THEMA_VOLGORDE, VOORZIENING_THEMA_LABEL, VOORZIENING_KLEUR 
 
 Font.registerHyphenationCallback((word) => [word]);
 
+// v9 — merk-getrouwe typografie: Bricolage Grotesque (koppen/cijfers) en
+// Inter (lopende tekst) zijn dezelfde twee lettertypes als de webapp
+// (globals.css) en de goedgekeurde cover-/briefpagina-mockups. Geladen via
+// jsDelivr/Fontsource (statische .ttf per gewicht) — @react-pdf/renderer kan
+// alleen losse font-bestanden registreren, geen Google Fonts CSS. Dit
+// gebeurt lazy, bij het eerst renderen van een PDF op de server (in Vercel
+// heeft die uitgaande toegang tot jsDelivr; er is geen sandbox-restrictie
+// zoals in de ontwikkelomgeving hier). "Caveat" is het handschriftlettertype
+// voor de fictieve handtekening op de welkomstbrief (Pagina 2).
+Font.register({
+  family: "Bricolage Grotesque",
+  fonts: [
+    { src: "https://cdn.jsdelivr.net/fontsource/fonts/bricolage-grotesque@latest/latin-700-normal.ttf", fontWeight: 700 },
+    { src: "https://cdn.jsdelivr.net/fontsource/fonts/bricolage-grotesque@latest/latin-800-normal.ttf", fontWeight: 800 },
+  ],
+});
+Font.register({
+  family: "Inter",
+  fonts: [
+    { src: "https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-400-normal.ttf", fontWeight: 400 },
+    { src: "https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-500-normal.ttf", fontWeight: 500 },
+    { src: "https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-700-normal.ttf", fontWeight: 700 },
+  ],
+});
+Font.register({
+  family: "Caveat",
+  fonts: [{ src: "https://cdn.jsdelivr.net/fontsource/fonts/caveat@latest/latin-700-normal.ttf", fontWeight: 700 }],
+});
+
 const KLEUR = {
   accent: "#4F46E5",
   accentDark: "#4338CA",
+  amber: "#D97706",
   ink: "#1F1F2E",
   inkMuted: "#6B6B7A",
   inkFaint: "#9797A3",
@@ -85,14 +128,44 @@ const KLEUR = {
 const SIDEBAR_BREEDTE = "14%";
 // Eén sectie per volgende pagina — zelfde volgorde als de vraag-gestileerde
 // inhoudsopgave op de cover, zodat sidebar en cover elkaar 1-op-1 bevestigen.
-const SECTIES = ["Overzicht", "Waarde", "Verkopen", "Object", "Fundering", "Buurt", "Samenvatting"];
+// "Verduurzaming" toegevoegd tussen "Object" en "Fundering" — zelfde plek als
+// de nieuwe Verduurzamingsadvies-pagina in de paginavolgorde hieronder.
+const SECTIES = ["Overzicht", "Waarde", "Verkopen", "Object", "Verduurzaming", "Fundering", "Buurt", "Samenvatting"];
 
 const styles = StyleSheet.create({
   pageRow: {
     flexDirection: "row",
-    fontFamily: "Helvetica",
+    fontFamily: "Inter",
     fontSize: 10,
     color: KLEUR.ink,
+  },
+  kicker: {
+    fontSize: 8.5,
+    fontFamily: "Inter",
+    fontWeight: 500,
+    letterSpacing: 1,
+    textTransform: "uppercase",
+    color: KLEUR.accent,
+    marginBottom: 5,
+  },
+  pageHeading: {
+    fontSize: 20,
+    fontFamily: "Bricolage Grotesque",
+    fontWeight: 800,
+    color: KLEUR.ink,
+  },
+  pageHeadingSub: {
+    fontSize: 9,
+    color: KLEUR.inkMuted,
+    marginTop: 4,
+  },
+  amberRule: {
+    width: 26,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: KLEUR.amber,
+    marginTop: 10,
+    marginBottom: 12,
   },
   sidebar: {
     width: SIDEBAR_BREEDTE,
@@ -136,19 +209,19 @@ const styles = StyleSheet.create({
   },
   kaart: {
     backgroundColor: KLEUR.paper,
-    borderRadius: 9,
-    padding: 11,
+    borderRadius: 12,
+    padding: 12,
   },
   kaartOpWit: {
     backgroundColor: KLEUR.parchment,
-    borderRadius: 7,
+    borderRadius: 9,
   },
   duidingPaneel: {
     backgroundColor: KLEUR.mist,
     borderLeftWidth: 3,
     borderLeftColor: KLEUR.accent,
-    borderRadius: 8,
-    padding: 10,
+    borderRadius: 10,
+    padding: 11,
   },
   row: { flexDirection: "row" },
   divider: { height: 0.5, backgroundColor: "#EEEEF3" },
@@ -585,6 +658,22 @@ function SectieKop({ titel, icoon, toon }: { titel: string; icoon: IconComp; too
   );
 }
 
+// Hoofdstuk-kop — kicker (nummer · sectie) + grote Bricolage Grotesque-titel
+// + amber accentlijn, dezelfde opbouw als de goedgekeurde cover-/brief-
+// mockups. Vervangt de eerdere kale pageTitel/pageSubtitel-tekstregels op
+// elke inhoudspagina, zodat het hele rapport (niet alleen de eerste twee
+// pagina's) de nieuwe, merk-getrouwe typografie draagt.
+function PaginaKop({ kicker, titel, subtitel }: { kicker: string; titel: string; subtitel?: string }) {
+  return (
+    <View>
+      <Text style={styles.kicker}>{kicker}</Text>
+      <Text style={styles.pageHeading}>{titel}</Text>
+      {subtitel && <Text style={styles.pageHeadingSub}>{subtitel}</Text>}
+      <View style={styles.amberRule} />
+    </View>
+  );
+}
+
 // Vaste linker navigatiebalk. actief=-1 → geen enkel item gemarkeerd
 // (gebruikt op de afsluitpagina, die geen eigen rapportonderdeel is).
 function Sidebar({ actief }: { actief: number }) {
@@ -601,15 +690,25 @@ function Sidebar({ actief }: { actief: number }) {
           <Circle cx={10.93} cy={12} r={1.46} fill="#D97706" />
         </Svg>
       </View>
-      <View style={{ marginTop: 24, gap: 16 }}>
+      <View style={{ marginTop: 22, gap: 13 }}>
         {SECTIES.map((label, i) => (
-          <View key={label} style={{ alignItems: "center", gap: 4, paddingHorizontal: 4 }}>
+          <View
+            key={label}
+            style={{
+              alignItems: "center",
+              gap: 4,
+              paddingHorizontal: 4,
+              paddingVertical: i === actief ? 5 : 0,
+              borderRadius: 8,
+              backgroundColor: i === actief ? "#FFFFFF1F" : "transparent",
+            }}
+          >
             <View
               style={{
-                width: i === actief ? 7 : 4,
-                height: i === actief ? 7 : 4,
+                width: i === actief ? 6.5 : 4,
+                height: i === actief ? 6.5 : 4,
                 borderRadius: 4,
-                backgroundColor: i === actief ? "#FFFFFF" : "#FFFFFF66",
+                backgroundColor: i === actief ? KLEUR.amber : "#FFFFFF66",
               }}
             />
             <Text
@@ -618,7 +717,8 @@ function Sidebar({ actief }: { actief: number }) {
                 textAlign: "center",
                 lineHeight: 1.3,
                 color: i === actief ? "#FFFFFF" : "#FFFFFF8C",
-                fontFamily: i === actief ? "Helvetica-Bold" : "Helvetica",
+                fontFamily: "Inter",
+                fontWeight: i === actief ? 700 : 400,
               }}
             >
               {label}
@@ -999,6 +1099,34 @@ function StepperLijn({ actief }: { actief?: boolean }) {
   return <View style={{ width: 14, height: 1, backgroundColor: actief ? KLEUR.accent : "#DCD8FB", marginBottom: 15 }} />;
 }
 
+// Fictieve handtekening (Pagina 2, welkomstbrief) — een echt handschriftlettertype
+// (Caveat) gecombineerd met een los getekende SVG-zwiersstreek eronder. Alleen
+// een cursief lettertype oogt te "netjes"/machinaal voor een handtekening; de
+// net-niet-rechte streek (twee tegengestelde bogen) samen met een lichte
+// rotatie van het geheel geeft een veel overtuigender "echt getekend"-gevoel.
+function Handtekening() {
+  return (
+    <View style={{ transform: "rotate(-2deg)" }}>
+      <Text style={{ fontSize: 32, fontFamily: "Caveat", fontWeight: 700, color: KLEUR.accentDark }}>Sjoerd</Text>
+      <Svg width={92} height={14} viewBox="0 0 92 14" style={{ marginTop: -6, marginLeft: 6 }}>
+        <Path d="M2 7 C18 1 30 13 48 6 S 76 1 90 8" stroke={KLEUR.amber} strokeWidth={1.6} fill="none" strokeLinecap="round" />
+      </Svg>
+    </View>
+  );
+}
+
+// Founder-brief (Pagina 2) — persoonlijk verhaal van Sjoerd, bewust géén
+// koper-specifieke taal (geen "bod", geen "bezichtiging"): dit rapport is
+// voor kopers, verkopers én woningeigenaren, zelfde drie doelgroepen als de
+// homepage-tagline (app/page.tsx) — zie ook de bewuste keuze in
+// lib/services/samenvatting.ts om nooit koper-specifiek te formuleren.
+const WELKOMSTBRIEF_PARAGRAFEN = [
+  "oen ik zelf een huis kocht in Rotterdam, merkte ik hoe verspreid de informatie was. Het energielabel stond in het ene register, het funderingsrisico moest ik zelf bij de gemeente opzoeken, en niemand kon mij met cijfers onderbouwen of de vraagprijs reëel was. Ik wilde gewoon één duidelijk overzicht, niet tien losse bronnen.",
+  "Die zoektocht was de aanleiding voor Kooprapport: één plek waar de belangrijkste feiten over een adres bij elkaar staan, met bronvermelding en zonder aannames die niet kloppen.",
+  "Dit rapport is gemaakt voor iedereen die een adres beter wil begrijpen: kopers die een bod voorbereiden, verkopers die hun vraagprijs willen onderbouwen, en eigenaren die gewoon willen weten waar ze wonen.",
+  "Ik hoop dat het je helpt bij een weloverwogen beslissing.",
+];
+
 export default function ReportDocument({
   report,
   isVoorbeeld = false,
@@ -1021,7 +1149,7 @@ export default function ReportDocument({
   // meegeven (zie de twee PDF-routes in app/api/rapport/).
   siteUrl: string;
 }) {
-  const { core, building, energy, market, nearbySales, buurtprofiel, fundering, gegenereerdOp } = report;
+  const { core, building, energy, market, nearbySales, verduurzaming, buurtprofiel, fundering, gegenereerdOp } = report;
   // Defensieve fallback, NIET een normale "data onbeschikbaar"-staat: kavel
   // is het nieuwste veld op Report. Komt een PDF-aanvraag binnen met een
   // rapport-object dat dit veld nog mist (bv. een browser-tabblad dat het
@@ -1169,73 +1297,98 @@ export default function ReportDocument({
   return (
     <Document title={`Kooprapport ${adresRegel}`} author="Kooprapport">
       {/* ================================================================== */}
-      {/* Pagina 1 — Cover                                                   */}
+      {/* Pagina 1 — Cover (v9: centraal logo, groot adres, amber accentlijn — */}
+      {/* zelfde opbouw als de goedgekeurde visualize-mockup)                 */}
       {/* ================================================================== */}
       <Page size="A4" style={styles.pageRow}>
         <Sidebar actief={0} />
-        <View style={[styles.content, { paddingTop: isVoorbeeld ? 32 : 26, paddingBottom: isVoorbeeld ? 74 : 40 }]}>
+        <View
+          style={[
+            styles.content,
+            { alignItems: "center", justifyContent: "center", paddingTop: isVoorbeeld ? 40 : 34, paddingBottom: isVoorbeeld ? 84 : 46 },
+          ]}
+        >
           {isVoorbeeld && <VoorbeeldBanner siteUrl={siteUrl} />}
-          <View style={{ position: "relative", backgroundColor: KLEUR.accentDark, borderRadius: 12, padding: 18, marginBottom: 12, overflow: "hidden" }}>
-            <Svg width={160} height={64} viewBox="0 0 160 64" style={{ position: "absolute", right: 0, bottom: 0 }}>
-              <Rect x={10} y={24} width={18} height={40} fill="#FFFFFF1F" />
-              <Rect x={32} y={10} width={18} height={54} fill="#FFFFFF1F" />
-              <Rect x={54} y={28} width={18} height={36} fill="#FFFFFF1F" />
-              <Rect x={76} y={0} width={18} height={64} fill="#FFFFFF1F" />
-              <Rect x={98} y={18} width={18} height={46} fill="#FFFFFF1F" />
-              <Rect x={120} y={32} width={18} height={32} fill="#FFFFFF1F" />
-            </Svg>
-            <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: "#FFFFFFB3", letterSpacing: 1 }}>PREMIUM WONINGRAPPORT</Text>
-            <Text style={{ marginTop: 8, fontSize: 21, fontFamily: "Helvetica-Bold", color: "#FFFFFF" }}>
-              {address.straat} {address.huisnummer}
-              {address.huisletter ?? ""}
-              {address.toevoeging ? `-${address.toevoeging}` : ""}
-            </Text>
-            <Text style={{ marginTop: 3, fontSize: 9.5, color: "#FFFFFFCC" }}>
-              {address.postcode} {address.plaats}
-            </Text>
+
+          <View style={{ alignItems: "center", marginBottom: 22 }}>
+            <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: KLEUR.accentDark, alignItems: "center", justifyContent: "center", marginBottom: 9 }}>
+              <IcoonKooprapportLogo kleur="#FFFFFF" size={21} />
+            </View>
+            <Text style={{ fontSize: 9, fontFamily: "Bricolage Grotesque", fontWeight: 800, color: KLEUR.accentDark, letterSpacing: 0.6 }}>KOOPRAPPORT</Text>
           </View>
 
-          {/* Quote + "bekijk online" — zie bovenstaande toelichting: bewust
-              geen nagemaakte QR-afbeelding. */}
-          <View style={{ backgroundColor: KLEUR.accent, borderRadius: 10, padding: 11, flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 14 }}>
-            <View style={{ backgroundColor: "#FFFFFF", borderRadius: 6, width: 26, height: 26, alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <IcoonExternLink kleur={KLEUR.accentDark} size={13} />
+          <Text style={{ fontSize: 8.5, fontFamily: "Inter", fontWeight: 500, letterSpacing: 1.6, textTransform: "uppercase", color: KLEUR.inkFaint, textAlign: "center" }}>
+            Premium woningrapport
+          </Text>
+          <Text style={{ marginTop: 12, fontSize: 28, fontFamily: "Bricolage Grotesque", fontWeight: 800, color: KLEUR.ink, textAlign: "center", lineHeight: 1.2, maxWidth: 380 }}>
+            {address.straat} {address.huisnummer}
+            {address.huisletter ?? ""}
+            {address.toevoeging ? `-${address.toevoeging}` : ""}
+          </Text>
+          <Text style={{ marginTop: 6, fontSize: 11.5, color: KLEUR.inkMuted, textAlign: "center" }}>
+            {address.postcode} {address.plaats}
+          </Text>
+
+          <View style={[styles.amberRule, { alignSelf: "center" }]} />
+
+          <Text style={{ fontSize: 9.5, color: KLEUR.inkMuted, textAlign: "center", maxWidth: 320, lineHeight: 1.65 }}>
+            Alles wat je moet weten over dit adres, feitelijk en verifieerbaar op één rij.
+          </Text>
+
+          {/* Echte, klikbare link naar de online versie (was voorheen een
+              niet-klikbaar decoratief blok) — via dezelfde canonieke-URL-
+              opbouw als de rest van de app (lib/utils/slug.ts), zodat dit
+              altijd naar exact dít adres verwijst. */}
+          <Link src={`${siteUrl}${buildCanonicalReportPath(address)}`} style={{ textDecoration: "none", marginTop: 20 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 7, backgroundColor: KLEUR.accent, borderRadius: 999, paddingVertical: 8, paddingHorizontal: 16 }}>
+              <IcoonExternLink kleur="#FFFFFF" size={11} />
+              <Text style={{ fontSize: 8.5, fontFamily: "Inter", fontWeight: 700, color: "#FFFFFF" }}>Bekijk dit rapport online</Text>
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 8.5, color: "#FFFFFF", lineHeight: 1.4, fontFamily: "Helvetica-Bold" }}>
-                &ldquo;Een woning kopen of verkopen begint met weten wat je écht in handen hebt.&rdquo;
+          </Link>
+
+          <Text style={{ marginTop: 16, fontSize: 7.5, color: KLEUR.inkFaint }}>{`Gegenereerd op ${formatDate(gegenereerdOp)}`}</Text>
+
+          {isVoorbeeld && <VoorbeeldBannerOnder siteUrl={siteUrl} />}
+          {/* Eigen, decoratieve voettekst i.p.v. de gedeelde Footer-component:
+              een titelpagina heeft geen paginacijfer/bronvermelding nodig —
+              die beginnen bij de eerste inhoudspagina. */}
+          <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: KLEUR.accentDark, paddingVertical: 11, alignItems: "center" }}>
+            <Text style={{ fontSize: 7.5, fontFamily: "Inter", fontWeight: 500, color: "#FFFFFFB3", letterSpacing: 0.6 }}>KOOPRAPPORT.NL</Text>
+          </View>
+        </View>
+      </Page>
+
+      {/* ================================================================== */}
+      {/* Pagina 2 — Welkomstbrief (persoonlijk woord van de oprichter)       */}
+      {/* ================================================================== */}
+      <Page size="A4" style={styles.pageRow}>
+        <Sidebar actief={0} />
+        <View style={[styles.content, { paddingTop: isVoorbeeld ? 40 : 34, paddingBottom: isVoorbeeld ? 84 : 46, paddingHorizontal: 42 }]}>
+          {isVoorbeeld && <VoorbeeldBanner siteUrl={siteUrl} />}
+
+          <Text style={styles.kicker}>Een persoonlijk woord</Text>
+          <Text style={styles.pageHeading}>Waarom Kooprapport bestaat</Text>
+          <View style={styles.amberRule} />
+
+          <View style={{ gap: 12 }}>
+            {WELKOMSTBRIEF_PARAGRAFEN.map((paragraaf, i) => (
+              <Text key={i} style={{ fontSize: 9.5, color: KLEUR.ink, lineHeight: 1.75 }}>
+                {i === 0 && (
+                  <Text style={{ fontSize: 26, fontFamily: "Bricolage Grotesque", fontWeight: 800, color: KLEUR.accentDark }}>T</Text>
+                )}
+                {paragraaf}
               </Text>
-              <Text style={{ fontSize: 6.5, color: "#FFFFFFB3", marginTop: 3 }}>Bekijk dit rapport ook online voor de actuele versie</Text>
-            </View>
+            ))}
           </View>
 
-          <Text style={{ fontSize: 9.5, fontFamily: "Helvetica-Bold", color: KLEUR.ink, marginBottom: 8 }}>Wat dit rapport beantwoordt</Text>
-          <View>
-            {[
-              "Wat is deze woning waard?",
-              "Wat verkocht er recent in de buurt?",
-              "Wat zijn de kenmerken van dit pand?",
-              "Hoe energiezuinig is de woning?",
-              "Is de fundering een aandachtspunt?",
-              "Hoe is het wonen in deze buurt?",
-            ].map((vraag, i) => (
-              <View
-                key={vraag}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 8,
-                  paddingVertical: 6,
-                  borderBottomWidth: i === 5 ? 0 : 0.5,
-                  borderBottomColor: KLEUR.line,
-                }}
-              >
-                <View style={{ width: 15, height: 15, borderRadius: 7.5, backgroundColor: KLEUR.mist, alignItems: "center", justifyContent: "center" }}>
-                  <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: KLEUR.accent }}>{i + 1}</Text>
-                </View>
-                <Text style={{ fontSize: 8.5, color: KLEUR.ink }}>{vraag}</Text>
-              </View>
-            ))}
+          <View style={{ marginTop: 24, flexDirection: "row", alignItems: "flex-end", gap: 14 }}>
+            <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: KLEUR.mist, alignItems: "center", justifyContent: "center" }}>
+              <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: KLEUR.accentDark }}>SB</Text>
+            </View>
+            <View>
+              <Handtekening />
+              <Text style={{ fontSize: 7.5, color: KLEUR.inkFaint, marginTop: 2 }}>Oprichter, Kooprapport</Text>
+            </View>
           </View>
 
           {isVoorbeeld && <VoorbeeldBannerOnder siteUrl={siteUrl} />}
@@ -1244,14 +1397,13 @@ export default function ReportDocument({
       </Page>
 
       {/* ================================================================== */}
-      {/* Pagina 2 — Waarde-indicatie                                        */}
+      {/* Pagina 3 — Waarde-indicatie                                        */}
       {/* ================================================================== */}
       <Page size="A4" style={styles.pageRow}>
         <Sidebar actief={1} />
         <View style={[styles.contentTinted, { paddingTop: isVoorbeeld ? 32 : 26, paddingBottom: isVoorbeeld ? 74 : 40 }]}>
           {isVoorbeeld && <VoorbeeldBanner siteUrl={siteUrl} />}
-          <Text style={styles.pageTitel}>Waarde-indicatie</Text>
-          <Text style={[styles.pageSubtitel, { marginBottom: 10 }]}>Modelschatting van deze woning, geen taxatie, geen WOZ-waarde</Text>
+          <PaginaKop kicker="03 · waarde" titel="Waarde-indicatie" subtitel="Modelschatting van deze woning, geen taxatie, geen WOZ-waarde" />
 
           {market.data ? (
             <View style={{ gap: 6 }}>
@@ -1417,18 +1569,21 @@ export default function ReportDocument({
       </Page>
 
       {/* ================================================================== */}
-      {/* Pagina 3 — Verkopen in de buurt                                    */}
+      {/* Pagina 4 — Verkopen in de buurt                                    */}
       {/* ================================================================== */}
       <Page size="A4" style={styles.pageRow}>
         <Sidebar actief={2} />
         <View style={[styles.contentTinted, { paddingTop: isVoorbeeld ? 32 : 26, paddingBottom: isVoorbeeld ? 74 : 40 }]}>
           {isVoorbeeld && <VoorbeeldBanner siteUrl={siteUrl} />}
-          <Text style={styles.pageTitel}>Verkopen in de buurt</Text>
-          <Text style={[styles.pageSubtitel, { marginBottom: 10 }]}>
-            {nearbySales.data
-              ? `Recent verkochte, vergelijkbare woningen · laatste ${nearbySales.data.zoekvensterMaanden} maanden`
-              : "Recent verkochte, vergelijkbare woningen"}
-          </Text>
+          <PaginaKop
+            kicker="04 · verkopen"
+            titel="Verkopen in de buurt"
+            subtitel={
+              nearbySales.data
+                ? `Recent verkochte, vergelijkbare woningen · laatste ${nearbySales.data.zoekvensterMaanden} maanden`
+                : "Recent verkochte, vergelijkbare woningen"
+            }
+          />
 
           {nearbySales.data && alleVerkopen.length > 0 ? (
             <View style={{ gap: 6 }}>
@@ -1520,14 +1675,17 @@ export default function ReportDocument({
       </Page>
 
       {/* ================================================================== */}
-      {/* Pagina 4 — Objectgegevens & Energieprestatie en label              */}
+      {/* Pagina 5 — Objectgegevens & Energieprestatie en label              */}
       {/* ================================================================== */}
       <Page size="A4" style={styles.pageRow}>
         <Sidebar actief={3} />
         <View style={[styles.contentTinted, { paddingTop: isVoorbeeld ? 32 : 26, paddingBottom: isVoorbeeld ? 74 : 40 }]}>
           {isVoorbeeld && <VoorbeeldBanner siteUrl={siteUrl} />}
-          <Text style={styles.pageTitel}>Objectgegevens & Energieprestatie</Text>
-          <Text style={[styles.pageSubtitel, { marginBottom: 10 }]}>Kenmerken van dit pand en het officieel geregistreerde energielabel</Text>
+          <PaginaKop
+            kicker="05 · object"
+            titel="Objectgegevens & Energieprestatie"
+            subtitel="Kenmerken van dit pand en het officieel geregistreerde energielabel"
+          />
 
           <View style={{ gap: 6 }}>
             {building.data ? (
@@ -1631,12 +1789,30 @@ export default function ReportDocument({
                   )}
                 </View>
 
-                <TipsGrid
-                  titel="Mogelijkheden voor verduurzaming"
-                  sublabel="algemene tips, geen advies specifiek voor dit pand"
-                  items={["Dak- en vloerisolatie", "HR++ of triple glas", "Zonnepanelen", "Slimme thermostaat"]}
-                  dotKleur={TOON_HEX.gunstig.tekst}
-                />
+                {/* Doorverwijskaart naar de nieuwe, eigen Verduurzamingsadvies-
+                    pagina i.p.v. de vorige, generieke tips-grid — alleen als
+                    er ook echt premium verduurzamingsdata is (anders zou de
+                    kaart naar een lege volgende pagina wijzen). Zonder die
+                    data valt dit terug op dezelfde altijd-geldige tips als
+                    voorheen. */}
+                {verduurzaming.data?.huidigLabel != null && verduurzaming.data?.haalbaarLabel != null ? (
+                  <View style={[styles.duidingPaneel, { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 }]}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 8.5, fontFamily: "Helvetica-Bold", color: KLEUR.accentDark, marginBottom: 2 }}>Uitgebreid verduurzamingsadvies</Text>
+                      <Text style={{ fontSize: 7.3, color: KLEUR.ink, lineHeight: 1.5 }}>Concrete maatregelen, investering en terugverdientijd voor dit pand — volgende pagina.</Text>
+                    </View>
+                    <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: KLEUR.accent, alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <IcoonTrend kleur="#FFFFFF" size={11} />
+                    </View>
+                  </View>
+                ) : (
+                  <TipsGrid
+                    titel="Mogelijkheden voor verduurzaming"
+                    sublabel="algemene tips, geen advies specifiek voor dit pand"
+                    items={["Dak- en vloerisolatie", "HR++ of triple glas", "Zonnepanelen", "Slimme thermostaat"]}
+                    dotKleur={TOON_HEX.gunstig.tekst}
+                  />
+                )}
               </>
             ) : (
               <NietBeschikbaar tekst="Geen geregistreerd energielabel gevonden voor dit adres." />
@@ -1649,39 +1825,183 @@ export default function ReportDocument({
       </Page>
 
       {/* ================================================================== */}
-      {/* Pagina 5 — Funderingsrisico                                        */}
+      {/* Pagina 6 — Verduurzamingsadvies (Altum AI, NTA 8800)               */}
       {/* ================================================================== */}
       <Page size="A4" style={styles.pageRow}>
         <Sidebar actief={4} />
         <View style={[styles.contentTinted, { paddingTop: isVoorbeeld ? 32 : 26, paddingBottom: isVoorbeeld ? 74 : 40 }]}>
           {isVoorbeeld && <VoorbeeldBanner siteUrl={siteUrl} />}
-          <Text style={styles.pageTitel}>Funderingsrisico</Text>
-          <Text style={[styles.pageSubtitel, { marginBottom: 10 }]}>Indicatie, geen funderingsonderzoek</Text>
+          <PaginaKop
+            kicker="06 · verduurzaming"
+            titel="Verduurzamingsadvies"
+            subtitel="Modelmatige inschatting op basis van de NTA 8800-norm (Altum AI)"
+          />
+
+          {verduurzaming.data?.huidigLabel != null && verduurzaming.data?.haalbaarLabel != null ? (
+            <View style={{ gap: 6 }}>
+              <View style={styles.kaart}>
+                <View style={[styles.row, { alignItems: "center", gap: 5 }]}>
+                  {ENERGIELABEL_SCHAAL.map((klasse, i) => {
+                    const isHuidig = klasse === verduurzaming.data!.huidigLabel;
+                    const isHaalbaar = klasse === verduurzaming.data!.haalbaarLabel;
+                    return (
+                      <View
+                        key={klasse}
+                        style={{
+                          flex: 1,
+                          height: 22,
+                          borderRadius: 5,
+                          backgroundColor: ENERGIELABEL_KLEUREN[i],
+                          alignItems: "center",
+                          justifyContent: "center",
+                          opacity: isHuidig || isHaalbaar ? 1 : 0.35,
+                          borderWidth: isHaalbaar ? 1.6 : 0,
+                          borderColor: "#FFFFFF",
+                        }}
+                      >
+                        {(isHuidig || isHaalbaar) && <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: "#FFFFFF" }}>{klasse}</Text>}
+                      </View>
+                    );
+                  })}
+                </View>
+                <View style={[styles.row, { justifyContent: "space-between", marginTop: 8 }]}>
+                  <Chip text={`Huidig label ${verduurzaming.data.huidigLabel}`} toon="neutraal" />
+                  <Chip text={`Haalbaar label ${verduurzaming.data.haalbaarLabel}`} toon="gunstig" />
+                </View>
+              </View>
+
+              <View style={[styles.row, { flexWrap: "wrap", gap: 6 }]}>
+                <View style={[styles.kaart, { flexBasis: "48%", flexGrow: 1 }]}>
+                  <Text style={{ fontSize: 6.5, color: KLEUR.inkFaint, textTransform: "uppercase" }}>Investering</Text>
+                  <Text style={{ fontSize: 13, fontFamily: "Helvetica-Bold", color: KLEUR.ink, marginTop: 3 }}>
+                    {verduurzaming.data.investering != null ? formatCurrency(verduurzaming.data.investering) : "Onbekend"}
+                  </Text>
+                  <Text style={{ fontSize: 6.3, color: KLEUR.inkFaint, marginTop: 2 }}>voor alle maatregelen samen</Text>
+                </View>
+                <View style={[styles.kaart, { flexBasis: "48%", flexGrow: 1 }]}>
+                  <Text style={{ fontSize: 6.5, color: KLEUR.inkFaint, textTransform: "uppercase" }}>Besparing per jaar</Text>
+                  <Text style={{ fontSize: 13, fontFamily: "Helvetica-Bold", color: TOON_HEX.gunstig.tekst, marginTop: 3 }}>
+                    {verduurzaming.data.besparingPerJaar != null ? formatCurrency(verduurzaming.data.besparingPerJaar) : "Onbekend"}
+                  </Text>
+                </View>
+                <View style={[styles.kaart, { flexBasis: "48%", flexGrow: 1 }]}>
+                  <Text style={{ fontSize: 6.5, color: KLEUR.inkFaint, textTransform: "uppercase" }}>Terugverdientijd</Text>
+                  <Text style={{ fontSize: 13, fontFamily: "Helvetica-Bold", color: KLEUR.ink, marginTop: 3 }}>
+                    {(() => {
+                      const maanden = verduurzaming.data!.terugverdientijdMaanden;
+                      if (maanden == null) return "Onbekend";
+                      const jaren = Math.floor(maanden / 12);
+                      const restMaanden = maanden % 12;
+                      if (jaren <= 0) return `${maanden} mnd`;
+                      return restMaanden > 0 ? `${jaren} jaar ${restMaanden} mnd` : `${jaren} jaar`;
+                    })()}
+                  </Text>
+                </View>
+                <View style={[styles.kaart, { flexBasis: "48%", flexGrow: 1 }]}>
+                  <Text style={{ fontSize: 6.5, color: KLEUR.inkFaint, textTransform: "uppercase" }}>Waardestijging</Text>
+                  <Text style={{ fontSize: 13, fontFamily: "Helvetica-Bold", color: KLEUR.ink, marginTop: 3 }}>
+                    {verduurzaming.data.waardestijging != null ? formatCurrency(verduurzaming.data.waardestijging) : "Onbekend"}
+                  </Text>
+                  <Text style={{ fontSize: 6.3, color: KLEUR.inkFaint, marginTop: 2 }}>Ecowaarde</Text>
+                </View>
+              </View>
+
+              {verduurzaming.data.energierekeningHuidigPerJaar != null && verduurzaming.data.energierekeningNaPerJaar != null && (
+                <View style={styles.kaart}>
+                  <Text style={{ fontSize: 7.6, color: KLEUR.ink, lineHeight: 1.55 }}>
+                    Van gemiddeld <Text style={{ fontFamily: "Helvetica-Bold" }}>{formatCurrency(verduurzaming.data.energierekeningHuidigPerJaar)}</Text> naar
+                    circa <Text style={{ fontFamily: "Helvetica-Bold" }}>{formatCurrency(verduurzaming.data.energierekeningNaPerJaar)}</Text> per jaar aan
+                    energiekosten
+                    {verduurzaming.data.co2ReductieKg != null &&
+                      `, samen met circa ${verduurzaming.data.co2ReductieKg.toLocaleString("nl-NL")} kg minder CO₂-uitstoot per jaar.`}
+                  </Text>
+                </View>
+              )}
+
+              {verduurzaming.data.maatregelen.length > 0 && (
+                <View style={[styles.kaart, { gap: 8 }]}>
+                  <Text style={{ fontSize: 8.5, fontFamily: "Helvetica-Bold", color: KLEUR.ink }}>Concrete maatregelen</Text>
+                  {verduurzaming.data.maatregelen.slice(0, 5).map((m) => (
+                    <View key={m.key} style={[styles.row, { justifyContent: "space-between", alignItems: "center" }]}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: KLEUR.ink }}>{m.label}</Text>
+                        <Text style={{ fontSize: 6.8, color: KLEUR.inkFaint, marginTop: 1 }}>{`${m.van} → ${m.naar}`}</Text>
+                      </View>
+                      <View style={{ alignItems: "flex-end" }}>
+                        <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: KLEUR.ink }}>{formatCurrency(m.investering)}</Text>
+                        <Text style={{ fontSize: 6.5, color: KLEUR.inkFaint, marginTop: 1 }}>{`bespaart ${formatCurrency(m.besparingPerJaar)}/jaar`}</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              <View style={styles.duidingPaneel}>
+                <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: KLEUR.accentDark, marginBottom: 3 }}>Subsidiemogelijkheden (ISDE)</Text>
+                <Text style={{ fontSize: 7.3, color: KLEUR.ink, lineHeight: 1.55 }}>
+                  Voor een deel van de maatregelen hierboven kan de landelijke ISDE-subsidie gelden, met een hoger bedrag bij het combineren van
+                  meerdere maatregelen. Reken het exacte bedrag na via de officiële RVO-rekentool.
+                </Text>
+              </View>
+
+              <Text style={{ fontSize: 6.8, color: KLEUR.inkFaint, lineHeight: 1.5 }}>
+                Modelmatige inschatting op basis van de NTA 8800-norm (Altum AI), geen vervanging voor een officieel energieadvies.
+              </Text>
+            </View>
+          ) : (
+            <NietBeschikbaar tekst="Geen verduurzamingsadvies beschikbaar voor dit adres." />
+          )}
+
+          {isVoorbeeld && <VoorbeeldBannerOnder siteUrl={siteUrl} />}
+          <Footer gegenereerdOp={gegenereerdOp} />
+        </View>
+      </Page>
+
+      {/* ================================================================== */}
+      {/* Pagina 7 — Funderingsrisico                                        */}
+      {/* ================================================================== */}
+      <Page size="A4" style={styles.pageRow}>
+        <Sidebar actief={5} />
+        <View style={[styles.contentTinted, { paddingTop: isVoorbeeld ? 32 : 26, paddingBottom: isVoorbeeld ? 74 : 40 }]}>
+          {isVoorbeeld && <VoorbeeldBanner siteUrl={siteUrl} />}
+          <PaginaKop kicker="07 · fundering" titel="Funderingsrisico" subtitel="Indicatie, geen funderingsonderzoek" />
 
           {fundering.data?.niveau ? (
             <View style={{ gap: 6 }}>
-              {/* Hero: tijdlijn + meter */}
+              {/* Hero: tijdlijn + meter — zelfde opbouw als voorheen (expliciet
+                  zo gehouden op verzoek), met iets steviger uitgewerkte
+                  mini-stat-badges als extra finish (gevulde cirkel met zachte
+                  rand i.p.v. een dunne outline-cirkel). */}
               <View style={styles.kaart}>
                 <View style={[styles.row, { alignItems: "flex-start" }]}>
                   <View style={{ flex: 1, alignItems: "center" }}>
-                    <View style={{ width: 24, height: 24, borderRadius: 12, borderWidth: 1.3, borderColor: KLEUR.line, backgroundColor: KLEUR.paper, alignItems: "center", justifyContent: "center" }}>
-                      <IcoonKalender kleur={KLEUR.inkFaint} size={11} />
+                    <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: KLEUR.parchment, alignItems: "center", justifyContent: "center" }}>
+                      <IcoonKalender kleur={KLEUR.inkMuted} size={12} />
                     </View>
-                    <Text style={{ fontSize: 8.5, fontFamily: "Helvetica-Bold", color: KLEUR.ink, marginTop: 4 }}>{fundering.data.bouwjaarGebruikt ?? "Onbekend"}</Text>
+                    <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: KLEUR.ink, marginTop: 5 }}>{fundering.data.bouwjaarGebruikt ?? "Onbekend"}</Text>
                     <Text style={{ fontSize: 6, color: KLEUR.inkFaint }}>bouwjaar</Text>
                   </View>
                   <View style={{ flex: 1, alignItems: "center" }}>
-                    <View style={{ width: 24, height: 24, borderRadius: 12, borderWidth: 1.3, borderColor: KLEUR.line, backgroundColor: KLEUR.paper, alignItems: "center", justifyContent: "center" }}>
-                      <IcoonSchild kleur={KLEUR.inkFaint} size={11} />
+                    <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: KLEUR.parchment, alignItems: "center", justifyContent: "center" }}>
+                      <IcoonSchild kleur={KLEUR.inkMuted} size={12} />
                     </View>
-                    <Text style={{ fontSize: 8.5, fontFamily: "Helvetica-Bold", color: KLEUR.ink, marginTop: 4 }}>{bodemNodeTekst(fundering.data.bodemclassificatie)}</Text>
+                    <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: KLEUR.ink, marginTop: 5 }}>{bodemNodeTekst(fundering.data.bodemclassificatie)}</Text>
                     <Text style={{ fontSize: 6, color: KLEUR.inkFaint }}>bodemdata</Text>
                   </View>
                   <View style={{ flex: 1, alignItems: "center" }}>
-                    <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: TOON_HEX[funderingToon].tekst, alignItems: "center", justifyContent: "center" }}>
-                      <IcoonWaarschuwing kleur="#FFFFFF" size={11} />
+                    <View
+                      style={{
+                        width: 26,
+                        height: 26,
+                        borderRadius: 13,
+                        backgroundColor: TOON_HEX[funderingToon].tekst,
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <IcoonWaarschuwing kleur="#FFFFFF" size={12} />
                     </View>
-                    <Text style={{ fontSize: 8.5, fontFamily: "Helvetica-Bold", color: TOON_HEX[funderingToon].tekst, marginTop: 4 }}>{funderingNiveauTekst}</Text>
+                    <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: TOON_HEX[funderingToon].tekst, marginTop: 5 }}>{funderingNiveauTekst}</Text>
                     <Text style={{ fontSize: 6, color: KLEUR.inkFaint }}>risiconiveau</Text>
                   </View>
                 </View>
@@ -1792,14 +2112,13 @@ export default function ReportDocument({
       </Page>
 
       {/* ================================================================== */}
-      {/* Pagina 6 — Buurtprofiel                                            */}
+      {/* Pagina 8 — Buurtprofiel                                            */}
       {/* ================================================================== */}
       <Page size="A4" style={styles.pageRow}>
-        <Sidebar actief={5} />
+        <Sidebar actief={6} />
         <View style={[styles.contentTinted, { paddingTop: isVoorbeeld ? 32 : 26, paddingBottom: isVoorbeeld ? 74 : 40 }]}>
           {isVoorbeeld && <VoorbeeldBanner siteUrl={siteUrl} />}
-          <Text style={styles.pageTitel}>Buurtprofiel</Text>
-          <Text style={[styles.pageSubtitel, { marginBottom: 10 }]}>{buurtSubtitel}</Text>
+          <PaginaKop kicker="08 · buurt" titel="Buurtprofiel" subtitel={buurtSubtitel} />
 
           {buurtprofiel.data ? (
             <View style={{ gap: 6 }}>
@@ -1939,19 +2258,18 @@ export default function ReportDocument({
       </Page>
 
       {/* ================================================================== */}
-      {/* Pagina 7 — Samenvatting (compacte, visuele eindsamenvatting)        */}
+      {/* Pagina 9 — Samenvatting (compacte, visuele eindsamenvatting)        */}
       {/* ================================================================== */}
       <Page size="A4" style={styles.pageRow}>
-        <Sidebar actief={6} />
+        <Sidebar actief={7} />
         <View style={[styles.contentTinted, { paddingTop: isVoorbeeld ? 32 : 26, paddingBottom: isVoorbeeld ? 74 : 40 }]}>
           {isVoorbeeld && <VoorbeeldBanner siteUrl={siteUrl} />}
-          <Text style={styles.pageTitel}>Samenvatting</Text>
-          <Text style={[styles.pageSubtitel, { marginBottom: 10 }]}>Compacte, feitelijke afsluiting van dit rapport</Text>
+          <PaginaKop kicker="09 · samenvatting" titel="Samenvatting" subtitel="Compacte, feitelijke afsluiting van dit rapport" />
 
           <View style={{ gap: 6 }}>
             {/* Hero: totaalbeeld + geschatte waarde */}
-            <View style={{ backgroundColor: KLEUR.accentDark, borderRadius: 9, padding: 13 }}>
-              <Text style={{ fontSize: 12, fontFamily: "Helvetica-Bold", color: "#FFFFFF", lineHeight: 1.35 }}>{samenvatting.titel}</Text>
+            <View style={{ backgroundColor: KLEUR.accentDark, borderRadius: 12, padding: 14 }}>
+              <Text style={{ fontSize: 13.5, fontFamily: "Bricolage Grotesque", fontWeight: 800, color: "#FFFFFF", lineHeight: 1.35 }}>{samenvatting.titel}</Text>
               <Text style={{ fontSize: 7.6, color: "#FFFFFFD9", lineHeight: 1.55, marginTop: 6, maxWidth: 430 }}>{samenvatting.totaalbeeld}</Text>
               {market.data && (
                 <View style={{ marginTop: 9, alignSelf: "flex-start", backgroundColor: "#FFFFFF26", borderRadius: 999, paddingVertical: 4, paddingHorizontal: 10 }}>
@@ -2025,38 +2343,84 @@ export default function ReportDocument({
       </Page>
 
       {/* ================================================================== */}
-      {/* Pagina 8 — Afsluiting (decoratief, geen data)                      */}
+      {/* Pagina 10 — Afsluiting (decoratief, geen data) — indigo achtergrond */}
+      {/* met golfmotief, zelfde opbouw als de goedgekeurde visualize-mockup. */}
       {/* ================================================================== */}
       <Page size="A4" style={styles.pageRow}>
         <Sidebar actief={-1} />
         <View
           style={[
-            styles.contentTinted,
-            { alignItems: "center", justifyContent: "center", paddingHorizontal: 60, paddingTop: isVoorbeeld ? 32 : 26, paddingBottom: isVoorbeeld ? 74 : 40 },
+            styles.content,
+            {
+              position: "relative",
+              backgroundColor: KLEUR.accentDark,
+              alignItems: "center",
+              justifyContent: "center",
+              paddingHorizontal: 56,
+              paddingTop: isVoorbeeld ? 32 : 26,
+              paddingBottom: isVoorbeeld ? 74 : 40,
+              overflow: "hidden",
+            },
           ]}
         >
+          <Svg width={468} height={120} viewBox="0 0 468 120" style={{ position: "absolute", top: 0, left: 0 }}>
+            <Path d="M0,38 C110,100 350,-15 468,45 L468,0 L0,0 Z" fill="#FFFFFF0F" />
+          </Svg>
+          <Svg width={468} height={150} viewBox="0 0 468 150" style={{ position: "absolute", bottom: 0, left: 0 }}>
+            <Path d="M0,112 C130,38 330,168 468,84 L468,150 L0,150 Z" fill="#FFFFFF0F" />
+          </Svg>
+
           {isVoorbeeld && <VoorbeeldBanner siteUrl={siteUrl} />}
-          <View style={{ width: 90, height: 90, borderRadius: 45, backgroundColor: KLEUR.mist, alignItems: "center", justifyContent: "center" }}>
-            <IcoonKooprapportLogo kleur={KLEUR.accent} size={42} />
+
+          <View style={{ width: 74, height: 74, borderRadius: 37, backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center" }}>
+            <IcoonKooprapportLogo kleur={KLEUR.accentDark} size={34} />
           </View>
 
-          <View style={{ marginTop: 22, alignItems: "center" }}>
-            <View style={{ width: 22, height: 1, backgroundColor: "#C9C3F5" }} />
-            <Text style={{ fontSize: 11, color: KLEUR.ink, textAlign: "center", lineHeight: 1.6, marginTop: 12, marginBottom: 12, maxWidth: 300, fontFamily: "Helvetica-Bold" }}>
+          <View style={{ marginTop: 24, alignItems: "center" }}>
+            <Text style={{ fontSize: 15, fontFamily: "Bricolage Grotesque", fontWeight: 800, color: "#FFFFFF", textAlign: "center", lineHeight: 1.3, maxWidth: 320 }}>
               &ldquo;Een goed onderbouwde keuze begint niet met een gevoel, maar met de juiste feiten op een rij.&rdquo;
             </Text>
-            <View style={{ width: 22, height: 1, backgroundColor: "#C9C3F5" }} />
+            <View style={[styles.amberRule, { alignSelf: "center" }]} />
+            <Text style={{ fontSize: 8.5, color: "#FFFFFFA6", textAlign: "center", lineHeight: 1.6, maxWidth: 280 }}>
+              Bedankt dat je Kooprapport gebruikte voor {address.straat} {address.huisnummer}
+              {address.huisletter ?? ""}
+              {address.toevoeging ? `-${address.toevoeging}` : ""}. Succes met je beslissing.
+            </Text>
           </View>
 
-          <View style={{ marginTop: 18, alignItems: "center" }}>
-            <Text style={{ fontSize: 8.5, fontFamily: "Helvetica-Bold", color: KLEUR.ink }}>Kooprapport</Text>
-            <Text style={{ fontSize: 7, color: KLEUR.inkFaint, textAlign: "center", lineHeight: 1.5, marginTop: 3, maxWidth: 260 }}>
-              Feitelijk, verifieerbaar en onafhankelijk, voor iedereen die een weloverwogen beslissing wil nemen over een woning.
-            </Text>
+          <View style={{ marginTop: 26, width: "100%", maxWidth: 280, gap: 8 }}>
+            <View style={{ backgroundColor: "#FFFFFF1A", borderRadius: 10, paddingVertical: 8, paddingHorizontal: 12, flexDirection: "row", justifyContent: "space-between" }}>
+              <Text style={{ fontSize: 7.5, color: "#FFFFFFA6" }}>Nog vragen?</Text>
+              <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: "#FFFFFF" }}>info@kooprapport.nl</Text>
+            </View>
+            <View style={{ backgroundColor: "#FFFFFF1A", borderRadius: 10, paddingVertical: 8, paddingHorizontal: 12, flexDirection: "row", justifyContent: "space-between" }}>
+              <Text style={{ fontSize: 7.5, color: "#FFFFFFA6" }}>Nieuw adres opzoeken?</Text>
+              <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: "#FFFFFF" }}>kooprapport.nl</Text>
+            </View>
           </View>
 
           {isVoorbeeld && <VoorbeeldBannerOnder siteUrl={siteUrl} />}
-          <Footer gegenereerdOp={gegenereerdOp} />
+          <View
+            style={{
+              position: "absolute",
+              bottom: 16,
+              left: 24,
+              right: 24,
+              flexDirection: "row",
+              justifyContent: "space-between",
+              paddingTop: 7,
+              borderTopWidth: 1,
+              borderTopColor: "#FFFFFF26",
+            }}
+          >
+            <Text style={{ fontSize: 7, color: "#FFFFFF80" }}>KOOPRAPPORT.NL</Text>
+            <Text
+              style={{ fontSize: 7, color: "#FFFFFF80" }}
+              render={({ pageNumber, totalPages }: { pageNumber: number; totalPages: number }) =>
+                `Pagina ${pageNumber} van ${totalPages} · gegenereerd op ${formatDate(gegenereerdOp)}`
+              }
+            />
+          </View>
         </View>
       </Page>
     </Document>

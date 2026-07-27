@@ -72,13 +72,13 @@ const VEELGESTELDE_VRAGEN = [
   {
     vraag: "Waarom niet gewoon een gratis waardecheck?",
     antwoord:
-      "Die geven meestal één getal en daarna stilte. Kooprapport zet waarde-indicatie, vergelijkbare verkopen, funderingsrisico, energielabel en buurtprofiel naast elkaar in één rapport van 8 pagina's, zodat u niet alleen een cijfer heeft, maar ook weet wat dat cijfer eigenlijk betekent.",
+      "Die geven meestal één getal en daarna stilte. Kooprapport zet waarde-indicatie, vergelijkbare verkopen, funderingsrisico, energielabel, verduurzamingsadvies en buurtprofiel naast elkaar in één rapport van 10 pagina's, zodat u niet alleen een cijfer heeft, maar ook weet wat dat cijfer eigenlijk betekent.",
     open: true,
   },
   {
     vraag: "Wat zit er precies in het volledige rapport?",
     antwoord:
-      "Acht onderdelen, geen opvulling: rapportoverzicht, waarde-indicatie met bandbreedte, vergelijkbare verkopen met adressen en prijzen, objectgegevens, energieprestatie en label, funderingsrisico met volledige duiding en advies, een buurtprofiel (veiligheid, voorzieningen, samenstelling) en een compacte samenvatting met eindconclusie. Ook gewoon te downloaden als PDF, of direct naar uw e-mail te sturen, voor als u het liever rustig doorleest, met koffie erbij.",
+      "Negen onderdelen, geen opvulling: rapportoverzicht, waarde-indicatie met bandbreedte, vergelijkbare verkopen met adressen en prijzen, objectgegevens, energieprestatie en label, een verduurzamingsadvies met concrete maatregelen en terugverdientijd, funderingsrisico met volledige duiding en advies, een buurtprofiel (veiligheid, voorzieningen, samenstelling) en een compacte samenvatting met eindconclusie. Ook gewoon te downloaden als PDF, of direct naar uw e-mail te sturen, voor als u het liever rustig doorleest, met koffie erbij.",
   },
   {
     vraag: "Voor wie is dit rapport bedoeld?",
@@ -341,7 +341,7 @@ export default function HomePage() {
                 desktop, met de ruimte ernaast, blijft het staan). */}
             <div className="relative mx-auto hidden h-[300px] w-full max-w-[460px] lg:block lg:h-[320px]">
               <span className="absolute -top-1.5 right-2 z-10 rounded-full bg-gradient-to-br from-accent to-accent-dark px-3.5 py-1.5 text-[11px] font-bold text-white shadow-overlay">
-                8 pagina&apos;s, écht volledig
+                10 pagina&apos;s, écht volledig
               </span>
 
               {/* Kaart 1 — Verkopen in de buurt */}
@@ -466,11 +466,11 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* Kaart 3 — volledige inhoudsopgave (alle 8 onderdelen) i.p.v.
+              {/* Kaart 3 — volledige inhoudsopgave (alle 9 onderdelen) i.p.v.
                   de eerdere cover-kaart die er met een quote + "+N" belofte
-                  maar 5 met naam noemde. Sluit nu 1-op-1 aan bij de "8
+                  maar 5 met naam noemde. Sluit nu 1-op-1 aan bij de "10
                   pagina's, écht volledig"-badge hierboven i.p.v. die belofte
-                  tegen te spreken. Volgorde/namen identiek aan de 8
+                  tegen te spreken. Volgorde/namen identiek aan de 9
                   tabbladen in ReportView.tsx; kleuren hergebruikt uit de
                   rest van deze pagina (geen nieuwe hexwaarden verzonnen). */}
               {/* Kaart 3 — zelfde reden als bij kaart 2 hierboven: was vast
@@ -497,6 +497,7 @@ export default function HomePage() {
                       { kleur: "bg-[#0F766E]", tekst: "Verkopen in de buurt" },
                       { kleur: "bg-sun", tekst: "Objectgegevens" },
                       { kleur: "bg-[#0D9488]", tekst: "Energieprestatie" },
+                      { kleur: "bg-[#0F766E]", tekst: "Verduurzamingsadvies" },
                       { kleur: "bg-rust", tekst: "Funderingsrisico" },
                       { kleur: "bg-[#8B85EE]", tekst: "Buurtprofiel" },
                       { kleur: "bg-ink", tekst: "Samenvatting" },
