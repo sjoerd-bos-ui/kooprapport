@@ -33,6 +33,19 @@ const GA_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 // aanroepen), dus geen los, tweede script-tag nodig.
 const GOOGLE_ADS_ID = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID;
 
+// Meta Pixel — BEWUST hier ingebouwd i.p.v. de kant-en-klare "plak dit in
+// <head>"-code van Facebook zelf letterlijk te volgen: die generieke
+// instructie gaat ervan uit dat een site nog geen consent-beheer heeft. Deze
+// site laadt GA4 hierboven al uitsluitend na actieve toestemming (AVG) — de
+// Pixel is qua privacy-impact hetzelfde soort trackingcookie voor
+// advertentiedoeleinden, dus verdient exact dezelfde behandeling: pas laden
+// ná "Accepteren", nooit stilzwijgend voor elke bezoeker. De <noscript>-
+// fallback die Facebook's documentatie ook aanbeveelt is bewust weggelaten:
+// zonder JavaScript kan een bezoeker toch nooit op "Accepteren" klikken, dus
+// die fallback zou de trackingpixel juist ONVOORWAARDELIJK laten vuren voor
+// precies de bezoekers die geen toestemming hebben kunnen geven.
+const META_PIXEL_ID = "1368098021943107";
+
 export default function CookieConsent() {
   const [consent, setConsent] = useState<Consent>("onbekend");
   const [geladen, setGeladen] = useState(false);
@@ -48,20 +61,44 @@ export default function CookieConsent() {
     setConsent(waarde);
   }
 
-  if (!GA_ID || !geladen) return null;
+  // BUGFIX: deze guard stond eerst op "!GA_ID" — zonder een gekoppelde GA4-
+  // measurement-id werd toen het HELE component (dus ook de Meta Pixel en de
+  // toestemmingsbanner zelf) niet gerenderd. META_PIXEL_ID is nu een vaste
+  // waarde (niet van een env var afhankelijk), dus de banner moet sowieso
+  // tonen; de aparte GA_ID-checks verderop bepalen nog steeds of GA4 zelf
+  // wel/niet meegeladen wordt.
+  if (!geladen) return null;
 
   return (
     <>
       {consent === "granted" && (
         <>
-          <Script src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`} strategy="afterInteractive" />
-          <Script id="ga4-init" strategy="afterInteractive">
+          {GA_ID && (
+            <>
+              <Script src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`} strategy="afterInteractive" />
+              <Script id="ga4-init" strategy="afterInteractive">
+                {`
+                  window.dataLayer = window.dataLayer || [];
+                  function gtag(){dataLayer.push(arguments);}
+                  gtag('js', new Date());
+                  gtag('config', '${GA_ID}', { anonymize_ip: true });
+                  ${GOOGLE_ADS_ID ? `gtag('config', '${GOOGLE_ADS_ID}');` : ""}
+                `}
+              </Script>
+            </>
+          )}
+          <Script id="meta-pixel-init" strategy="afterInteractive">
             {`
-              window.dataLayer = window.dataLayer || [];
-              function gtag(){dataLayer.push(arguments);}
-              gtag('js', new Date());
-              gtag('config', '${GA_ID}', { anonymize_ip: true });
-              ${GOOGLE_ADS_ID ? `gtag('config', '${GOOGLE_ADS_ID}');` : ""}
+              !function(f,b,e,v,n,t,s)
+              {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+              n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+              if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+              n.queue=[];t=b.createElement(e);t.async=!0;
+              t.src=v;s=b.getElementsByTagName(e)[0];
+              s.parentNode.insertBefore(t,s)}(window, document,'script',
+              'https://connect.facebook.net/en_US/fbevents.js');
+              fbq('init', '${META_PIXEL_ID}');
+              fbq('track', 'PageView');
             `}
           </Script>
         </>
@@ -71,8 +108,8 @@ export default function CookieConsent() {
         <div className="fixed inset-x-0 bottom-0 z-50 border-t border-ink/10 bg-white px-4 py-4 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] sm:px-6">
           <div className="mx-auto flex max-w-4xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-[13px] leading-relaxed text-ink/70">
-              We gebruiken Google Analytics om te begrijpen hoe bezoekers Kooprapport gebruiken, zodat we de site
-              kunnen verbeteren. Dit gebeurt alleen met uw toestemming.{" "}
+              We gebruiken Google Analytics en de Meta-pixel om te begrijpen hoe bezoekers Kooprapport gebruiken en om
+              de effectiviteit van onze advertenties te meten. Dit gebeurt alleen met uw toestemming.{" "}
               <a href="/privacy#cookies" className="underline underline-offset-2 hover:text-ink">
                 Meer info
               </a>

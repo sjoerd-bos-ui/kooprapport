@@ -131,6 +131,12 @@ export default function PrivacyPage() {
                 telkens terugkomt.
               </p>
               <p>
+                <strong className="font-semibold text-ink">Meta-pixel (alleen na uw toestemming).</strong> Met
+                dezelfde toestemming als hierboven staat u ook de Meta-pixel (Facebook) toe, waarmee we meten hoe
+                effectief onze advertenties op Facebook/Instagram zijn. Ook deze wordt pas geladen nádat u zelf op
+                "Accepteren" klikt; bij "Weigeren" wordt er niets naar Meta verstuurd.
+              </p>
+              <p>
                 De "Kaart →"-knop op de rapportpagina is een gewone uitgaande link die Google Maps in een nieuw
                 tabblad opent — geen ingesloten kaart op onze eigen pagina. Zolang u op kooprapport.nl blijft en geen
                 toestemming geeft voor Google Analytics, zet Google dus geen cookies en ontvangt Google geen gegevens
@@ -213,6 +219,11 @@ export default function PrivacyPage() {
                       <td className="px-4 py-2.5 font-medium text-ink">Google (Google Analytics)</td>
                       <td className="px-4 py-2.5 text-ink/65">Technische bezoekgegevens, alleen na uw toestemming</td>
                       <td className="px-4 py-2.5 text-ink/65">Uitgebreidere bezoekstatistieken (zie sectie 3)</td>
+                    </tr>
+                    <tr>
+                      <td className="px-4 py-2.5 font-medium text-ink">Meta (Meta-pixel)</td>
+                      <td className="px-4 py-2.5 text-ink/65">Technische bezoekgegevens, alleen na uw toestemming</td>
+                      <td className="px-4 py-2.5 text-ink/65">Meten van advertentie-effectiviteit (zie sectie 3)</td>
                     </tr>
                     <tr>
                       <td className="px-4 py-2.5 font-medium text-ink">Vercel</td>

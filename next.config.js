@@ -76,13 +76,22 @@ const GOOGLE_ADS_CONNECT_SRC = "https://www.googleadservices.com https://googlea
 // ontdekken dat de eigen CSP ook Sentry's eigen meldingen blokkeert.
 const SENTRY_CONNECT_SRC = "https://*.sentry.io";
 
+// Meta Pixel (zie components/analytics/CookieConsent.tsx) — zelfde
+// consent-gated opzet als GA4 hierboven: het fbevents.js-script laadt van
+// connect.facebook.net, en stuurt de daadwerkelijke events naar
+// www.facebook.com/tr. Ook hier staat de CSP altijd open; of het script
+// daadwerkelijk laadt hangt uitsluitend af van de toestemmingskeuze.
+const META_PIXEL_SCRIPT_SRC = "https://connect.facebook.net";
+const META_PIXEL_CONNECT_SRC = "https://www.facebook.com";
+const META_PIXEL_IMG_SRC = "https://www.facebook.com";
+
 const CSP = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline' ${GOOGLE_ANALYTICS_SCRIPT_SRC}${isDev ? " 'unsafe-eval'" : ""}`,
+  `script-src 'self' 'unsafe-inline' ${GOOGLE_ANALYTICS_SCRIPT_SRC} ${META_PIXEL_SCRIPT_SRC}${isDev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
-  `img-src 'self' data: blob: ${GOOGLE_ANALYTICS_IMG_SRC}`,
+  `img-src 'self' data: blob: ${GOOGLE_ANALYTICS_IMG_SRC} ${META_PIXEL_IMG_SRC}`,
   "font-src 'self' data:",
-  `connect-src 'self' https://api.pdok.nl ${GOOGLE_ANALYTICS_CONNECT_SRC} ${GOOGLE_ADS_CONNECT_SRC} ${SENTRY_CONNECT_SRC}${isDev ? " ws://localhost:* http://localhost:*" : ""}`,
+  `connect-src 'self' https://api.pdok.nl ${GOOGLE_ANALYTICS_CONNECT_SRC} ${GOOGLE_ADS_CONNECT_SRC} ${SENTRY_CONNECT_SRC} ${META_PIXEL_CONNECT_SRC}${isDev ? " ws://localhost:* http://localhost:*" : ""}`,
   "frame-src 'none'",
   "object-src 'none'",
   "base-uri 'self'",
