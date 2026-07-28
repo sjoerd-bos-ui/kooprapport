@@ -152,7 +152,14 @@ export default function AddressSearchBar() {
             // door "whitespace-nowrap" ook niet kan krimpen) letterlijk
             // buiten het scherm. min-w-0 laat het invoerveld wél volledig
             // meekrimpen, zodat de hele balk binnen de viewport blijft.
-            className="min-w-0 flex-1 bg-transparent px-3 py-3 text-[15px] text-ink placeholder:text-ink/35 focus:outline-none"
+            //
+            // BUGFIX (mobiel): tekstgrootte onder 16px op een <input> laat
+            // Safari op iPhone automatisch inzoomen zodra iemand erop tikt
+            // (de pagina "springt" dan uit, en moet handmatig weer
+            // uitgezoomd worden) — precies bij dit veld, de eerste actie van
+            // elke advertentie. text-base (16px) op mobiel voorkomt dat;
+            // vanaf sm: mag het weer iets compacter.
+            className="min-w-0 flex-1 bg-transparent px-3 py-3 text-base text-ink placeholder:text-ink/35 focus:outline-none sm:text-[15px]"
           />
           <button
             type="submit"

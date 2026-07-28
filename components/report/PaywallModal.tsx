@@ -250,7 +250,11 @@ export default function PaywallModal({
                     setCodeStatus("idle");
                   }}
                   placeholder="Kortingscode"
-                  className="min-w-0 flex-1 rounded-lg border border-ink/15 px-3 py-1.5 text-xs uppercase tracking-wide text-ink focus:border-accent focus:outline-none"
+                  // BUGFIX (mobiel): tekst onder 16px op een <input> triggert
+                  // Safari's automatische inzoom-op-focus op iPhone (zie
+                  // dezelfde fix in AddressSearchBar.tsx) — text-base op
+                  // mobiel, pas vanaf sm: weer terug naar de compactere text-xs.
+                  className="min-w-0 flex-1 rounded-lg border border-ink/15 px-3 py-1.5 text-base uppercase tracking-wide text-ink focus:border-accent focus:outline-none sm:text-xs"
                 />
                 <button
                   type="button"

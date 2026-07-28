@@ -171,7 +171,13 @@ function PdfPaginaCanvas({ doc, paginaNummer, laatstePagina }: { doc: PdfDocumen
   }, [doc, paginaNummer, laatstePagina]);
 
   return (
-    <div className="relative aspect-[210/297] overflow-hidden rounded-lg bg-white shadow-2xl" style={{ width: "min(40vw, 640px)" }}>
+    // BUGFIX (mobiel): dit stond vast op "min(40vw, 640px)" -- op een
+    // telefoon (waar hieronder nu maar één pagina tegelijk getoond wordt,
+    // zie de "hidden sm:block"-wrapper om de tweede pagina) is 40vw van een
+    // schermbreedte van ~375px maar ~150px: veel te smal om een rapport-
+    // pagina te lezen. Op mobiel nu bijna de volle breedte, vanaf sm:
+    // (waar de twee-pagina-weergave terugkeert) weer de originele maat.
+    <div className="relative aspect-[210/297] w-[min(82vw,520px)] overflow-hidden rounded-lg bg-white shadow-2xl sm:w-[min(40vw,640px)]">
       <canvas ref={canvasRef} className="h-full w-full" />
       {status === "laden" && (
         <div className="absolute inset-0 flex animate-pulse items-center justify-center bg-parchment">
@@ -194,7 +200,24 @@ export default function VoorbeeldrapportSlider() {
   const [totaalPaginas, setTotaalPaginas] = useState(10);
   const [ladenFout, setLadenFout] = useState<string | null>(null);
 
-  const laatsteLeft = Math.max(1, totaalPaginas - 1);
+  // BUGFIX (mobiel): op een telefoon is er geen ruimte voor de twee-pagina's-
+  // naast-elkaar-weergave (zie de breedte-fix bij PdfPaginaCanvas), dus
+  // wordt daar maar één pagina tegelijk getoond. Zonder dit los bij te
+  // houden bleef "laatsteLeft" hieronder uitgaan van de twee-op-een-telling
+  // (totaalPaginas - 1) -- op mobiel zou de daadwerkelijk laatste pagina
+  // (die anders alleen als "left + 1"-partner verscheen) dan nooit te zien
+  // zijn, ook niet via de paginastipjes. sm: (640px) is dezelfde grens als
+  // de Tailwind-breakpoint die de twee-op-een-weergave weer terugzet.
+  const [tweeOpEen, setTweeOpEen] = useState(true);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 640px)");
+    setTweeOpEen(mq.matches);
+    const onChange = (e: MediaQueryListEvent) => setTweeOpEen(e.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
+  const laatsteLeft = tweeOpEen ? Math.max(1, totaalPaginas - 1) : totaalPaginas;
 
   // Klein hulpfunctie: het document ophalen (via de gedeelde, gecachte
   // laadDocument()) en de state bijwerken — gebruikt door zowel de
@@ -306,7 +329,9 @@ export default function VoorbeeldrapportSlider() {
           </button>
 
           <p className="text-xs uppercase tracking-wide text-white/50 sm:text-sm">
-            Voorbeeldrapport &middot; pagina {left}&ndash;{Math.min(left + 1, totaalPaginas)} van {totaalPaginas}
+            {tweeOpEen
+              ? `Voorbeeldrapport · pagina ${left}–${Math.min(left + 1, totaalPaginas)} van ${totaalPaginas}`
+              : `Voorbeeldrapport · pagina ${left} van ${totaalPaginas}`}
           </p>
 
           {ladenFout ? (
@@ -325,7 +350,15 @@ export default function VoorbeeldrapportSlider() {
 
               <div className="flex gap-3">
                 <PdfPaginaCanvas doc={doc} paginaNummer={left} laatstePagina={totaalPaginas} />
-                <PdfPaginaCanvas doc={doc} paginaNummer={left + 1} laatstePagina={totaalPaginas} />
+                {/* BUGFIX (mobiel): op een telefoon is er geen ruimte voor
+                    twee paginas naast elkaar (zie de breedte-fix hierboven)
+                    -- daar wordt dus maar één pagina tegelijk getoond, met
+                    de volgende/vorige-knoppen die dan ook per 1 pagina
+                    bladeren i.p.v. per spread. Vanaf sm: keert de originele
+                    twee-op-een-spread-weergave terug. */}
+                <div className="hidden sm:block">
+                  <PdfPaginaCanvas doc={doc} paginaNummer={left + 1} laatstePagina={totaalPaginas} />
+                </div>
               </div>
 
               <button
@@ -341,16 +374,31 @@ export default function VoorbeeldrapportSlider() {
           )}
 
           {!ladenFout && (
-            <div className="flex flex-wrap justify-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-              {Array.from({ length: totaalPaginas }, (_, i) => i + 1).map((n) => (
-                <button
-                  key={n}
-                  type="button"
-                  aria-label={`Ga naar pagina ${n}`}
-                  onClick={() => setLeft(Math.min(n, laatsteLeft))}
-                  className={`h-1.5 w-1.5 rounded-full ${n === left || n === left + 1 ? "bg-white" : "bg-white/30"}`}
-                />
-              ))}
+            <div className="flex flex-wrap justify-center" onClick={(e) => e.stopPropagation()}>
+              {Array.from({ length: totaalPaginas }, (_, i) => i + 1).map((n) => {
+                // BUGFIX (mobiel): op een telefoon (tweeOpEen=false) is maar
+                // één pagina tegelijk zichtbaar -- "n === left + 1" zou dan
+                // ten onrechte een tweede stipje wit kleuren voor een pagina
+                // die niet in beeld is.
+                const actief = n === left || (tweeOpEen && n === left + 1);
+                return (
+                  <button
+                    key={n}
+                    type="button"
+                    aria-label={`Ga naar pagina ${n}`}
+                    onClick={() => setLeft(Math.min(n, laatsteLeft))}
+                    // BUGFIX (mobiel): het stipje zelf mag klein blijven
+                    // (h-1.5 w-1.5, 6px) voor het rustige, compacte
+                    // paginaoverzicht, maar 6px is als tikdoel veel te klein
+                    // op een touchscreen. De knop zelf krijgt daarom p-1.5
+                    // extra onzichtbare ruimte eromheen (~24px tikgebied),
+                    // het zichtbare stipje blijft even klein via de span.
+                    className="p-1.5"
+                  >
+                    <span className={`block h-1.5 w-1.5 rounded-full ${actief ? "bg-white" : "bg-white/30"}`} />
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>

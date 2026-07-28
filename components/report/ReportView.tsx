@@ -1668,7 +1668,11 @@ export default function ReportView({
                     value={emailInput}
                     onChange={(e) => setEmailInput(e.target.value)}
                     placeholder="naam@voorbeeld.nl"
-                    className="min-w-0 flex-1 rounded-xl border border-line bg-white px-3.5 py-2.5 text-sm text-ink placeholder:text-ink/35 focus:outline-none focus:ring-2 focus:ring-accent/30"
+                    // BUGFIX (mobiel): tekst onder 16px op een <input>
+                    // triggert Safari's automatische inzoom-op-focus op
+                    // iPhone (zie dezelfde fix in AddressSearchBar.tsx) —
+                    // text-base op mobiel, pas vanaf sm: weer text-sm.
+                    className="min-w-0 flex-1 rounded-xl border border-line bg-white px-3.5 py-2.5 text-base text-ink placeholder:text-ink/35 focus:outline-none focus:ring-2 focus:ring-accent/30 sm:text-sm"
                   />
                   <Button type="submit" disabled={sendingEmail || emailInput.trim().length === 0}>
                     {sendingEmail ? "Versturen…" : "Verstuur"}

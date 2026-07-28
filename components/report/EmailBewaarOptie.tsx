@@ -107,7 +107,11 @@ export default function EmailBewaarOptie({ adresLabel }: { adresLabel: string })
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="naam@voorbeeld.nl"
-            className="min-w-[190px] rounded-md border border-ink/15 px-2.5 py-1.5 text-[12.5px] text-ink focus:border-accent focus:outline-none"
+            // BUGFIX (mobiel): tekst onder 16px op een <input> triggert
+            // Safari's automatische inzoom-op-focus op iPhone (zie dezelfde
+            // fix in AddressSearchBar.tsx) — text-base op mobiel, pas vanaf
+            // sm: weer terug naar de compactere maat.
+            className="min-w-[190px] rounded-md border border-ink/15 px-2.5 py-1.5 text-base text-ink focus:border-accent focus:outline-none sm:text-[12.5px]"
           />
           <button
             type="button"
