@@ -87,6 +87,32 @@ function laadPdfjs(): Promise<PdfjsLibGlobal> {
   return pdfjsPromise;
 }
 
+let documentPromise: Promise<PdfDocumentProxy> | null = null;
+
+// PERF: het daadwerkelijke document (pdf.js-bibliotheek downloaden/parsen +
+// de PDF zelf ophalen) los van het openen van de modal, zodat we dit al op
+// de achtergrond kunnen starten vóórdat iemand daadwerkelijk klikt (zie
+// vroegPrefetch/hover hieronder) — en zodat een tweede keer openen altijd
+// instant is, ook binnen dezelfde paginabezoek.
+function laadDocument(): Promise<PdfDocumentProxy> {
+  if (documentPromise) return documentPromise;
+
+  documentPromise = (async () => {
+    const pdfjsLib = await laadPdfjs();
+    const taak = pdfjsLib.getDocument(PDF_URL);
+    return taak.promise;
+  })();
+
+  // Bij een fout niet blijven "vastzitten" op een mislukte poging — een
+  // volgende aanroep (bv. nog een keer klikken) mag opnieuw proberen i.p.v.
+  // voor altijd dezelfde afgewezen promise terug te geven.
+  documentPromise.catch(() => {
+    documentPromise = null;
+  });
+
+  return documentPromise;
+}
+
 function PdfPaginaCanvas({ doc, paginaNummer, laatstePagina }: { doc: PdfDocumentProxy | null; paginaNummer: number; laatstePagina: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const renderTaskRef = useRef<{ cancel: () => void } | null>(null);
@@ -159,29 +185,64 @@ export default function VoorbeeldrapportSlider() {
 
   const laatsteLeft = Math.max(1, totaalPaginas - 1);
 
-  // Het PDF-document zelf pas ophalen/parsen zodra de modal voor het eerst
-  // opent — niet al bij het inladen van de homepage.
+  // Klein hulpfunctie: het document ophalen (via de gedeelde, gecachte
+  // laadDocument()) en de state bijwerken — gebruikt door zowel de
+  // prefetch-triggers hieronder als het openen van de modal zelf.
+  function verwerkDocument(geladenDoc: PdfDocumentProxy) {
+    setDoc(geladenDoc);
+    setTotaalPaginas(geladenDoc.numPages);
+  }
+
+  // PERF: zodra de pagina rustig is (na de eerste, belangrijkere content),
+  // alvast op de achtergrond beginnen met pdf.js + de PDF ophalen — ruim
+  // vóórdat iemand daadwerkelijk op "Bekijk het echte voorbeeldrapport"
+  // klikt. Dit was de belangrijkste oorzaak van de merkbare wachttijd: die
+  // hele download/parse-keten begon voorheen pas op het moment van klikken.
+  useEffect(() => {
+    const idleCallback =
+      typeof window.requestIdleCallback === "function"
+        ? window.requestIdleCallback
+        : (fn: () => void) => window.setTimeout(fn, 1500);
+
+    const id = idleCallback(() => {
+      laadDocument()
+        .then((geladenDoc) => {
+          if (!open) verwerkDocument(geladenDoc);
+        })
+        .catch(() => {
+          // Stil negeren — dit is alleen een optimistische achtergrond-
+          // prefetch; als dit mislukt, doet de "echte" poging bij het
+          // openen van de modal hieronder gewoon opnieuw een verwoede
+          // poging en toont dán pas de nette foutmelding.
+        });
+    });
+
+    return () => {
+      if (typeof window.cancelIdleCallback === "function") window.cancelIdleCallback(id as number);
+      else window.clearTimeout(id as number);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Het PDF-document ophalen/parsen zodra de modal opent — dankzij
+  // laadDocument()'s caching is dit vrijwel altijd al (deels) klaar door de
+  // prefetch hierboven, dus dit is meestal meteen synchroon/instant.
   useEffect(() => {
     if (!open || doc) return;
     let actief = true;
     setLadenFout(null);
 
-    (async () => {
-      try {
-        const pdfjsLib = await laadPdfjs();
-        const taak = pdfjsLib.getDocument(PDF_URL);
-        const geladenDoc = await taak.promise;
-        if (!actief) return;
-        setDoc(geladenDoc);
-        setTotaalPaginas(geladenDoc.numPages);
-      } catch (err) {
+    laadDocument()
+      .then((geladenDoc) => {
+        if (actief) verwerkDocument(geladenDoc);
+      })
+      .catch((err) => {
         // Fout altijd naar de console loggen — de gebruiker ziet alleen de
         // vriendelijke tekst, maar zo blijft dit debugbaar vanuit devtools
         // i.p.v. dat de echte oorzaak stil verdwijnt.
         console.error("Voorbeeldrapport: PDF laden mislukt", err);
         if (actief) setLadenFout("Het voorbeeldrapport kon niet geladen worden. Probeer het later opnieuw.");
-      }
-    })();
+      });
 
     return () => {
       actief = false;
@@ -207,6 +268,14 @@ export default function VoorbeeldrapportSlider() {
           setLeft(1);
           setOpen(true);
         }}
+        onMouseEnter={() => {
+          // Extra prefetch-trigger: als iemand met de muis over de knop
+          // hangt vóórdat de idle-prefetch hierboven kans heeft gehad om te
+          // starten, begint het laden dan alvast — laadDocument() is
+          // idempotent, dus dit dubbelt nooit met de achtergrond-prefetch.
+          laadDocument().catch(() => {});
+        }}
+        onFocus={() => laadDocument().catch(() => {})}
         className="group inline-flex items-center gap-1.5 text-sm font-bold text-ink hover:text-accent"
       >
         <FileCheckIcon className="h-3.5 w-3.5 text-accent" />
