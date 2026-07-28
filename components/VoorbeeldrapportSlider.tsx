@@ -15,32 +15,36 @@ import { ArrowRightIcon, FileCheckIcon } from "@/components/report/icons";
 // komt hier automatisch, pixelidentiek in beeld, zonder dat deze component
 // ooit weer los bijgewerkt hoeft te worden.
 //
-// BUGFIX (v6): v5 gebruikte het npm-pakket "pdfjs-dist" (dynamisch
-// geïmporteerd) samen met een los-geraden jsdelivr-URL voor het worker-
-// script. Dat bleek in productie te falen — twee dingen die uit de pas
-// konden lopen (de bundelaar-build van het npm-pakket vs. het exacte
-// bestandspad van de worker op een andere CDN), en dat kon ik in de
-// sandbox niet testen. Nu laden we pdf.js volledig als klassiek <script>
-// vanaf cdnjs — bibliotheek én worker van exact dezelfde, vastgepinde
-// versie, dezelfde CDN, geen npm/bundelaar-afhankelijkheid meer nodig
-// (pdfjs-dist is dan ook weer uit package.json gehaald).
+// BUGFIX (v7): v5 gebruikte het npm-pakket "pdfjs-dist" samen met een
+// los-geraden jsdelivr-URL voor het workerscript. v6 probeerde in plaats
+// daarvan pdf.js volledig als extern <script> vanaf cdnjs te laden — maar de
+// site heeft een strikte Content-Security-Policy (next.config.js) die
+// script-src beperkt tot 'self' + Google Tag Manager, dus élke externe CDN
+// (cdnjs, jsdelivr, unpkg) wordt daar terecht door de browser geblokkeerd
+// (zichtbaar als CSP-melding in de console).
+//
+// v7 host pdf.js daarom volledig zelf, zodat er geen CSP-uitzondering nodig
+// is: de hoofdbibliotheek wordt via een gewone dynamische import
+// meegebundeld door Next.js (telt als 'self', want het is gewoon een deel
+// van onze eigen JS-bundel), en het losse workerbestand wordt door
+// scripts/copy-pdf-worker.js na elke "npm install" automatisch vanuit
+// node_modules/pdfjs-dist naar public/pdfjs/ gekopieerd — ook same-origin.
+// Welke exacte bestandsnaam dat workerbestand heeft (dat verschilt per
+// pdfjs-dist-versie/build) staat in public/pdfjs/manifest.json, dat hier
+// eerst opgehaald wordt.
 // -----------------------------------------------------------------------------
 
 const PDF_URL = "/api/rapport/voorbeeld-pdf";
-// Vastgepinde, stabiele pdf.js-versie — bewust een "oudere" 3.x-release
-// i.p.v. de nieuwste, omdat dit precies de UMD-build+worker-combinatie is
-// die al jaren op cdnjs staat en in talloze voorbeelden zo gebruikt wordt.
-const PDFJS_VERSION = "3.11.174";
-const PDFJS_BASE_URL = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}`;
+const PDFJS_MANIFEST_URL = "/pdfjs/manifest.json";
 
 // Interne rendering-resolutie (device pixels per PDF-punt) — hoger dan de
 // uiteindelijke CSS-weergavegrootte, zodat de pagina scherp blijft op een
 // groot/retina-scherm terwijl de canvas zelf via CSS kleiner getoond wordt.
 const RENDER_SCHAAL = 2.2;
 
-// Minimale vorm die we uit pdf.js gebruiken — bewust los getypeerd, want de
-// bibliotheek wordt hier als los <script> geladen (window.pdfjsLib) en niet
-// als npm-module met eigen typedefinities meegecompileerd.
+// Minimale vorm die we uit pdf.js gebruiken — bewust los getypeerd i.p.v. de
+// volledige pdfjs-dist-typedefinities, zodat tsc dit bestand ook kan
+// controleren zonder dat het npm-pakket lokaal geïnstalleerd hoeft te zijn.
 interface PdfPaginaProxy {
   getViewport(params: { scale: number }): { width: number; height: number };
   render(params: { canvasContext: CanvasRenderingContext2D; viewport: unknown }): { promise: Promise<void>; cancel: () => void };
@@ -54,37 +58,33 @@ interface PdfjsLibGlobal {
   getDocument(src: string): { promise: Promise<PdfDocumentProxy> };
 }
 
-let pdfjsScriptPromise: Promise<PdfjsLibGlobal> | null = null;
+let pdfjsPromise: Promise<PdfjsLibGlobal> | null = null;
 
-// pdf.js als klassiek script laden (i.p.v. dynamische import) — voorkomt elk
-// risico op een bundelaar/ESM-mismatch met de worker. Wordt maar één keer
-// daadwerkelijk ingeladen, ook als de modal meerdere keren geopend wordt.
+// pdf.js + bijbehorende worker inladen — beide same-origin, dus zonder CSP-
+// aanpassing. Wordt maar één keer daadwerkelijk uitgevoerd, ook als de modal
+// meerdere keren geopend wordt.
 function laadPdfjs(): Promise<PdfjsLibGlobal> {
-  if (pdfjsScriptPromise) return pdfjsScriptPromise;
+  if (pdfjsPromise) return pdfjsPromise;
 
-  pdfjsScriptPromise = new Promise((resolve, reject) => {
-    const bestaand = (window as unknown as { pdfjsLib?: PdfjsLibGlobal }).pdfjsLib;
-    if (bestaand) {
-      resolve(bestaand);
-      return;
+  pdfjsPromise = (async () => {
+    const manifestRespons = await fetch(PDFJS_MANIFEST_URL);
+    if (!manifestRespons.ok) {
+      throw new Error(`Kon ${PDFJS_MANIFEST_URL} niet ophalen (status ${manifestRespons.status})`);
+    }
+    const manifest = (await manifestRespons.json()) as { worker?: string };
+    if (!manifest.worker) {
+      throw new Error("manifest.json bevat geen 'worker'-veld");
     }
 
-    const script = document.createElement("script");
-    script.src = `${PDFJS_BASE_URL}/pdf.min.js`;
-    script.onload = () => {
-      const lib = (window as unknown as { pdfjsLib?: PdfjsLibGlobal }).pdfjsLib;
-      if (!lib) {
-        reject(new Error("pdfjsLib niet gevonden na laden van script"));
-        return;
-      }
-      lib.GlobalWorkerOptions.workerSrc = `${PDFJS_BASE_URL}/pdf.worker.min.js`;
-      resolve(lib);
-    };
-    script.onerror = () => reject(new Error(`Kon pdf.js-script niet laden vanaf ${script.src}`));
-    document.head.appendChild(script);
-  });
+    // Dynamische import i.p.v. bovenaan het bestand — dit pakket is vrij
+    // groot en hoeft alleen geladen te worden zodra de slider daadwerkelijk
+    // geopend wordt, niet al bij het inladen van de homepage.
+    const pdfjsLib = (await import("pdfjs-dist")) as unknown as PdfjsLibGlobal;
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `/pdfjs/${manifest.worker}`;
+    return pdfjsLib;
+  })();
 
-  return pdfjsScriptPromise;
+  return pdfjsPromise;
 }
 
 function PdfPaginaCanvas({ doc, paginaNummer, laatstePagina }: { doc: PdfDocumentProxy | null; paginaNummer: number; laatstePagina: number }) {
