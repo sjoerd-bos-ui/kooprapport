@@ -29,6 +29,7 @@
 declare global {
   interface Window {
     gtag?: (...args: unknown[]) => void;
+    fbq?: (...args: unknown[]) => void;
   }
 }
 
@@ -36,23 +37,39 @@ const GOOGLE_ADS_ID = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID;
 const GOOGLE_ADS_CONVERSION_LABEL = process.env.NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL;
 
 export function trackAankoop(input: { bestellingId: string; bedragCenten: number }): void {
-  if (typeof window === "undefined" || typeof window.gtag !== "function") return;
+  if (typeof window === "undefined") return;
 
   const waarde = Math.round(input.bedragCenten) / 100;
 
-  window.gtag("event", "purchase", {
-    transaction_id: input.bestellingId,
-    value: waarde,
-    currency: "EUR",
-    items: [{ item_id: "volledig-rapport", item_name: "Volledig woningrapport", price: waarde, quantity: 1 }],
-  });
-
-  if (GOOGLE_ADS_ID && GOOGLE_ADS_CONVERSION_LABEL) {
-    window.gtag("event", "conversion", {
-      send_to: `${GOOGLE_ADS_ID}/${GOOGLE_ADS_CONVERSION_LABEL}`,
+  if (typeof window.gtag === "function") {
+    window.gtag("event", "purchase", {
+      transaction_id: input.bestellingId,
       value: waarde,
       currency: "EUR",
-      transaction_id: input.bestellingId,
+      items: [{ item_id: "volledig-rapport", item_name: "Volledig woningrapport", price: waarde, quantity: 1 }],
     });
+
+    if (GOOGLE_ADS_ID && GOOGLE_ADS_CONVERSION_LABEL) {
+      window.gtag("event", "conversion", {
+        send_to: `${GOOGLE_ADS_ID}/${GOOGLE_ADS_CONVERSION_LABEL}`,
+        value: waarde,
+        currency: "EUR",
+        transaction_id: input.bestellingId,
+      });
+    }
+  }
+
+  // Meta-pixel "Purchase" — tot nu toe vuurde de pixel (zie CookieConsent.tsx)
+  // alleen de automatische PageView, dus kon een Facebook/Instagram-campagne
+  // wel op verkeer maar niet op daadwerkelijke omzet optimaliseren. Dit is
+  // dezelfde enige, dubbel-getrackte-bestelling-beveiligde aanroepplek als de
+  // GA4/Ads-tracking hierboven (zie de getrackteBestellingen-guard in
+  // ReportPageClient.tsx#handleUnlock), dus geen apart risico op dubbeltellen.
+  // Bewust GEEN bestellingId/transaction-id meegestuurd aan Meta -- dat heeft
+  // de advertentie-optimalisatie niet nodig (alleen waarde/valuta bepalen
+  // ROAS-optimalisatie), en hoe minder data er naar een derde partij gaat,
+  // hoe beter.
+  if (typeof window.fbq === "function") {
+    window.fbq("track", "Purchase", { value: waarde, currency: "EUR" });
   }
 }

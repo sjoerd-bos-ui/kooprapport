@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { AddressMeta } from "@/types/report";
 import { searchAddressSuggestions, fetchLiveAddressSuggestions } from "@/lib/services/addressLookup";
 import { buildReportHref } from "@/lib/utils/slug";
+import { trackAdresGekozen } from "@/lib/analytics/trackAdresGekozen";
 
 // Deze zoekbalk matcht NOOIT zelf vrije tekst tegen de adresregistratie —
 // getypte tekst bepaalt alleen welke suggesties getoond worden. De enige
@@ -58,6 +59,7 @@ export default function AddressSearchBar() {
 
   function chooseSuggestion(addr: AddressMeta) {
     requestSeq.current++; // navigatie is definitief, negeer nog lopende suggestieverzoeken
+    trackAdresGekozen();
     router.push(buildReportHref(addr));
   }
 
