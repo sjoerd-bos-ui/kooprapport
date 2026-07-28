@@ -11,11 +11,18 @@ import { slugify } from "@/lib/utils/slug";
 // rapport (Amsterdam Rijnkanaalkade 1) i.p.v. de eerdere, volledig verzonnen
 // "Prinsengracht 88". Elk veld hieronder is nu een zo getrouw mogelijke
 // weergave van dat echte rapport — inclusief de plekken waar de live
-// databronnen zelf niets teruggaven (geen bodemclassificatie, geen
-// voorzieningen-cijfers voor deze buurt, geen kamertal meer sinds Altum's
-// Woningwaarde+ API dat veld heeft laten vallen) — juist zodat de showcase
-// laat zien hoe het rapport er in de praktijk uitziet, inclusief die eerlijke
-// "niet beschikbaar"-momenten, i.p.v. een kunstmatig perfect voorbeeld.
+// databronnen zelf niets teruggaven (geen bodemclassificatie, geen kamertal
+// meer sinds Altum's Woningwaarde+ API dat veld heeft laten vallen) — juist
+// zodat de showcase laat zien hoe het rapport er in de praktijk uitziet,
+// inclusief die eerlijke "niet beschikbaar"-momenten, i.p.v. een kunstmatig
+// perfect voorbeeld.
+//
+// Uitzondering: voorzieningen (zie buurtprofiel.voorzieningen hieronder) zijn
+// hier WEL met fictieve, plausibele cijfers gevuld, terwijl het echte, live
+// rapport voor dit adres daar geen CBS-nabijheidscijfers voor kreeg. Op
+// uitdrukkelijk verzoek: dit is een voorbeeldrapport en moet zo compleet
+// mogelijk laten zien wat een rapport te bieden heeft, ook voor de secties
+// die toevallig voor dit ene echte adres leeg waren.
 //
 // Nog steeds GEEN live databron-aanroep vanuit dit bestand zelf (mode:
 // "mock", status: "mock" op elke bron) — zelfde eerlijke labeling als de
@@ -223,17 +230,32 @@ export const voorbeeldRapport: Report = {
         percentageEengezinswoning: 0,
         percentageMeergezinswoning: 100,
       },
-      // BEWUST leeg: voor deze buurt gaf CBS geen nabijheidscijfers voor
-      // voorzieningen terug — precies zoals in het echte, live rapport voor
-      // dit adres. De UI/PDF tonen in dat geval een eerlijke "niet
-      // beschikbaar"-duiding i.p.v. deze sectie stilzwijgend weg te laten
-      // (zie de bugfix in ReportDocument.tsx / ReportView.tsx / FunderingRedenering.tsx).
+      // AANGEPAST t.o.v. het echte, live rapport voor dit adres: daar gaf CBS
+      // voor deze specifieke buurt geen nabijheidscijfers terug (een
+      // eveneens eerlijke, maar voor een SHOWCASE minder overtuigende lege
+      // sectie). Op uitdrukkelijk verzoek tonen we hier bewust wél
+      // (fictieve, plausibele) voorbeeldcijfers — dit is per definitie een
+      // voorbeeldrapport en mag zo compleet mogelijk laten zien wat een
+      // rapport mét CBS-nabijheidsdata te bieden heeft. Zelfde opbouw/stijl
+      // als buildVoorzieningenTekst() in lib/data-sources/buurtprofiel.ts
+      // (thema-groepering, "km tot <zinsdeel>"), niet zomaar losse tekst.
       voorzieningen: {
-        tekst: null,
-        items: [],
+        tekst:
+          "Dagelijks leven: gemiddeld 0,4 km tot de huisarts, 0,6 km tot de apotheek, 0,3 km tot een grote supermarkt. Gezin en onderwijs: gemiddeld 0,5 km tot de dichtstbijzijnde basisschool, 1,4 km tot een school voor voortgezet onderwijs, 0,4 km tot het dichtstbijzijnde kinderdagverblijf. Bereikbaarheid en buitenruimte: gemiddeld 1,9 km tot het dichtstbijzijnde treinstation, 2,8 km tot een oprit van de snelweg, 0,3 km tot een park of andere groenvoorziening.",
+        items: [
+          { key: "huisarts", label: "Huisartsenpraktijk", thema: "dagelijks", afstandKm: 0.4 },
+          { key: "apotheek", label: "Apotheek", thema: "dagelijks", afstandKm: 0.6 },
+          { key: "supermarkt", label: "Grote supermarkt", thema: "dagelijks", afstandKm: 0.3 },
+          { key: "basisschool", label: "Basisschool", thema: "gezin", afstandKm: 0.5 },
+          { key: "voortgezetOnderwijs", label: "Voortgezet onderwijs", thema: "gezin", afstandKm: 1.4 },
+          { key: "kinderdagverblijf", label: "Kinderdagverblijf", thema: "gezin", afstandKm: 0.4 },
+          { key: "treinstation", label: "Treinstation", thema: "bereikbaarheid", afstandKm: 1.9 },
+          { key: "opritHoofdweg", label: "Oprit hoofdweg", thema: "bereikbaarheid", afstandKm: 2.8 },
+          { key: "park", label: "Park / openbaar groen", thema: "bereikbaarheid", afstandKm: 0.3 },
+        ],
       },
       duiding:
-        "Veiligheid: de politie registreerde circa 52,0 misdrijven per 1.000 inwoners (134 in totaal) in 2025. In deze buurt wonen circa 2.575 mensen, verdeeld over 1.450 huishoudens, gemiddeld 1,8 personen per huishouden. Ongeveer 48% van de huishoudens bestaat uit één persoon. Circa 18% heeft thuiswonende kinderen. Met circa 14.727 inwoners per km² is dit een dichtbebouwde, stedelijke buurt; van de woningen hier is 0% eengezinswoningen en 100% meergezinswoningen.",
+        "Veiligheid: de politie registreerde circa 52,0 misdrijven per 1.000 inwoners (134 in totaal) in 2025. In deze buurt wonen circa 2.575 mensen, verdeeld over 1.450 huishoudens, gemiddeld 1,8 personen per huishouden. Ongeveer 48% van de huishoudens bestaat uit één persoon. Circa 18% heeft thuiswonende kinderen. Met circa 14.727 inwoners per km² is dit een dichtbebouwde, stedelijke buurt; van de woningen hier is 0% eengezinswoningen en 100% meergezinswoningen. Dagelijks leven: gemiddeld 0,4 km tot de huisarts, 0,6 km tot de apotheek, 0,3 km tot een grote supermarkt. Gezin en onderwijs: gemiddeld 0,5 km tot de dichtstbijzijnde basisschool, 1,4 km tot een school voor voortgezet onderwijs, 0,4 km tot het dichtstbijzijnde kinderdagverblijf. Bereikbaarheid en buitenruimte: gemiddeld 1,9 km tot het dichtstbijzijnde treinstation, 2,8 km tot een oprit van de snelweg, 0,3 km tot een park of andere groenvoorziening. Deze cijfers gaan over de hele buurt of wijk (CBS/politie), niet specifiek over dit huis.",
     }
   ),
 
