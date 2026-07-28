@@ -38,6 +38,7 @@ const dezeWoningPerM2 =
 const TEAL = "#0F766E";
 const TEAL_LICHT = "#E6FBF7";
 const GROEN = "#2F8A3A";
+const INDIGO_DONKER = "#4338CA";
 
 const verduurzamingTerugverdientijd = (() => {
   const maanden = verduurzaming.data?.terugverdientijdMaanden;
@@ -361,7 +362,7 @@ const SLIDES: { actief: number; paginaNummer?: number; render: () => ReactNode }
             </div>
           </Card>
         )}
-        {energy.data?.isolatie && (
+        {energy.data?.isolatie ? (
           <Card>
             <p className="text-[8.8px] font-bold text-ink">Isolatie</p>
             <div className="mt-1 grid grid-cols-4 gap-2 text-center">
@@ -383,12 +384,30 @@ const SLIDES: { actief: number; paginaNummer?: number; render: () => ReactNode }
               </div>
             </div>
           </Card>
+        ) : (
+          <Card>
+            <p className="text-[8.8px] font-bold text-ink">Pandgegevens (BAG)</p>
+            <div className="mt-1 grid grid-cols-2 gap-2">
+              <div>
+                <p className="text-[9.8px] font-semibold text-ink">{building.data?.pandStatus ?? "-"}</p>
+                <p className="text-[7.3px] text-ink/40">pandstatus</p>
+              </div>
+              <div>
+                <p className="text-[9.8px] font-semibold text-ink">{building.data?.aantalVerblijfsobjecten ?? "-"}</p>
+                <p className="text-[7.3px] text-ink/40">verblijfsobject(en) in dit pand</p>
+              </div>
+            </div>
+          </Card>
         )}
         <Card>
           <p className="text-[9.8px] font-bold text-ink">Wat betekent dit voor de stookkosten?</p>
           <p className="mt-1 text-[9.2px] leading-[1.5] text-ink/50">{energieDuiding?.stookkostenTekst}</p>
         </Card>
         <Duiding titel="Uitgebreid verduurzamingsadvies" tekst="Concrete maatregelen, investering en terugverdientijd — volgende pagina." />
+        <Duiding
+          titel="Waar kun je dit voor gebruiken?"
+          tekst="Oriëntatie bij een bouwkundige keuring, een opstalverzekering, of om de woning te vergelijken met vergelijkbare panden in de buurt."
+        />
       </>
     ),
   },
@@ -540,7 +559,7 @@ const SLIDES: { actief: number; paginaNummer?: number; render: () => ReactNode }
     render: () => (
       <>
         <Kop kicker="09 · samenvatting" titel="Samenvatting" />
-        <Card className="bg-accent-dark">
+        <Card style={{ backgroundColor: INDIGO_DONKER }}>
           <p className="font-display text-[14.7px] font-extrabold leading-snug text-white">{samenvatting.titel}</p>
           <p className="mt-1 text-[9.2px] leading-[1.5] text-white/70">{samenvatting.totaalbeeld}</p>
           {market.data && (
