@@ -1414,7 +1414,7 @@ export default function ReportView({
             </div>
           )}
 
-          {buurtprofiel.data.voorzieningen.items.length > 0 && (
+          {buurtprofiel.data.voorzieningen.items.length > 0 ? (
             <div>
               <SubKop icon={MapPinIcon}>Voorzieningen</SubKop>
               <div className="flex flex-col gap-4">
@@ -1443,6 +1443,21 @@ export default function ReportView({
                     </div>
                   );
                 })}
+              </div>
+            </div>
+          ) : (
+            // BUGFIX: dit blok verdween eerder stilzwijgend zodra CBS voor
+            // deze specifieke buurt geen nabijheidscijfers teruggaf — de
+            // pagina toonde dan helemaal niets over voorzieningen.
+            <div>
+              <SubKop icon={MapPinIcon}>Voorzieningen</SubKop>
+              <div className="flex items-start gap-2.5 rounded-xl bg-paper p-3">
+                <InfoIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ink/40" />
+                <p className="text-[11.5px] leading-relaxed text-ink/55">
+                  Voor deze buurt zijn geen nabijheidscijfers voor voorzieningen (zoals huisarts, supermarkt of school)
+                  beschikbaar in de CBS-data. Dit zegt niets over de daadwerkelijke voorzieningen ter plekke — bekijk dit
+                  lokaal, bijvoorbeeld via een kaartdienst.
+                </p>
               </div>
             </div>
           )}

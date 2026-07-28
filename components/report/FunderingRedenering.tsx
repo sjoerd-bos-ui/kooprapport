@@ -118,12 +118,13 @@ export default function FunderingRedenering({
             </div>
           )}
 
-          {/* Alleen tonen bij een bekende classificatie — bij "onbekend" zegt
-              de titel ("Geen bodemclassificatie bekend") al wat er te weten
-              valt; de Conclusie-rij hieronder legt dan al uit dat de
-              indicatie in dat geval uitsluitend op het bouwjaar steunt, dus
-              geen dubbele vermelding nodig. */}
-          {bodemclassificatie && bodemclassificatieUitleg && (
+          {/* BUGFIX: eerder liet "onbekend" dit hele blokje stilzwijgend weg
+              (redenering: de Conclusie-rij hieronder dekt dat al) — maar dat
+              gaf deze pagina merkbaar minder duiding dan bij een bekende
+              classificatie. Nu ook bij "onbekend" een eigen, uitgelegde rij,
+              zodat er nooit minder context is dan wanneer de bodemdata wél
+              bekend is. */}
+          {bodemclassificatie && bodemclassificatieUitleg ? (
             <div className="flex items-start gap-2.5">
               <span className="mt-0.5 flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full border border-ink/15">
                 <MapPinIcon className="h-3 w-3 text-ink/40" />
@@ -131,6 +132,19 @@ export default function FunderingRedenering({
               <div>
                 <p className="text-[12.5px] font-semibold text-ink">Bodem: {bodemclassificatie}</p>
                 <p className="mt-0.5 text-[11.5px] leading-relaxed text-ink/55">{bodemclassificatieUitleg}</p>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-start gap-2.5">
+              <span className="mt-0.5 flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full border border-ink/15">
+                <MapPinIcon className="h-3 w-3 text-ink/40" />
+              </span>
+              <div>
+                <p className="text-[12.5px] font-semibold text-ink">Bodem: geen classificatie beschikbaar</p>
+                <p className="mt-0.5 text-[11.5px] leading-relaxed text-ink/55">
+                  De officiële KCAF/RVO-kaart kent voor dit postcodegebied geen bodemclassificatie toe — dit gebeurt vaker in
+                  dicht-stedelijke gebieden. Deze indicatie steunt dan uitsluitend op het bevestigde bouwjaar hierboven.
+                </p>
               </div>
             </div>
           )}

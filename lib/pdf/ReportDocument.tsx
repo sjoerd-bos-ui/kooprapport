@@ -2046,7 +2046,7 @@ export default function ReportDocument({
 
               {/* Doorlopende toelichtingskaart */}
               <View style={[styles.kaart, { gap: 7 }]}>
-                {fundering.data.bodemclassificatie && fundering.data.bodemclassificatieUitleg && (
+                {fundering.data.bodemclassificatie && fundering.data.bodemclassificatieUitleg ? (
                   <>
                     <View style={[styles.row, { gap: 7, alignItems: "flex-start" }]}>
                       <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: KLEUR.mist, alignItems: "center", justifyContent: "center" }}>
@@ -2055,6 +2055,27 @@ export default function ReportDocument({
                       <View style={{ flex: 1 }}>
                         <Text style={{ fontSize: 7.8, fontFamily: "Helvetica-Bold", color: KLEUR.ink }}>{`Bodem: ${fundering.data.bodemclassificatie}`}</Text>
                         <Text style={{ fontSize: 7.2, color: KLEUR.inkMuted, lineHeight: 1.5, marginTop: 1 }}>{fundering.data.bodemclassificatieUitleg}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.divider} />
+                  </>
+                ) : (
+                  // BUGFIX: zonder deze fallback verdween dit hele blokje
+                  // stilzwijgend zodra de KCAF/RVO-kaart geen classificatie kent
+                  // voor dit postcodegebied (bv. dicht-stedelijke gebieden) —
+                  // dan bleef alleen de korte "Conclusie" hieronder over. Nu
+                  // altijd evenveel duiding, ook als de bodemdata zelf ontbreekt.
+                  <>
+                    <View style={[styles.row, { gap: 7, alignItems: "flex-start" }]}>
+                      <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: KLEUR.parchment, alignItems: "center", justifyContent: "center" }}>
+                        <IcoonSchild kleur={KLEUR.inkFaint} size={8} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 7.8, fontFamily: "Helvetica-Bold", color: KLEUR.ink }}>Bodem: geen classificatie beschikbaar</Text>
+                        <Text style={{ fontSize: 7.2, color: KLEUR.inkMuted, lineHeight: 1.5, marginTop: 1 }}>
+                          De officiële KCAF/RVO-kaart kent voor dit postcodegebied geen bodemclassificatie toe — dit gebeurt vaker in
+                          dicht-stedelijke gebieden. Deze indicatie steunt dan uitsluitend op het bevestigde bouwjaar hieronder.
+                        </Text>
                       </View>
                     </View>
                     <View style={styles.divider} />
@@ -2228,7 +2249,7 @@ export default function ReportDocument({
               {/* Voorzieningen — thema-gegroepeerde tegel-grid, zelfde
                   indeling en kleuren als de app (VOORZIENING_KLEUR gedeeld
                   via lib/utils/voorzieningenStijl.ts). */}
-              {voorzieningItems.length > 0 && (
+              {voorzieningItems.length > 0 ? (
                 <View style={[styles.kaart, { padding: 10 }]}>
                   <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: KLEUR.ink, marginBottom: 6 }}>Voorzieningen</Text>
                   {VOORZIENING_THEMA_VOLGORDE.map((thema) => {
@@ -2255,6 +2276,19 @@ export default function ReportDocument({
                       </View>
                     );
                   })}
+                </View>
+              ) : (
+                // BUGFIX: zonder deze fallback verdween het hele "Voorzieningen"-
+                // blok stilzwijgend zodra CBS voor deze specifieke buurt geen
+                // nabijheidscijfers teruggaf — de pagina toonde dan geen enkele
+                // uitleg over voorzieningen, alsof dat onderdeel niet bestond.
+                <View style={[styles.kaart, { padding: 10 }]}>
+                  <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: KLEUR.ink, marginBottom: 4 }}>Voorzieningen</Text>
+                  <Text style={{ fontSize: 7.2, color: KLEUR.inkMuted, lineHeight: 1.5 }}>
+                    Voor deze buurt zijn geen nabijheidscijfers voor voorzieningen (zoals huisarts, supermarkt of school) beschikbaar in de
+                    CBS-data. Dit zegt niets over de daadwerkelijke voorzieningen ter plekke — bekijk dit lokaal, bijvoorbeeld via een
+                    kaartdienst.
+                  </Text>
                 </View>
               )}
 

@@ -1,35 +1,39 @@
 import type { Report } from "@/types/report";
-import { successResult } from "@/types/dataSource";
+import { successResult, unavailableResult } from "@/types/dataSource";
+import type { BestemmingData } from "@/types/report";
 import { slugify } from "@/lib/utils/slug";
 
 // -----------------------------------------------------------------------------
 // Curatief, met de hand samengesteld "showcase"-rapport — uitsluitend bedoeld
 // om op de homepage het premium PDF-rapport op zijn best te laten zien.
 //
-// GEEN echt adres, GEEN live databron-aanroep: elk veld hieronder is met de
-// hand ingevuld, intern consistent (bv. prijs/m² van de verkopen sluit aan bij
-// de opgegeven oppervlaktes, "vergelijkbaar" volgt exact dezelfde ±22%-marge
-// die de app elders ook echt gebruikt) en expliciet gemarkeerd als mock
-// (mode: "mock", status: "mock" op elke bron) — zelfde eerlijke labeling als
-// de rest van de app al hanteert voor voorbeelddata (zie de bestaande notitie
-// "Mockdata ter illustratie" op de homepage-footer). Dit voorkomt twee dingen:
-//   1) dat de showcase per ongeluk oogt als een echt, bevestigd adresresultaat;
-//   2) dat de showcase kwetsbaar is voor de bekende Altum-sandbox eigenaardig-
-//      heden (bv. een enkele keer een onwaarschijnlijk hoge geschatte waarde
-//      of een gelijke boven-/ondergrens) — dit rapport is met opzet altijd
-//      "schoon", zodat het de opmaak laat zien, niet een randgeval.
+// v2 (28-07-2026): overgezet op de cijfers van een écht, live gegenereerd
+// rapport (Amsterdam Rijnkanaalkade 1) i.p.v. de eerdere, volledig verzonnen
+// "Prinsengracht 88". Elk veld hieronder is nu een zo getrouw mogelijke
+// weergave van dat echte rapport — inclusief de plekken waar de live
+// databronnen zelf niets teruggaven (geen bodemclassificatie, geen
+// voorzieningen-cijfers voor deze buurt, geen kamertal meer sinds Altum's
+// Woningwaarde+ API dat veld heeft laten vallen) — juist zodat de showcase
+// laat zien hoe het rapport er in de praktijk uitziet, inclusief die eerlijke
+// "niet beschikbaar"-momenten, i.p.v. een kunstmatig perfect voorbeeld.
 //
-// Gebruikt door app/api/rapport/voorbeeld-pdf/route.ts, gelinkt vanaf de
-// homepage-CTA ("Download het premium voorbeeldrapport").
+// Nog steeds GEEN live databron-aanroep vanuit dit bestand zelf (mode:
+// "mock", status: "mock" op elke bron) — zelfde eerlijke labeling als de
+// rest van de app al hanteert voor voorbeelddata. Dit voorkomt dat de
+// showcase per ongeluk oogt als een rechtstreeks, opnieuw op te vragen
+// live resultaat.
+//
+// Gebruikt door app/api/rapport/voorbeeld-pdf/route.ts en door
+// components/VoorbeeldrapportSlider.tsx op de homepage.
 // -----------------------------------------------------------------------------
 
-const STRAAT = "Prinsengracht";
-const HUISNUMMER = "88";
-const POSTCODE = "1015 DZ";
+const STRAAT = "Amsterdam Rijnkanaalkade";
+const HUISNUMMER = "1";
+const POSTCODE = "1019 VA";
 const PLAATS = "Amsterdam";
 const LABEL = `${STRAAT} ${HUISNUMMER}, ${PLAATS}`;
 
-const OPPERVLAKTE_M2 = 118;
+const OPPERVLAKTE_M2 = 154;
 // Zelfde ±22%-marge als OPPERVLAKTE_TOLERANTIE in lib/services/insights.ts —
 // bepaalt hieronder welke verkopen als "vergelijkbaar" gelden, geen los
 // bedachte grens voor alleen deze showcase.
@@ -37,7 +41,8 @@ const TOLERANTIE = 0.22;
 const MIN_VERGELIJKBAAR = OPPERVLAKTE_M2 * (1 - TOLERANTIE);
 const MAX_VERGELIJKBAAR = OPPERVLAKTE_M2 * (1 + TOLERANTIE);
 
-const DEZE_WONING_PER_M2 = Math.round(875000 / OPPERVLAKTE_M2);
+const GESCHATTE_WAARDE = 1264239;
+const DEZE_WONING_PER_M2 = Math.round(GESCHATTE_WAARDE / OPPERVLAKTE_M2);
 
 function maakVerkoop(
   adres: string,
@@ -46,7 +51,7 @@ function maakVerkoop(
   prijsPerM2: number,
   extra?: { verkoopprijsMin: number; verkoopprijsMax: number }
 ) {
-  const verkoopprijs = Math.round(oppervlakteM2 * prijsPerM2);
+  const verkoopprijs = extra ? Math.round((extra.verkoopprijsMin + extra.verkoopprijsMax) / 2) : Math.round(oppervlakteM2 * prijsPerM2);
   return {
     adres,
     verkoopdatum,
@@ -71,9 +76,11 @@ export const voorbeeldRapport: Report = {
       label: LABEL,
     },
     titel: `${STRAAT} ${HUISNUMMER}`,
-    ondertitel: "Grachtenpand · bouwjaar 1904 · label B",
-    // Illustratief punt in de Amsterdamse grachtengordel, voor de "Kaart →"-link.
-    lonLat: { lon: 4.8852, lat: 52.3676 },
+    // Zelfde opbouw als buildCore() in lib/services/insights.ts:
+    // "{woningtype} · bouwjaar {jaar} · energielabel {klasse}".
+    ondertitel: "Hoekwoning · bouwjaar 2021 · energielabel A+",
+    // Illustratief punt nabij de Houthavens/Rijnkanaalkade, voor de "Kaart →"-link.
+    lonLat: { lon: 4.8735, lat: 52.3887 },
   },
 
   building: successResult(
@@ -82,11 +89,11 @@ export const voorbeeldRapport: Report = {
     "mock",
     "mock",
     {
-      bouwjaar: 1904,
+      bouwjaar: 2021,
       gebruiksdoel: "Woonfunctie",
-      woningtype: "Woonfunctie",
+      woningtype: "Hoekwoning",
       oppervlakteM2: OPPERVLAKTE_M2,
-      inhoudM3: 410,
+      inhoudM3: 539,
       aantalVerblijfsobjecten: 1,
       pandStatus: "Pand in gebruik",
     }
@@ -98,9 +105,9 @@ export const voorbeeldRapport: Report = {
     "mock",
     "mock",
     {
-      klasse: "B",
-      registratiedatum: "2023-09-12",
-      geldigTot: "2033-09-12",
+      klasse: "A+",
+      registratiedatum: "2023-07-13",
+      geldigTot: "2033-07-13",
       // Bewust weggelaten (undefined), niet "Onbekend" ingevuld: isolatie per
       // bouwdeel ontbreekt regelmatig in de publieke EP-Online-dataset — de
       // showcase laat hier expliciet de eerlijke fallbacktekst zien i.p.v.
@@ -114,13 +121,16 @@ export const voorbeeldRapport: Report = {
     "mock",
     "mock",
     {
-      geschatteWaarde: 875000,
-      bandbreedteMin: 810000,
-      bandbreedteMax: 940000,
-      betrouwbaarheidstekst: "90% Confidence Interval is 810000-940000.",
-      waarderingsdatum: "2026-06-02",
-      rooms: 5,
-      volume: 410,
+      geschatteWaarde: GESCHATTE_WAARDE,
+      bandbreedteMin: 1137815,
+      bandbreedteMax: 1390662,
+      betrouwbaarheidstekst: "90% Confidence Interval is 1137815-1390662.",
+      waarderingsdatum: "2026-07-28",
+      // rooms/volume bewust weggelaten (undefined): Altum's Woningwaarde+ API
+      // levert sinds kort geen Rooms-veld meer, dus market.data.rooms is voor
+      // élk live rapport permanent undefined (zie code-comment in
+      // ReportDocument.tsx bij "stepperVolledig"). objectInhoudM3 valt in dat
+      // geval terug op building.data.inhoudM3, precies zoals hieronder.
     }
   ),
 
@@ -130,15 +140,16 @@ export const voorbeeldRapport: Report = {
     "mock",
     "mock",
     {
-      aantalLaatste12Maanden: 14,
-      gemiddeldePrijsPerM2: 8200,
+      aantalLaatste12Maanden: 30,
+      gemiddeldePrijsPerM2: 7908,
       verkopen: [
-        maakVerkoop("Herengracht 210", "2026-05-15", 112, 8100),
-        maakVerkoop("Bloemgracht 45", "2026-04-02", 121, 7900),
-        maakVerkoop("Egelantiersgracht 12", "2026-02-20", 105, 8400),
-        maakVerkoop("Prinsengracht 140", "2025-08-18", 118, 8300, { verkoopprijsMin: 950000, verkoopprijsMax: 1010000 }),
-        maakVerkoop("Keizersgracht 301", "2025-12-10", 168, 8600),
-        maakVerkoop("Leliegracht 8", "2025-10-05", 76, 7600),
+        maakVerkoop("Pedro de Medinalaan 90, Amsterdam", "2026-06-15", 152, 5592, { verkoopprijsMin: 800000, verkoopprijsMax: 900000 }),
+        maakVerkoop("Borneokade 147, Amsterdam", "2026-05-10", 148, 9291, { verkoopprijsMin: 1250000, verkoopprijsMax: 1500000 }),
+        maakVerkoop("D.L. Hudigstraat 43, Amsterdam", "2026-05-05", 124, 7661, { verkoopprijsMin: 900000, verkoopprijsMax: 1000000 }),
+        maakVerkoop("Pedro de Medinalaan 192, Amsterdam", "2026-05-01", 159, 5346, { verkoopprijsMin: 800000, verkoopprijsMax: 900000 }),
+        maakVerkoop("Seinwachterstraat 35, Amsterdam", "2026-05-20", 113, 7522, { verkoopprijsMin: 800000, verkoopprijsMax: 900000 }),
+        maakVerkoop("Lampenistenstraat 115, Amsterdam", "2026-04-18", 119, 7983, { verkoopprijsMin: 900000, verkoopprijsMax: 1000000 }),
+        maakVerkoop("Mortelstraat 111, Amsterdam", "2026-01-22", 205, 8537, { verkoopprijsMin: 1500000, verkoopprijsMax: 2000000 }),
       ],
       zoekvensterMaanden: 12,
       verruimd: false,
@@ -151,42 +162,33 @@ export const voorbeeldRapport: Report = {
     "mock",
     "mock",
     {
-      huidigLabel: "B",
-      haalbaarLabel: "A",
-      investering: 18400,
-      besparingPerJaar: 620,
-      terugverdientijdMaanden: 356,
-      waardestijging: 15800,
-      energierekeningHuidigPerJaar: 2180,
-      energierekeningNaPerJaar: 1560,
-      co2ReductieKg: 980,
+      huidigLabel: "A+",
+      haalbaarLabel: "A+++",
+      investering: 7705,
+      besparingPerJaar: 909,
+      terugverdientijdMaanden: 101,
+      waardestijging: 6069,
+      energierekeningHuidigPerJaar: 2131,
+      energierekeningNaPerJaar: 1222,
+      co2ReductieKg: 1560,
       maatregelen: [
         {
           key: "solar_panels",
           label: "Zonnepanelen",
           van: "0",
           naar: "14",
-          investering: 7200,
-          besparingPerJaar: 340,
-          co2ReductieKg: 520,
+          investering: 6205,
+          besparingPerJaar: 968,
+          co2ReductieKg: 1400,
         },
         {
-          key: "floor_insulation",
-          label: "Vloerisolatie",
-          van: "Matig",
-          naar: "Zeer goed",
-          investering: 3600,
-          besparingPerJaar: 130,
-          co2ReductieKg: 210,
-        },
-        {
-          key: "installation",
-          label: "Verwarmingsinstallatie",
-          van: "HR-combi",
-          naar: "Hybride warmtepomp",
-          investering: 7600,
-          besparingPerJaar: 150,
-          co2ReductieKg: 250,
+          key: "electric_cooking",
+          label: "Electric cooking",
+          van: "Gas stove",
+          naar: "Electric stove",
+          investering: 1500,
+          besparingPerJaar: -149,
+          co2ReductieKg: 160,
         },
       ],
     }
@@ -198,49 +200,40 @@ export const voorbeeldRapport: Report = {
     "mock",
     "mock",
     {
-      buurtnaam: "Grachtengordel-West",
+      buurtnaam: "Cruquiusbuurt",
       gemeentenaam: "Amsterdam",
       peiljaar: "2025",
-      samenvatting:
-        "Rustige, gewilde grachtenbuurt met veel voorzieningen op loopafstand en een bovengemiddeld veilig profiel.",
+      samenvatting: "Dichtbebouwde, moderne buurt aan het water met een gemiddeld veiligheidsniveau.",
       veiligheid: {
-        tekst:
-          "Circa 18,2 misdrijven per 1.000 inwoners geregistreerd door de politie in 2025 (146 in totaal), een laag aantal vergeleken met het landelijk gemiddelde.",
-        misdrijvenPer1000: 18.2,
-        aantalMisdrijven: 146,
+        tekst: "Circa 52,0 misdrijven per 1.000 inwoners geregistreerd door de politie in 2025 (134 in totaal).",
+        misdrijvenPer1000: 52.0,
+        aantalMisdrijven: 134,
       },
       sociaal: {
-        tekst:
-          "Circa 8.020 inwoners in 5.210 huishoudens, gemiddeld 1,5 personen per huishouden. Ongeveer 68% van de huishoudens is een eenpersoonshuishouden.",
-        inwoners: 8020,
-        huishoudens: 5210,
-        gemiddeldeHuishoudensgrootte: 1.5,
-        percentageEenpersoons: 68,
-        percentageMetKinderen: 11,
+        tekst: "Circa 2.575 inwoners in 1.450 huishoudens, gemiddeld 1,8 personen per huishouden. Ongeveer 48% van de huishoudens is een eenpersoonshuishouden.",
+        inwoners: 2575,
+        huishoudens: 1450,
+        gemiddeldeHuishoudensgrootte: 1.8,
+        percentageEenpersoons: 48,
+        percentageMetKinderen: 18,
       },
       fysiek: {
-        tekst: "Met circa 15.200 inwoners per km² is dit een dichtbebouwde, stedelijke buurt.",
-        bevolkingsdichtheid: 15200,
-        percentageEengezinswoning: 22,
-        percentageMeergezinswoning: 78,
+        tekst: "Met circa 14.727 inwoners per km² is dit een dichtbebouwde, stedelijke buurt.",
+        bevolkingsdichtheid: 14727,
+        percentageEengezinswoning: 0,
+        percentageMeergezinswoning: 100,
       },
+      // BEWUST leeg: voor deze buurt gaf CBS geen nabijheidscijfers voor
+      // voorzieningen terug — precies zoals in het echte, live rapport voor
+      // dit adres. De UI/PDF tonen in dat geval een eerlijke "niet
+      // beschikbaar"-duiding i.p.v. deze sectie stilzwijgend weg te laten
+      // (zie de bugfix in ReportDocument.tsx / ReportView.tsx / FunderingRedenering.tsx).
       voorzieningen: {
-        tekst:
-          "Dagelijks leven: gemiddeld 0,4 km tot de huisarts, 0,3 km tot de apotheek, 0,6 km tot een grote supermarkt. Gezin en onderwijs: gemiddeld 0,7 km tot de dichtstbijzijnde basisschool, 1,8 km tot een school voor voortgezet onderwijs, 0,5 km tot het dichtstbijzijnde kinderdagverblijf. Bereikbaarheid en buitenruimte: gemiddeld 1,2 km tot het dichtstbijzijnde treinstation, 0,8 km tot een oprit van de snelweg, 0,3 km tot een park of andere groenvoorziening.",
-        items: [
-          { key: "huisarts", label: "Huisartsenpraktijk", thema: "dagelijks", afstandKm: 0.4 },
-          { key: "apotheek", label: "Apotheek", thema: "dagelijks", afstandKm: 0.3 },
-          { key: "supermarkt", label: "Grote supermarkt", thema: "dagelijks", afstandKm: 0.6 },
-          { key: "basisschool", label: "Basisschool", thema: "gezin", afstandKm: 0.7 },
-          { key: "voortgezetOnderwijs", label: "Voortgezet onderwijs", thema: "gezin", afstandKm: 1.8 },
-          { key: "kinderdagverblijf", label: "Kinderdagverblijf", thema: "gezin", afstandKm: 0.5 },
-          { key: "treinstation", label: "Treinstation", thema: "bereikbaarheid", afstandKm: 1.2 },
-          { key: "opritHoofdweg", label: "Oprit hoofdweg", thema: "bereikbaarheid", afstandKm: 0.8 },
-          { key: "park", label: "Park / openbaar groen", thema: "bereikbaarheid", afstandKm: 0.3 },
-        ],
+        tekst: null,
+        items: [],
       },
       duiding:
-        "Grachtengordel-West combineert een laag geregistreerd misdrijfcijfer met een zeer dichte, overwegend uit meergezinswoningen bestaande bebouwing. Kenmerkend voor de historische binnenstad. Het hoge aandeel eenpersoonshuishoudens en de korte afstanden tot voorzieningen passen bij een centrumstedelijk, kleinschalig woonmilieu.",
+        "Veiligheid: de politie registreerde circa 52,0 misdrijven per 1.000 inwoners (134 in totaal) in 2025. In deze buurt wonen circa 2.575 mensen, verdeeld over 1.450 huishoudens, gemiddeld 1,8 personen per huishouden. Ongeveer 48% van de huishoudens bestaat uit één persoon. Circa 18% heeft thuiswonende kinderen. Met circa 14.727 inwoners per km² is dit een dichtbebouwde, stedelijke buurt; van de woningen hier is 0% eengezinswoningen en 100% meergezinswoningen.",
     }
   ),
 
@@ -253,20 +246,26 @@ export const voorbeeldRapport: Report = {
       niveau: "laag",
       label: "Laag, we zien geen duidelijke signalen van funderingsrisico",
       toelichting:
-        "Gebaseerd op het bevestigde BAG-bouwjaar (1904) en de officiële KCAF/RVO-bodemclassificatie voor dit postcodegebied.",
+        "We kijken naar het bouwjaar (2021) en de officiële bodemclassificatie van het KCAF/RVO. Dit huis is gebouwd ná 1970, en vanaf toen werd bouwen op betonpalen de standaard. Dat verkleint het risico op de bekende problemen met houten paalfunderingen flink.",
       duiding:
-        "Dit postcodegebied is geclassificeerd als 'Niet kwetsbaar'. Dat zegt niets over de daadwerkelijke, huidige staat van de fundering onder dit specifieke pand. Alleen een gespecialiseerd funderingsonderzoek geeft daar zekerheid over.",
+        "Voor dit postcodegebied is geen officiële bodemclassificatie beschikbaar in de KCAF/RVO-kaart; deze indicatie steunt dan uitsluitend op het bouwjaar.",
       duidingKern:
-        "Dit postcodegebied is geclassificeerd als 'Niet kwetsbaar'. De bodem hier is over het algemeen minder gevoelig voor paalrot en zetting dan in veengebieden.",
+        "Voor dit postcodegebied is geen officiële bodemclassificatie beschikbaar in de KCAF/RVO-kaart; deze indicatie steunt dan uitsluitend op het bouwjaar.",
       duidingCaveat:
-        "Dit zegt niets over de daadwerkelijke, huidige staat van de fundering onder dit specifieke pand. Alleen een gespecialiseerd funderingsonderzoek geeft daar zekerheid over.",
+        "Niemand kan het werkelijke funderingstype of de actuele grondwaterstand ter plekke met zekerheid vaststellen voor dit specifieke pand.",
       duidingAdvies:
-        "Bij twijfel (scheuren, scheve kozijnen, verzakking) is een funderingsonderzoek door een erkend bureau de enige manier om zekerheid te krijgen. Vraag hier bij een bezichtiging altijd naar.",
-      bouwjaarGebruikt: 1904,
-      bodemclassificatie: "Niet kwetsbaar (stedelijk gefundeerd)",
-      bodemclassificatieUitleg:
-        "Dit postcodegebied valt buiten de door KCAF/RVO aangewezen kwetsbare veen- en rivierklei-gebieden.",
-      percentageVoor1970Postcode: 91,
+        "Bij twijfel in Amsterdam is een funderingsonderzoek door een erkend bureau de enige harde manier om dit vast te stellen. Sommige gemeenten met bekende funderingsproblematiek (o.a. Gouda, Schiedam, Zaanstad, Dordrecht) hebben ook een funderingsloket met lokale kaarten.",
+      bouwjaarGebruikt: 2021,
+      // BEWUST null: net als bij een deel van de échte, live rapporten kent
+      // de KCAF/RVO-kaart dit postcodegebied geen classificatie toe (vaak in
+      // dicht-stedelijke nieuwbouwgebieden). Zie de bugfix hierboven (Bodem:
+      // geen classificatie beschikbaar) voor de fallback-duiding die dit nu
+      // altijd toont i.p.v. stilzwijgend weg te laten.
+      bodemclassificatie: null,
+      bodemclassificatieUitleg: null,
+      // BEWUST null: ook dit cijfer was niet beschikbaar voor dit
+      // postcodegebied in het echte rapport.
+      percentageVoor1970Postcode: null,
     }
   ),
 
@@ -276,42 +275,32 @@ export const voorbeeldRapport: Report = {
     "mock",
     "mock",
     {
-      oppervlakteM2: 142,
+      oppervlakteM2: 3992,
       soortGrootte: "vastgesteld",
-      kadastraleAanduiding: "Amsterdam AK 4021",
+      kadastraleAanduiding: "Amsterdam AK 9142",
     }
   ),
 
-  bestemming: successResult(
-    "bestemming",
-    "Bestemming (Ruimtelijke Plannen / Omgevingsplan)",
-    "mock",
-    "mock",
-    {
-      bestemmingen: ["Wonen"],
-      planNaam: "Bestemmingsplan Grachtengordel",
-      planStatus: "onherroepelijk",
-      planDatum: "2013-11-06",
-      bevoegdGezag: "gemeente Amsterdam",
-      bron: "bestemmingsplan",
-    }
-  ),
+  // BEWUST unavailableResult: in het echte rapport voor dit adres werd geen
+  // bestemmingsplan-/omgevingsplangegeven getoond — geen bestemming-chip op
+  // de Object-pagina. Eerlijke "niet opgehaald" i.p.v. een verzonnen "Wonen".
+  bestemming: unavailableResult<BestemmingData>("bestemming", "Bestemming (Ruimtelijke Plannen / Omgevingsplan)", "mock"),
 
   // Zelfde drie keys als de echte generator (buildInsights() in
-  // lib/services/insights.ts) — deze waren hier eerder losse, verzonnen
-  // sleutels ("waarde-buurt"/"veiligheid"/"fundering") die in de live app
-  // nooit voorkomen, waardoor deze showcase een rapportonderdeel
-  // (lib/services/samenvatting.ts) net iets anders behandelde dan een echt,
-  // live rapport. Nu identiek aan wat buildInsights() daadwerkelijk oplevert.
+  // lib/services/insights.ts) — met dezelfde uitkomst die die functie ook
+  // daadwerkelijk zou berekenen uit de cijfers hierboven (energielabel A+ is
+  // met diff -2 t.o.v. een 2021-bouwjaar "onder gemiddeld", de woningwaarde
+  // ligt met +4% t.o.v. de buurtverkopen binnen de neutrale marge, en 30
+  // verkopen per jaar is "een actieve markt").
   insights: [
+    { key: "energie-vs-bouwjaar", label: "Energieprestatie", tekst: "onder gemiddeld voor de bouwperiode", toon: "negatief" },
     {
       key: "woningwaarde-vs-buurtverkopen",
       label: "Positionering",
-      tekst: "10% onder het prijsniveau van recente buurtverkopen",
+      tekst: "vergelijkbaar met het prijsniveau van recente buurtverkopen",
       toon: "neutraal",
     },
-    { key: "energie-vs-bouwjaar", label: "Energieprestatie", tekst: "boven gemiddeld voor de bouwperiode", toon: "positief" },
-    { key: "marktactiviteit", label: "Marktactiviteit", tekst: "een gemiddelde marktactiviteit in de buurt", toon: "neutraal" },
+    { key: "marktactiviteit", label: "Marktactiviteit", tekst: "een actieve markt in de buurt", toon: "neutraal" },
   ],
 
   dataQuality: {

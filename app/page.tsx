@@ -325,9 +325,9 @@ export default function HomePage() {
             {/* Drie gestapelde paginakaartjes i.p.v. één vlakke statskaart —
                 laat direct zien dat dit een écht meerpagina-rapport is.
                 Cijfers zijn bewust dezelfde als in het voorbeeldrapport
-                (lib/pdf/voorbeeldRapport.ts, Prinsengracht 88) zodat deze
-                preview en de daadwerkelijke voorbeeld-PDF elkaar niet
-                tegenspreken.
+                (lib/pdf/voorbeeldRapport.ts, Amsterdam Rijnkanaalkade 1)
+                zodat deze preview en de daadwerkelijke voorbeeld-PDF elkaar
+                niet tegenspreken.
                 Alleen vanaf lg zichtbaar (feedback: op mobiel voegde dit
                 puur decoratieve blok, dat toch al onder de tekst gestapeld
                 werd getoond, vooral drukte toe zonder extra functie — op
@@ -348,43 +348,43 @@ export default function HomePage() {
                 <div className="mt-1.5 flex justify-between rounded-lg bg-gradient-to-br from-[#0F766E] to-[#0B5A54] px-1.5 py-1.5">
                   <div>
                     <div className="text-[4px] text-white/70">AANTAL</div>
-                    <div className="text-[8px] font-extrabold text-white">14</div>
+                    <div className="text-[8px] font-extrabold text-white">30</div>
                   </div>
                   <div>
                     <div className="text-[4px] text-white/70">GEM. €/M²</div>
-                    <div className="text-[8px] font-extrabold text-white">€8.200</div>
+                    <div className="text-[8px] font-extrabold text-white">€7.908</div>
                   </div>
                 </div>
                 <div className="mt-1.5 text-[4.3px] font-bold text-[#0F766E]">VERGELIJKBAAR MET DEZE WONING</div>
                 <div className="mt-1 flex flex-col gap-1">
                   <div>
                     <div className="flex items-baseline justify-between">
-                      <span className="text-[4.3px] font-bold text-ink">Herengracht 210</span>
-                      <span className="text-[4.8px] font-extrabold text-ink">€ 907.200</span>
+                      <span className="text-[4.3px] font-bold text-ink">Pedro de Medinalaan 90</span>
+                      <span className="text-[4.8px] font-extrabold text-ink">€ 850.000</span>
                     </div>
                     <div className="mt-0.5 flex items-center gap-1">
-                      <div className="h-[3.5px] flex-[0.99] rounded-sm bg-[#0F766E]" />
-                      <span className="text-[3.3px] text-ink/45">€8,1k/m²</span>
+                      <div className="h-[3.5px] flex-[0.71] rounded-sm bg-[#5FB3AA]" />
+                      <span className="text-[3.3px] text-ink/45">€5,6k/m²</span>
                     </div>
                   </div>
                   <div>
                     <div className="flex items-baseline justify-between">
-                      <span className="text-[4.3px] font-bold text-ink">Bloemgracht 45</span>
-                      <span className="text-[4.8px] font-extrabold text-ink">€ 955.900</span>
+                      <span className="text-[4.3px] font-bold text-ink">Borneokade 147</span>
+                      <span className="text-[4.8px] font-extrabold text-ink">€ 1.375.000</span>
                     </div>
                     <div className="mt-0.5 flex items-center gap-1">
-                      <div className="h-[3.5px] flex-[0.96] rounded-sm bg-[#5FB3AA]" />
-                      <span className="text-[3.3px] text-ink/45">€7,9k/m²</span>
+                      <div className="h-[3.5px] flex-[1.18] rounded-sm bg-[#0F766E]" />
+                      <span className="text-[3.3px] text-ink/45">€9,3k/m²</span>
                     </div>
                   </div>
                   <div>
                     <div className="flex items-baseline justify-between">
-                      <span className="text-[4.3px] font-bold text-ink">Egelantiersgr. 12</span>
-                      <span className="text-[4.8px] font-extrabold text-ink">€ 882.000</span>
+                      <span className="text-[4.3px] font-bold text-ink">D.L. Hudigstraat 43</span>
+                      <span className="text-[4.8px] font-extrabold text-ink">€ 950.000</span>
                     </div>
                     <div className="mt-0.5 flex items-center gap-1">
-                      <div className="h-[3.5px] flex-[1.02] rounded-sm bg-[#0F766E]" />
-                      <span className="text-[3.3px] text-ink/45">€8,4k/m²</span>
+                      <div className="h-[3.5px] flex-[0.97] rounded-sm bg-[#0F766E]" />
+                      <span className="text-[3.3px] text-ink/45">€7,7k/m²</span>
                     </div>
                   </div>
                 </div>
@@ -407,50 +407,50 @@ export default function HomePage() {
               <div className="absolute left-[40px] top-10 flex h-[224px] w-[168px] rotate-[4deg] flex-col rounded-xl border border-line bg-white p-2.5 shadow-overlay sm:left-[120px] lg:left-[150px]">
                 <div className="flex items-center justify-between">
                   <span className="text-[6px] font-bold uppercase tracking-wide text-ink/45">Waarde-indicatie</span>
-                  <span className="rounded-full bg-[#FEF3E2] px-1.5 py-0.5 text-[4.5px] font-extrabold text-[#9A6A0C]">−10%</span>
+                  <span className="rounded-full bg-mist px-1.5 py-0.5 text-[4.5px] font-extrabold text-accent">+4%</span>
                 </div>
                 <div className="mt-1.5 flex gap-[1.5px]">
                   <div className="flex-[1.2] rounded-l-md bg-gradient-to-br from-accent to-accent-dark p-1">
                     <div className="text-[4px] text-white/70">DEZE WONING</div>
-                    <div className="text-[7px] font-extrabold text-white">€875.000</div>
+                    <div className="text-[7px] font-extrabold text-white">€1.264.239</div>
                   </div>
                   <div className="flex-1 rounded-r-md bg-parchment p-1">
                     <div className="text-[4px] text-ink/45">BUURTGEM.</div>
-                    <div className="text-[7px] font-extrabold text-ink">€8.200/m²</div>
+                    <div className="text-[7px] font-extrabold text-ink">€7.908/m²</div>
                   </div>
                 </div>
                 <div className="relative mt-1.5 h-[5px] rounded-full bg-mist">
                   <div className="absolute -top-[1.5px] left-1/2 h-2 w-[1.5px] bg-ink" />
                 </div>
                 <div className="mt-0.5 flex justify-between text-[3.3px] text-ink/45">
-                  <span>€810k</span>
+                  <span>€1,14M</span>
                   <span>90% zeker</span>
-                  <span>€940k</span>
+                  <span>€1,39M</span>
                 </div>
                 <div className="mt-1.5 flex gap-1">
                   <div className="flex-1 text-center">
                     <div className="mx-auto flex h-2.5 w-2.5 items-center justify-center rounded-full bg-mist text-accent">
                       <RulerIcon className="h-1.5 w-1.5" />
                     </div>
-                    <div className="mt-0.5 text-[3.3px] font-bold text-ink">118 m²</div>
+                    <div className="mt-0.5 text-[3.3px] font-bold text-ink">154 m²</div>
                   </div>
                   <div className="flex-1 text-center">
                     <div className="mx-auto flex h-2.5 w-2.5 items-center justify-center rounded-full bg-mist text-accent">
                       <CalendarIcon className="h-1.5 w-1.5" />
                     </div>
-                    <div className="mt-0.5 text-[3.3px] font-bold text-ink">1904</div>
+                    <div className="mt-0.5 text-[3.3px] font-bold text-ink">2021</div>
                   </div>
                   <div className="flex-1 text-center">
                     <div className="mx-auto flex h-2.5 w-2.5 items-center justify-center rounded-full bg-mist text-accent">
                       <DoorIcon className="h-1.5 w-1.5" />
                     </div>
-                    <div className="mt-0.5 text-[3.3px] font-bold text-ink">5 kmr</div>
+                    <div className="mt-0.5 text-[3.3px] font-bold text-ink">539 m³</div>
                   </div>
                   <div className="flex-1 text-center">
                     <div className="mx-auto flex h-2.5 w-2.5 items-center justify-center rounded-full bg-accent text-white">
                       <FlagIcon className="h-1.5 w-1.5" />
                     </div>
-                    <div className="mt-0.5 text-[3.3px] font-bold text-accent">€875k</div>
+                    <div className="mt-0.5 text-[3.3px] font-bold text-accent">€1,26M</div>
                   </div>
                 </div>
                 <div className="mt-auto rounded-md bg-parchment px-1.5 py-1">
@@ -476,8 +476,8 @@ export default function HomePage() {
               <div className="absolute left-[84px] top-0 flex h-[250px] w-[168px] flex-col overflow-hidden rounded-xl border border-line shadow-lg sm:left-[240px] lg:left-[250px]">
                 <div className="shrink-0 bg-gradient-to-br from-accent to-accent-dark p-2.5">
                   <div className="text-[5.5px] font-bold text-white/70">PREMIUM KOOPRAPPORT</div>
-                  <div className="mt-1 text-[10px] font-extrabold text-white">Prinsengracht 88</div>
-                  <div className="text-[5.5px] text-white/60">1015 DZ Amsterdam</div>
+                  <div className="mt-1 text-[10px] font-extrabold text-white">Rijnkanaalkade 1</div>
+                  <div className="text-[5.5px] text-white/60">1019 VA Amsterdam</div>
                 </div>
                 <div className="flex flex-1 flex-col bg-white p-2">
                   <div className="text-[5px] font-bold uppercase tracking-wide text-ink/45">

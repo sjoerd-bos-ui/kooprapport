@@ -167,7 +167,7 @@ export default function PreviewSummary({
           <div className="w-[92px] shrink-0 overflow-hidden rounded-xl shadow-lg">
             <div className="bg-gradient-to-br from-accent to-accent-dark p-2">
               <p className="text-[4.5px] font-bold text-white/70">PREMIUM KOOPRAPPORT</p>
-              <p className="mt-1 text-[8px] font-extrabold text-white">Prinsengracht 88</p>
+              <p className="mt-1 text-[8px] font-extrabold text-white">Rijnkanaalkade 1</p>
             </div>
             <div className="bg-white p-2 text-[5.5px] leading-[1.7] text-ink/45">
               10 pagina&apos;s
