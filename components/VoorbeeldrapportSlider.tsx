@@ -1,645 +1,148 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import type { ReactNode, CSSProperties } from "react";
-import { voorbeeldRapport } from "@/lib/pdf/voorbeeldRapport";
-import { buildSamenvatting } from "@/lib/services/samenvatting";
-import { berekenVeiligheidsscore, bepaalVeiligheidsBand, VEILIGHEID_BAND } from "@/lib/utils/veiligheidsscore";
-import { duidEnergielabel, ENERGIELABEL_SCHAAL } from "@/lib/utils/energielabel";
-import { formatCurrency } from "@/lib/utils/format";
+import { useEffect, useRef, useState } from "react";
 import { ArrowRightIcon, FileCheckIcon } from "@/components/report/icons";
 
 // -----------------------------------------------------------------------------
-// Doorklikbare voorbeeldrapport-slider — de website-tegenhanger van de knop
-// "Bekijk het echte voorbeeldrapport" (was voorheen alleen een directe link
-// naar /api/rapport/voorbeeld-pdf, zie app/page.tsx).
+// v5 — i.p.v. een met de hand nagebouwde HTML/Tailwind-kopie van elke
+// PDF-pagina (die telkens weer uit de pas liep zodra de échte PDF een fix of
+// contentwijziging kreeg — zie de vorige versies van dit bestand), rendert
+// deze slider nu de ÉCHTE, gegenereerde voorbeeld-PDF zelf via pdf.js:
+// dezelfde bytes die iemand ook daadwerkelijk downloadt via
+// /api/rapport/voorbeeld-pdf (lib/pdf/ReportDocument.tsx + voorbeeldRapport.ts).
 //
-// v4: groot, à la SlimBieden — twee volledige paginas naast elkaar op
-// (bijna) ware grootte, elke pagina volledig gevuld met alle échte inhoud
-// van de bijbehorende PDF-pagina (lib/pdf/ReportDocument.tsx). Geen
-// samengevatte kaartjes, geen witruimte, geen aparte downloadknop meer
-// nodig — de volledige inhoud is al direct zichtbaar in de slider zelf.
-// Elk cijfer/tekstblok komt rechtstreeks uit voorbeeldRapport /
-// buildSamenvatting(), niets verzonnen.
+// Geen dubbel onderhoud meer: elke toekomstige aanpassing aan de PDF-generator
+// komt hier automatisch, pixelidentiek in beeld, zonder dat deze component
+// ooit weer los bijgewerkt hoeft te worden.
 // -----------------------------------------------------------------------------
 
-const { core, building, energy, market, nearbySales, verduurzaming, fundering, buurtprofiel } = voorbeeldRapport;
-const adres = core.address;
-const samenvatting = buildSamenvatting(voorbeeldRapport);
-const energieDuiding = energy.data?.klasse ? duidEnergielabel(energy.data.klasse) : null;
-const veiligheidScore = buurtprofiel.data?.veiligheid.misdrijvenPer1000 != null ? berekenVeiligheidsscore(buurtprofiel.data.veiligheid.misdrijvenPer1000) : null;
-const veiligheidBand = veiligheidScore != null ? bepaalVeiligheidsBand(veiligheidScore) : null;
-const dezeWoningPerM2 =
-  market.data?.geschatteWaarde != null && building.data?.oppervlakteM2 ? Math.round(market.data.geschatteWaarde / building.data.oppervlakteM2) : null;
-// Losse kleur-constanten i.p.v. Tailwind arbitrary-hex classNames (bg-[#...]):
-// die laatste bleken op productie soms niet mee te compileren (leverde een
-// lege/witte kaart op i.p.v. de bedoelde kleur) — inline style is hier
-// betrouwbaarder en identiek qua uiterlijk.
-const TEAL = "#0F766E";
-const TEAL_LICHT = "#E6FBF7";
-const GROEN = "#2F8A3A";
-const INDIGO_DONKER = "#4338CA";
+const PDF_URL = "/api/rapport/voorbeeld-pdf";
+// Interne rendering-resolutie (device pixels per PDF-punt) — hoger dan de
+// uiteindelijke CSS-weergavegrootte, zodat de pagina scherp blijft op een
+// groot/retina-scherm terwijl de canvas zelf via CSS kleiner getoond wordt.
+const RENDER_SCHAAL = 2.2;
 
-const verduurzamingTerugverdientijd = (() => {
-  const maanden = verduurzaming.data?.terugverdientijdMaanden;
-  if (maanden == null) return "Onbekend";
-  const jaren = Math.floor(maanden / 12);
-  const rest = maanden % 12;
-  if (jaren <= 0) return `${maanden} mnd`;
-  return rest > 0 ? `${jaren} jr ${rest} mnd` : `${jaren} jr`;
-})();
+// Minimale vorm die we uit pdf.js gebruiken — bewust los getypeerd (i.p.v. de
+// volledige pdfjs-dist-typedefinities) omdat dit pakket alleen client-side,
+// dynamisch geïmporteerd wordt (zie hieronder) en niet server-side/tijdens
+// tsc met een aparte node-omgeving hoeft te worden meegecompileerd.
+interface PdfPaginaProxy {
+  getViewport(params: { scale: number }): { width: number; height: number };
+  render(params: { canvasContext: CanvasRenderingContext2D; viewport: unknown }): { promise: Promise<void>; cancel: () => void };
+}
+interface PdfDocumentProxy {
+  numPages: number;
+  getPage(pageNumber: number): Promise<PdfPaginaProxy>;
+}
 
-// ---- Kleine, herbruikbare bouwstenen (allemaal op deze compacte schaal) ----
+function PdfPaginaCanvas({ doc, paginaNummer, laatstePagina }: { doc: PdfDocumentProxy | null; paginaNummer: number; laatstePagina: number }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const renderTaskRef = useRef<{ cancel: () => void } | null>(null);
+  const [status, setStatus] = useState<"laden" | "klaar" | "fout">("laden");
 
-function Kop({ kicker, titel }: { kicker: string; titel: string }) {
+  useEffect(() => {
+    if (!doc || paginaNummer < 1 || paginaNummer > laatstePagina) return;
+    let actief = true;
+    setStatus("laden");
+
+    (async () => {
+      try {
+        const pagina = await doc.getPage(paginaNummer);
+        if (!actief) return;
+        const viewport = pagina.getViewport({ scale: RENDER_SCHAAL });
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+
+        // Een vorige, nog lopende render-taak op dit canvas eerst annuleren —
+        // pdf.js staat geen twee gelijktijdige render()-aanroepen op hetzelfde
+        // canvas toe (bv. bij snel doorklikken).
+        renderTaskRef.current?.cancel();
+        const taak = pagina.render({ canvasContext: ctx, viewport });
+        renderTaskRef.current = taak;
+        await taak.promise;
+        if (actief) setStatus("klaar");
+      } catch (err) {
+        // Een geannuleerde render-taak gooit zelf ook een (verwachte) fout —
+        // die stil negeren, dat is geen echte fout, alleen een ingehaalde render.
+        if (actief && (err as { name?: string })?.name !== "RenderingCancelledException") {
+          setStatus("fout");
+        }
+      }
+    })();
+
+    return () => {
+      actief = false;
+      renderTaskRef.current?.cancel();
+    };
+  }, [doc, paginaNummer, laatstePagina]);
+
   return (
-    <div className="mb-3">
-      <p className="text-[11px] font-bold uppercase tracking-wider text-accent">{kicker}</p>
-      <h3 className="font-display text-[22px] font-extrabold leading-tight text-ink">{titel}</h3>
-      <div className="mt-2 h-[3px] w-9 rounded-full bg-sun" />
+    <div className="relative aspect-[210/297] overflow-hidden rounded-lg bg-white shadow-2xl" style={{ width: "min(40vw, 640px)" }}>
+      <canvas ref={canvasRef} className="h-full w-full" />
+      {status === "laden" && (
+        <div className="absolute inset-0 flex animate-pulse items-center justify-center bg-parchment">
+          <span className="text-[11px] text-ink/40">Pagina wordt geladen…</span>
+        </div>
+      )}
+      {status === "fout" && (
+        <div className="absolute inset-0 flex items-center justify-center bg-parchment px-4 text-center">
+          <span className="text-[11px] text-ink/40">Deze pagina kon niet geladen worden.</span>
+        </div>
+      )}
     </div>
   );
 }
-
-function Stat({
-  label,
-  waarde,
-  sub,
-  kleur = "text-ink",
-  kleurHex,
-}: {
-  label: string;
-  waarde: string;
-  sub?: string;
-  kleur?: string;
-  kleurHex?: string;
-}) {
-  return (
-    <div className="rounded-md bg-white p-2.5">
-      <p className="text-[8.8px] font-semibold uppercase tracking-wide text-ink/40">{label}</p>
-      <p
-        className={`mt-1 font-display text-[18.6px] font-extrabold leading-none ${kleurHex ? "" : kleur}`}
-        style={kleurHex ? { color: kleurHex } : undefined}
-      >
-        {waarde}
-      </p>
-      {sub && <p className="mt-1 text-[8.4px] leading-[1.4] text-ink/40">{sub}</p>}
-    </div>
-  );
-}
-
-function Duiding({ titel, tekst }: { titel: string; tekst: string }) {
-  return (
-    <div className="rounded-md border-l-2 border-accent bg-mist p-2.5">
-      <p className="text-[10.4px] font-bold text-accent-dark">{titel}</p>
-      <p className="mt-1 text-[9.8px] leading-[1.5] text-ink">{tekst}</p>
-    </div>
-  );
-}
-
-function Card({
-  children,
-  className = "",
-  style,
-}: {
-  children: ReactNode;
-  className?: string;
-  style?: CSSProperties;
-}) {
-  return (
-    <div className={`rounded-md bg-white p-2.5 ${className}`} style={style}>
-      {children}
-    </div>
-  );
-}
-
-// Vaste "pagina-huls": indigo sectie-balkje links + witte inhoud, exact
-// dezelfde 8 secties/volgorde als de sidebar in de echte PDF, plus een
-// echte paginavoet (net als op elke PDF-pagina) zodat er geen kale
-// witruimte onderaan overblijft.
-const SECTIES = ["Overzicht", "Waarde", "Verkopen", "Object", "Verduurzaming", "Fundering", "Buurt", "Samenvatting"];
-
-function Pagina({
-  actief,
-  paginaNummer,
-  kleur = "#F5F5FA",
-  children,
-}: {
-  actief: number;
-  paginaNummer?: number;
-  kleur?: string;
-  children: ReactNode;
-}) {
-  return (
-    <div
-      className="flex aspect-[210/297] overflow-hidden rounded-lg shadow-2xl"
-      style={{ backgroundColor: kleur, width: "min(40vw, 640px)" }}
-    >
-      <div className="flex w-5 shrink-0 flex-col items-center gap-2 bg-accent-dark py-3.5">
-        {SECTIES.map((_, i) => (
-          <span key={i} className={`h-1 w-1 rounded-full ${i === actief ? "bg-sun" : "bg-white/30"}`} />
-        ))}
-      </div>
-      <div className="flex flex-1 flex-col overflow-hidden px-3.5 py-3">
-        <div className="flex flex-1 flex-col gap-2.5 overflow-hidden">{children}</div>
-        {paginaNummer != null && (
-          <div className="mt-3.5 flex shrink-0 items-center justify-between border-t border-ink/10 pt-1">
-            <span className="text-[7.8px] font-semibold tracking-wide text-ink/30">KOOPRAPPORT.NL</span>
-            <span className="text-[7.8px] text-ink/30">Pagina {paginaNummer} van 10</span>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-const SLIDES: { actief: number; paginaNummer?: number; render: () => ReactNode }[] = [
-  {
-    actief: 0,
-    render: () => (
-      <div className="flex h-full flex-col items-center justify-between">
-        <div />
-        <div className="flex flex-col items-center text-center">
-          <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-accent-dark">
-            <span className="font-display text-[17px] font-extrabold text-white">K</span>
-          </div>
-          <p className="font-display text-[13px] font-extrabold tracking-wide text-accent-dark">KOOPRAPPORT</p>
-          <p className="mt-4 text-[9px] font-semibold uppercase tracking-widest text-ink/40">Premium woningrapport</p>
-          <h2 className="mt-3 font-display text-[24px] font-extrabold leading-tight text-ink">
-            {adres.straat} {adres.huisnummer}
-          </h2>
-          <p className="mt-1 text-[11.5px] text-ink/45">
-            {adres.postcode} {adres.plaats}
-          </p>
-          <div className="mt-3 h-[3px] w-9 rounded-full bg-sun" />
-          <p className="mt-3 max-w-[300px] text-[10.5px] leading-relaxed text-ink/50">
-            Alles wat je moet weten over dit adres, feitelijk en verifieerbaar op één rij.
-          </p>
-          <span className="mt-3 inline-flex items-center gap-2 rounded-full bg-accent px-3 py-1.5 text-[9.5px] font-bold text-white">
-            Bekijk dit rapport online &rarr;
-          </span>
-          <div className="mt-4 grid grid-cols-4 gap-2 text-[8px] text-ink/40">
-            <span className="rounded-full bg-parchment px-2 py-1">Waarde</span>
-            <span className="rounded-full bg-parchment px-2 py-1">Energie</span>
-            <span className="rounded-full bg-parchment px-2 py-1">Fundering</span>
-            <span className="rounded-full bg-parchment px-2 py-1">Buurt</span>
-          </div>
-        </div>
-        <p className="text-[8px] font-semibold tracking-wide text-ink/30">KOOPRAPPORT.NL &middot; Pagina 1 van 10</p>
-      </div>
-    ),
-  },
-  {
-    actief: 0,
-    paginaNummer: 2,
-    render: () => (
-      <div className="flex h-full flex-col">
-        <p className="text-[11px] font-bold uppercase tracking-wider text-accent">Een persoonlijk woord</p>
-        <h2 className="mt-2 font-display text-[26px] font-extrabold leading-[1.1] text-ink">Welkom bij Kooprapport</h2>
-        <div className="mt-2 h-[3px] w-9 rounded-full bg-sun" />
-        <div className="mt-3 flex flex-1 flex-col gap-2.5 overflow-hidden text-[11px] leading-[1.55] text-ink/75">
-          <p>
-            Een huis kopen is voor veel mensen een van de grootste beslissingen in hun leven. Dat merkte ik zelf ook toen ik op
-            zoek ging naar een woning in Rotterdam. Je denkt eerst dat je vooral moet kijken naar prijs en uitstraling, maar al
-            snel kom je erachter dat er veel meer bij komt kijken: bronnen om te raadplegen, gegevens om te vergelijken, details
-            die je pas later goed begint te begrijpen.
-          </p>
-          <p>
-            Tijdens mijn zoektocht liep ik er steeds vaker tegenaan dat informatie versnipperd was. De ene site liet iets zien
-            over de buurt, de andere over de woningwaarde, weer een andere over vergelijkbare huizen of eerdere verkopen. Als je
-            nog niet precies weet waar je op moet letten, voelt dat al snel als een enorme puzzel.
-          </p>
-          <p>
-            Dat was het moment waarop het idee voor Kooprapport ontstond: een plek waar woninginformatie samenkomt in één
-            helder rapport, zodat je niet zelf alles hoeft uit te zoeken. Niet meer eindeloos zoeken naar losse bronnen, maar
-            direct inzicht in de belangrijkste gegevens die je nodig hebt.
-          </p>
-          <p>
-            Met Kooprapport wil ik dat proces overzichtelijker, slimmer en toegankelijker maken. Zodat je niet alleen sneller
-            tot informatie komt, maar vooral beter begrijpt wat die informatie betekent.
-          </p>
-        </div>
-        <div className="mt-3 flex shrink-0 items-end gap-2.5 border-t border-ink/10 pt-2">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-mist text-[10px] font-bold text-accent-dark">SB</div>
-          <div>
-            <p className="text-[9px] text-ink/40">Met vriendelijke groet,</p>
-            <p className="font-display text-[22px] italic leading-none text-accent-dark">Sjoerd</p>
-            <p className="mt-1 text-[8.5px] text-ink/40">Oprichter, Kooprapport</p>
-          </div>
-        </div>
-      </div>
-    ),
-  },
-  {
-    actief: 1,
-    paginaNummer: 3,
-    render: () => (
-      <>
-        <Kop kicker="03 · waarde" titel="Waarde-indicatie" />
-        <div className="flex overflow-hidden rounded-md">
-          <div className="flex-1 bg-accent p-2.5">
-            <p className="text-[8.8px] font-bold uppercase text-white/70">Deze woning</p>
-            <p className="font-display text-[19.6px] font-extrabold text-white">{market.data ? formatCurrency(market.data.geschatteWaarde) : "-"}</p>
-            {dezeWoningPerM2 != null && <p className="text-[8.4px] text-white/60">{formatCurrency(dezeWoningPerM2)} /m²</p>}
-          </div>
-          <div className="flex-1 bg-white p-2.5">
-            <p className="text-[8.8px] font-bold uppercase text-ink/40">Buurtgem. /m²</p>
-            <p className="font-display text-[19.6px] font-extrabold text-ink">
-              {nearbySales.data?.gemiddeldePrijsPerM2 != null ? formatCurrency(nearbySales.data.gemiddeldePrijsPerM2) : "-"}
-            </p>
-            <p className="text-[8.4px] text-ink/40">
-              {nearbySales.data?.aantalLaatste12Maanden ?? "-"} verkopen, {nearbySales.data?.zoekvensterMaanden ?? 12} mnd
-            </p>
-          </div>
-        </div>
-        <Card>
-          <div className="flex items-center gap-2 text-center">
-            <div className="flex-1">
-              <p className="text-[10.4px] font-bold text-ink">{building.data?.oppervlakteM2}m²</p>
-              <p className="text-[7.3px] text-ink/40">opp.</p>
-            </div>
-            <div className="flex-1">
-              <p className="text-[10.4px] font-bold text-ink">{building.data?.bouwjaar}</p>
-              <p className="text-[7.3px] text-ink/40">bouwjaar</p>
-            </div>
-            <div className="flex-1">
-              <p className="text-[10.4px] font-bold text-ink">{market.data?.rooms ?? "-"}</p>
-              <p className="text-[7.3px] text-ink/40">kamers</p>
-            </div>
-            <div className="flex-1 rounded bg-mist py-1">
-              <p className="font-display text-[10.8px] font-extrabold text-accent">{market.data ? formatCurrency(market.data.geschatteWaarde) : "-"}</p>
-              <p className="text-[7.3px] text-accent">uitkomst</p>
-            </div>
-          </div>
-          {market.data?.bandbreedteMin != null && market.data.bandbreedteMax != null && (
-            <>
-              <div className="mt-3.5 h-[7.3px] rounded-full bg-mist" />
-              <div className="mt-1 flex justify-between text-[7.8px] text-ink/40">
-                <span>{formatCurrency(market.data.bandbreedteMin)}</span>
-                <span className="font-semibold text-ink">90% zeker</span>
-                <span>{formatCurrency(market.data.bandbreedteMax)}</span>
-              </div>
-            </>
-          )}
-          {market.data?.betrouwbaarheidstekst && <p className="mt-1 text-[7.8px] italic text-ink/35">Bron: {market.data.betrouwbaarheidstekst}</p>}
-        </Card>
-        <Duiding titel="6% boven buurtgemiddelde" tekst="Model kijkt naar bouwjaar, oppervlakte en 150+ kenmerken, niet alleen m²-prijs." />
-        <Card>
-          <p className="text-[9.8px] font-bold text-ink">Wat is een modelschatting?</p>
-          <p className="mt-1 text-[9.2px] leading-[1.5] text-ink/50">
-            Automatische schatting (AVM, Altum AI). Geen taxatie, geen WOZ-waarde, geen bevestigde verkoopprijs — een
-            verifieerbaar model met een expliciete bandbreedte.
-          </p>
-        </Card>
-        <Duiding titel="Waar kun je dit voor gebruiken?" tekst="Onderhandelingsbasis, oriëntatie bij hypotheek, of gewoon om te weten waar een woning ongeveer staat." />
-      </>
-    ),
-  },
-  {
-    actief: 2,
-    paginaNummer: 4,
-    render: () => (
-      <>
-        <Kop kicker="04 · verkopen" titel="Verkopen in de buurt" />
-        <div className="flex justify-between rounded-md bg-accent p-2.5">
-          <Stat label="Verkopen" waarde={String(nearbySales.data?.aantalLaatste12Maanden ?? "-")} kleur="text-white" />
-          <Stat label="Gem/m²" waarde={nearbySales.data?.gemiddeldePrijsPerM2 != null ? formatCurrency(nearbySales.data.gemiddeldePrijsPerM2) : "-"} kleur="text-white" />
-          <Stat label="Deze woning" waarde={dezeWoningPerM2 != null ? formatCurrency(dezeWoningPerM2) : "-"} kleur="text-white" />
-        </div>
-        <Card className="flex flex-col gap-1">
-          <p className="text-[8.8px] font-bold tracking-wide text-accent">VERGELIJKBAAR MET DEZE WONING</p>
-          {nearbySales.data?.verkopen.slice(0, 4).map((v) => (
-            <div key={v.adres} className="flex items-center justify-between">
-              <div>
-                <p className="text-[9.8px] text-ink">{v.adres}</p>
-                <p className="text-[7.8px] text-ink/40">
-                  {v.oppervlakteM2}m² &middot; {v.verkoopdatum}
-                  {v.vergelijkbaar ? "" : " · minder vergelijkbaar"}
-                </p>
-              </div>
-              <p className="text-[9.8px] font-bold text-ink">{formatCurrency(v.verkoopprijs)}</p>
-            </div>
-          ))}
-        </Card>
-        <p className="text-[8.4px] text-ink/35">
-          Gezocht in de laatste {nearbySales.data?.zoekvensterMaanden ?? 12} maanden{nearbySales.data?.verruimd ? ", automatisch verruimd (te weinig vergelijkbare verkopen binnen 12 maanden)" : ""}.
-        </p>
-        <div className="flex gap-1">
-          <Duiding titel='Wat is "vergelijkbaar"?' tekst="Oppervlakte binnen circa 22% van deze woning." />
-          <Duiding titel="Waarom een prijsklasse?" tekst="Beschermt de privacy van verkopers, geen exacte transactieprijs." />
-        </div>
-      </>
-    ),
-  },
-  {
-    actief: 3,
-    paginaNummer: 5,
-    render: () => (
-      <>
-        <Kop kicker="05 · object" titel="Object & energie" />
-        <Card>
-          <p className="text-[10.8px] font-bold text-ink">{building.data?.woningtype ?? "Woning"}</p>
-          <div className="mt-1 flex flex-wrap gap-1">
-            <span className="rounded-full bg-parchment px-1.5 py-1 text-[8.8px] text-ink/60">{building.data?.oppervlakteM2}m² opp.</span>
-            <span className="rounded-full bg-parchment px-1.5 py-1 text-[8.8px] text-ink/60">Bouwjaar {building.data?.bouwjaar}</span>
-            <span className="rounded-full bg-parchment px-1.5 py-1 text-[8.8px] text-ink/60">{market.data?.rooms} kamers</span>
-            {building.data?.inhoudM3 != null && (
-              <span className="rounded-full bg-parchment px-1.5 py-1 text-[8.8px] text-ink/60">{building.data.inhoudM3}m³ inhoud</span>
-            )}
-          </div>
-        </Card>
-        {energy.data?.klasse && energieDuiding && (
-          <Card style={{ backgroundColor: TEAL }}>
-            <p className="text-[8.8px] text-white/70">Energielabel</p>
-            <div className="mt-1 flex items-baseline gap-1">
-              <span className="font-display text-[29.4px] font-extrabold text-white">{energy.data.klasse}</span>
-              <span className="text-[9.2px] text-white/70">{energieDuiding.kwartTekst}</span>
-            </div>
-            <div className="mt-1 flex gap-[2.5px]">
-              {ENERGIELABEL_SCHAAL.map((k) => (
-                <span key={k} className={`h-1 flex-1 rounded-sm ${k === energy.data?.klasse ? "bg-white" : "bg-white/25"}`} />
-              ))}
-            </div>
-          </Card>
-        )}
-        {energy.data?.isolatie ? (
-          <Card>
-            <p className="text-[8.8px] font-bold text-ink">Isolatie</p>
-            <div className="mt-1 grid grid-cols-4 gap-2 text-center">
-              <div>
-                <p className="text-[8.8px] font-semibold text-ink">{energy.data.isolatie.dak}</p>
-                <p className="text-[7.3px] text-ink/40">dak</p>
-              </div>
-              <div>
-                <p className="text-[8.8px] font-semibold text-ink">{energy.data.isolatie.gevel}</p>
-                <p className="text-[7.3px] text-ink/40">gevel</p>
-              </div>
-              <div>
-                <p className="text-[8.8px] font-semibold text-ink">{energy.data.isolatie.vloer}</p>
-                <p className="text-[7.3px] text-ink/40">vloer</p>
-              </div>
-              <div>
-                <p className="text-[8.8px] font-semibold text-ink">{energy.data.isolatie.beglazing}</p>
-                <p className="text-[7.3px] text-ink/40">beglazing</p>
-              </div>
-            </div>
-          </Card>
-        ) : (
-          <Card>
-            <p className="text-[8.8px] font-bold text-ink">Pandgegevens (BAG)</p>
-            <div className="mt-1 grid grid-cols-2 gap-2">
-              <div>
-                <p className="text-[9.8px] font-semibold text-ink">{building.data?.pandStatus ?? "-"}</p>
-                <p className="text-[7.3px] text-ink/40">pandstatus</p>
-              </div>
-              <div>
-                <p className="text-[9.8px] font-semibold text-ink">{building.data?.aantalVerblijfsobjecten ?? "-"}</p>
-                <p className="text-[7.3px] text-ink/40">verblijfsobject(en) in dit pand</p>
-              </div>
-            </div>
-          </Card>
-        )}
-        <Card>
-          <p className="text-[9.8px] font-bold text-ink">Wat betekent dit voor de stookkosten?</p>
-          <p className="mt-1 text-[9.2px] leading-[1.5] text-ink/50">{energieDuiding?.stookkostenTekst}</p>
-        </Card>
-        <Duiding titel="Uitgebreid verduurzamingsadvies" tekst="Concrete maatregelen, investering en terugverdientijd — volgende pagina." />
-        <Duiding
-          titel="Waar kun je dit voor gebruiken?"
-          tekst="Oriëntatie bij een bouwkundige keuring, een opstalverzekering, of om de woning te vergelijken met vergelijkbare panden in de buurt."
-        />
-      </>
-    ),
-  },
-  {
-    actief: 4,
-    paginaNummer: 6,
-    render: () => (
-      <>
-        <Kop kicker="06 · verduurzaming" titel="Verduurzamingsadvies" />
-        <Card>
-          <div className="flex items-center gap-[4.9px]">
-            {ENERGIELABEL_SCHAAL.map((klasse) => {
-              const isHuidig = klasse === verduurzaming.data?.huidigLabel;
-              const isHaalbaar = klasse === verduurzaming.data?.haalbaarLabel;
-              return (
-                <div
-                  key={klasse}
-                  className={`flex h-3 flex-1 items-center justify-center rounded-sm text-[8.8px] font-bold ${
-                    isHuidig || isHaalbaar ? "text-white" : "bg-ink/10 text-ink/20"
-                  } ${isHaalbaar && !isHuidig ? "ring-1 ring-white" : ""}`}
-                  style={isHuidig ? { backgroundColor: TEAL } : isHaalbaar ? { backgroundColor: GROEN } : undefined}
-                >
-                  {(isHuidig || isHaalbaar) && klasse}
-                </div>
-              );
-            })}
-          </div>
-          <div className="mt-1 flex justify-between text-[8.4px] font-semibold text-ink/50">
-            <span>Huidig {verduurzaming.data?.huidigLabel}</span>
-            <span style={{ color: TEAL }}>Haalbaar {verduurzaming.data?.haalbaarLabel}</span>
-          </div>
-        </Card>
-        <div className="grid grid-cols-2 gap-1">
-          <Stat label="Investering" waarde={verduurzaming.data?.investering != null ? formatCurrency(verduurzaming.data.investering) : "-"} />
-          <Stat label="Besparing/jr" waarde={verduurzaming.data?.besparingPerJaar != null ? formatCurrency(verduurzaming.data.besparingPerJaar) : "-"} kleurHex={TEAL} />
-          <Stat label="Terugverdientijd" waarde={verduurzamingTerugverdientijd} />
-          <Stat label="Waardestijging" waarde={verduurzaming.data?.waardestijging != null ? formatCurrency(verduurzaming.data.waardestijging) : "-"} />
-        </div>
-        <Card className="flex flex-col gap-1">
-          <p className="text-[8.8px] font-bold text-ink">Concrete maatregelen</p>
-          {verduurzaming.data?.maatregelen.map((m) => (
-            <div key={m.key} className="flex items-center justify-between">
-              <div>
-                <p className="text-[9.2px] text-ink">{m.label}</p>
-                <p className="text-[7.3px] text-ink/40">
-                  {m.van} &rarr; {m.naar}
-                </p>
-              </div>
-              <p className="text-[9.2px] font-semibold text-ink">{formatCurrency(m.investering)}</p>
-            </div>
-          ))}
-        </Card>
-        {verduurzaming.data?.energierekeningHuidigPerJaar != null && verduurzaming.data.energierekeningNaPerJaar != null && (
-          <Duiding
-            titel="Energierekening"
-            tekst={`Van circa ${formatCurrency(verduurzaming.data.energierekeningHuidigPerJaar)} naar ${formatCurrency(
-              verduurzaming.data.energierekeningNaPerJaar,
-            )} per jaar, plus ${verduurzaming.data.co2ReductieKg ?? "-"} kg minder CO₂-uitstoot. Subsidie (ISDE) kan een deel van de investering dekken.`}
-          />
-        )}
-      </>
-    ),
-  },
-  {
-    actief: 5,
-    paginaNummer: 7,
-    render: () => (
-      <>
-        <Kop kicker="07 · fundering" titel="Funderingsrisico" />
-        <Card>
-          <div className="flex text-center">
-            <div className="flex-1">
-              <p className="text-[10.8px] font-bold text-ink">{fundering.data?.bouwjaarGebruikt}</p>
-              <p className="text-[7.3px] text-ink/40">bouwjaar</p>
-            </div>
-            <div className="flex-1">
-              <span
-                className="rounded-full px-1.5 py-1 text-[9.2px] font-bold"
-                style={{ backgroundColor: TEAL_LICHT, color: TEAL }}
-              >
-                {fundering.data?.niveau ? fundering.data.niveau.charAt(0).toUpperCase() + fundering.data.niveau.slice(1) : "-"}
-              </span>
-              <p className="mt-1 text-[7.3px] text-ink/40">risiconiveau</p>
-            </div>
-            <div className="flex-1">
-              <p className="text-[8.8px] font-semibold text-ink">{fundering.data?.bodemclassificatie ?? "-"}</p>
-              <p className="text-[7.3px] text-ink/40">bodemclassificatie</p>
-            </div>
-          </div>
-        </Card>
-        <Card>
-          <p className="text-[9.8px] font-bold text-ink">Conclusie</p>
-          <p className="mt-1 text-[9.2px] leading-[1.5] text-ink/60">{fundering.data?.duidingKern}</p>
-          {fundering.data?.bodemclassificatieUitleg && (
-            <p className="mt-1 text-[8.8px] leading-[1.5] text-ink/45">{fundering.data.bodemclassificatieUitleg}</p>
-          )}
-        </Card>
-        {fundering.data?.percentageVoor1970Postcode != null && (
-          <Card>
-            <p className="text-[8.8px] text-ink/50">Panden vóór 1970 in dit postcodegebied</p>
-            <div className="mt-1 h-[9.8px] overflow-hidden rounded-full bg-parchment">
-              <div className="h-[9.8px]" style={{ width: `${fundering.data.percentageVoor1970Postcode}%`, backgroundColor: TEAL }} />
-            </div>
-            <p className="mt-1 text-[9.8px] font-bold text-ink">{fundering.data.percentageVoor1970Postcode}%</p>
-          </Card>
-        )}
-        {fundering.data?.duidingCaveat && <Duiding titel="Wat dit niet vaststelt" tekst={fundering.data.duidingCaveat} />}
-        {fundering.data?.duidingAdvies && <Duiding titel="Advies bij twijfel" tekst={fundering.data.duidingAdvies} />}
-      </>
-    ),
-  },
-  {
-    actief: 6,
-    paginaNummer: 8,
-    render: () => (
-      <>
-        <Kop kicker="08 · buurt" titel="Buurtprofiel" />
-        <div className="grid grid-cols-2 gap-1">
-          <Stat label="Veiligheid" waarde={veiligheidScore != null ? String(veiligheidScore).replace(".", ",") : "-"} sub={veiligheidBand ? VEILIGHEID_BAND[veiligheidBand].tekst : undefined} />
-          <Stat
-            label="Bebouwing"
-            waarde={buurtprofiel.data?.fysiek.bevolkingsdichtheid != null ? `${Math.round(buurtprofiel.data.fysiek.bevolkingsdichtheid / 1000)}k/km²` : "-"}
-          />
-          <Stat label="Inwoners" waarde={buurtprofiel.data?.sociaal.inwoners != null ? buurtprofiel.data.sociaal.inwoners.toLocaleString("nl-NL") : "-"} />
-          <Stat label="Eenpersoons" waarde={buurtprofiel.data?.sociaal.percentageEenpersoons != null ? `${buurtprofiel.data.sociaal.percentageEenpersoons}%` : "-"} />
-          <Stat label="Met kinderen" waarde={buurtprofiel.data?.sociaal.percentageMetKinderen != null ? `${buurtprofiel.data.sociaal.percentageMetKinderen}%` : "-"} />
-          <Stat
-            label="Eengezinswoning"
-            waarde={buurtprofiel.data?.fysiek.percentageEengezinswoning != null ? `${buurtprofiel.data.fysiek.percentageEengezinswoning}%` : "-"}
-          />
-        </div>
-        <Card>
-          <p className="text-[8.8px] font-bold text-ink">Voorzieningen in de buurt</p>
-          <div className="mt-1 flex flex-wrap gap-1">
-            {buurtprofiel.data?.voorzieningen.items.slice(0, 8).map((item) => (
-              <span key={item.key} className="rounded bg-parchment px-1 py-1 text-[8.4px] text-ink/60">
-                {item.label} {item.afstandKm}km
-              </span>
-            ))}
-          </div>
-        </Card>
-        <Duiding titel="Wat dit betekent voor deze buurt" tekst={buurtprofiel.data?.duiding ?? buurtprofiel.data?.samenvatting ?? ""} />
-      </>
-    ),
-  },
-  {
-    actief: 7,
-    paginaNummer: 9,
-    render: () => (
-      <>
-        <Kop kicker="09 · samenvatting" titel="Samenvatting" />
-        <Card style={{ backgroundColor: INDIGO_DONKER }}>
-          <p className="font-display text-[14.7px] font-extrabold leading-snug text-white">{samenvatting.titel}</p>
-          <p className="mt-1 text-[9.2px] leading-[1.5] text-white/70">{samenvatting.totaalbeeld}</p>
-          {market.data && (
-            <span className="mt-1 inline-block rounded-full bg-white/20 px-1.5 py-1 text-[8.8px] font-bold text-white">
-              Waarde: {formatCurrency(market.data.geschatteWaarde)}
-            </span>
-          )}
-        </Card>
-        <div className="grid grid-cols-2 gap-1">
-          {samenvatting.kernstats.slice(0, 4).map((k) => (
-            <Stat key={k.key} label={k.label} waarde={k.waarde} sub={k.toelichting} />
-          ))}
-        </div>
-        <div className="grid grid-cols-2 gap-1">
-          <Card className="flex flex-col gap-1">
-            <p className="text-[8.4px] font-bold text-ink">Pluspunten</p>
-            {samenvatting.pluspunten.slice(0, 3).map((t, i) => (
-              <p key={i} className="text-[8.4px] leading-[1.4] text-ink/60">
-                ✓ {t}
-              </p>
-            ))}
-          </Card>
-          <Card className="flex flex-col gap-1">
-            <p className="text-[8.4px] font-bold text-ink">Aandachtspunten</p>
-            {samenvatting.aandachtspunten.slice(0, 3).map((t, i) => (
-              <p key={i} className="text-[8.4px] leading-[1.4] text-ink/60">
-                ! {t}
-              </p>
-            ))}
-          </Card>
-        </div>
-        <Card>
-          <p className="text-[8.4px] font-bold text-ink">Wat kun je hiermee?</p>
-          <div className="mt-1 grid grid-cols-2 gap-x-2 gap-y-0.5">
-            {samenvatting.gebruiksblok.map((t, i) => (
-              <p key={i} className="text-[8.4px] leading-[1.4] text-ink/55">
-                &middot; {t}
-              </p>
-            ))}
-          </div>
-        </Card>
-        <Duiding titel="Eindconclusie" tekst={samenvatting.eindconclusie} />
-      </>
-    ),
-  },
-  {
-    actief: -1,
-    render: () => (
-      <div className="flex h-full flex-col items-center justify-center bg-accent-dark px-3 text-center">
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white">
-          <span className="font-display text-[24.5px] font-extrabold text-accent-dark">K</span>
-        </div>
-        <p className="mt-3.5 max-w-[392px] font-display text-[19.6px] font-extrabold leading-snug text-white">
-          &ldquo;Een goed onderbouwde keuze begint niet met een gevoel, maar met de juiste feiten op een rij.&rdquo;
-        </p>
-        <div className="mt-4 h-[4.9px] w-6 rounded-full bg-sun" />
-        <p className="mt-4 max-w-[367.5px] text-[11.2px] leading-relaxed text-white/60">
-          Bedankt dat je Kooprapport bekeek voor {adres.straat} {adres.huisnummer}.
-        </p>
-        <div className="mt-4 flex flex-col gap-1">
-          <span className="rounded-full bg-white/15 px-2 py-1 text-[9.8px] font-semibold text-white/80">Nog vragen? info@kooprapport.nl</span>
-          <span className="rounded-full bg-white/15 px-2 py-1 text-[9.8px] font-semibold text-white/80">Nieuw adres opzoeken? kooprapport.nl</span>
-        </div>
-        <p className="mt-4 text-[9.8px] font-semibold tracking-wide text-white/40">KOOPRAPPORT.NL &middot; Pagina 10 van 10</p>
-      </div>
-    ),
-  },
-];
 
 export default function VoorbeeldrapportSlider() {
   const [open, setOpen] = useState(false);
-  const [left, setLeft] = useState(0);
-  const laatsteLeft = SLIDES.length - 2;
+  const [left, setLeft] = useState(1);
+  const [doc, setDoc] = useState<PdfDocumentProxy | null>(null);
+  const [totaalPaginas, setTotaalPaginas] = useState(10);
+  const [ladenFout, setLadenFout] = useState<string | null>(null);
+
+  const laatsteLeft = Math.max(1, totaalPaginas - 1);
+
+  // Het PDF-document zelf pas ophalen/parsen zodra de modal voor het eerst
+  // opent — niet al bij het inladen van de homepage.
+  useEffect(() => {
+    if (!open || doc) return;
+    let actief = true;
+    setLadenFout(null);
+
+    (async () => {
+      try {
+        const pdfjsLib = await import("pdfjs-dist");
+        // Worker laden vanaf jsdelivr, exact dezelfde versie als het lokaal
+        // geïnstalleerde npm-pakket (pdfjsLib.version) — zo kan de
+        // workerversie nooit uit de pas lopen met de hoofdbibliotheek, zonder
+        // dat we zelf een vaste versie hoeven bij te houden.
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+
+        const taak = pdfjsLib.getDocument(PDF_URL);
+        const geladenDoc = (await taak.promise) as unknown as PdfDocumentProxy;
+        if (!actief) return;
+        setDoc(geladenDoc);
+        setTotaalPaginas(geladenDoc.numPages);
+      } catch {
+        if (actief) setLadenFout("Het voorbeeldrapport kon niet geladen worden. Probeer het later opnieuw.");
+      }
+    })();
+
+    return () => {
+      actief = false;
+    };
+  }, [open, doc]);
 
   useEffect(() => {
     if (!open) return;
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") setOpen(false);
       if (e.key === "ArrowRight") setLeft((i) => Math.min(i + 1, laatsteLeft));
-      if (e.key === "ArrowLeft") setLeft((i) => Math.max(i - 1, 0));
+      if (e.key === "ArrowLeft") setLeft((i) => Math.max(i - 1, 1));
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -650,7 +153,7 @@ export default function VoorbeeldrapportSlider() {
       <button
         type="button"
         onClick={() => {
-          setLeft(0);
+          setLeft(1);
           setOpen(true);
         }}
         className="group inline-flex items-center gap-1.5 text-sm font-bold text-ink hover:text-accent"
@@ -672,55 +175,53 @@ export default function VoorbeeldrapportSlider() {
           </button>
 
           <p className="text-xs uppercase tracking-wide text-white/50 sm:text-sm">
-            Voorbeeldrapport &middot; {adres.straat} {adres.huisnummer}, {adres.plaats} &middot; pagina {left + 1}&ndash;{left + 2} van {SLIDES.length}
+            Voorbeeldrapport &middot; pagina {left}&ndash;{Math.min(left + 1, totaalPaginas)} van {totaalPaginas}
           </p>
 
-          <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
-            <button
-              type="button"
-              aria-label="Vorige paginas"
-              onClick={() => setLeft((i) => Math.max(i - 1, 0))}
-              disabled={left === 0}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25 disabled:opacity-30"
-            >
-              &#8249;
-            </button>
-
-            <div className="flex gap-3">
-              <Pagina actief={SLIDES[left].actief} paginaNummer={SLIDES[left].paginaNummer} kleur={left === SLIDES.length - 1 ? "#4338CA" : "#F5F5FA"}>
-                {SLIDES[left].render()}
-              </Pagina>
-              <Pagina
-                actief={SLIDES[left + 1].actief}
-                paginaNummer={SLIDES[left + 1].paginaNummer}
-                kleur={left + 1 === SLIDES.length - 1 ? "#4338CA" : "#F5F5FA"}
-              >
-                {SLIDES[left + 1].render()}
-              </Pagina>
-            </div>
-
-            <button
-              type="button"
-              aria-label="Volgende paginas"
-              onClick={() => setLeft((i) => Math.min(i + 1, laatsteLeft))}
-              disabled={left === laatsteLeft}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25 disabled:opacity-30"
-            >
-              &#8250;
-            </button>
-          </div>
-
-          <div className="flex gap-2.5" onClick={(e) => e.stopPropagation()}>
-            {SLIDES.map((_, i) => (
+          {ladenFout ? (
+            <p className="max-w-sm text-center text-sm text-white/70">{ladenFout}</p>
+          ) : (
+            <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
               <button
-                key={i}
                 type="button"
-                aria-label={`Ga naar pagina ${i + 1}`}
-                onClick={() => setLeft(Math.min(i, laatsteLeft))}
-                className={`h-1.5 w-1.5 rounded-full ${i === left || i === left + 1 ? "bg-white" : "bg-white/30"}`}
-              />
-            ))}
-          </div>
+                aria-label="Vorige paginas"
+                onClick={() => setLeft((i) => Math.max(i - 1, 1))}
+                disabled={left === 1}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25 disabled:opacity-30"
+              >
+                &#8249;
+              </button>
+
+              <div className="flex gap-3">
+                <PdfPaginaCanvas doc={doc} paginaNummer={left} laatstePagina={totaalPaginas} />
+                <PdfPaginaCanvas doc={doc} paginaNummer={left + 1} laatstePagina={totaalPaginas} />
+              </div>
+
+              <button
+                type="button"
+                aria-label="Volgende paginas"
+                onClick={() => setLeft((i) => Math.min(i + 1, laatsteLeft))}
+                disabled={left === laatsteLeft}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25 disabled:opacity-30"
+              >
+                &#8250;
+              </button>
+            </div>
+          )}
+
+          {!ladenFout && (
+            <div className="flex flex-wrap justify-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+              {Array.from({ length: totaalPaginas }, (_, i) => i + 1).map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  aria-label={`Ga naar pagina ${n}`}
+                  onClick={() => setLeft(Math.min(n, laatsteLeft))}
+                  className={`h-1.5 w-1.5 rounded-full ${n === left || n === left + 1 ? "bg-white" : "bg-white/30"}`}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </>
