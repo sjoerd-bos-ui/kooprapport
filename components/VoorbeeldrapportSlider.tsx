@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowRightIcon, FileCheckIcon } from "@/components/report/icons";
 
 // -----------------------------------------------------------------------------
-// v5 — i.p.v. een met de hand nagebouwde HTML/Tailwind-kopie van elke
+// v6 — i.p.v. een met de hand nagebouwde HTML/Tailwind-kopie van elke
 // PDF-pagina (die telkens weer uit de pas liep zodra de échte PDF een fix of
 // contentwijziging kreeg — zie de vorige versies van dit bestand), rendert
 // deze slider nu de ÉCHTE, gegenereerde voorbeeld-PDF zelf via pdf.js:
@@ -14,18 +14,33 @@ import { ArrowRightIcon, FileCheckIcon } from "@/components/report/icons";
 // Geen dubbel onderhoud meer: elke toekomstige aanpassing aan de PDF-generator
 // komt hier automatisch, pixelidentiek in beeld, zonder dat deze component
 // ooit weer los bijgewerkt hoeft te worden.
+//
+// BUGFIX (v6): v5 gebruikte het npm-pakket "pdfjs-dist" (dynamisch
+// geïmporteerd) samen met een los-geraden jsdelivr-URL voor het worker-
+// script. Dat bleek in productie te falen — twee dingen die uit de pas
+// konden lopen (de bundelaar-build van het npm-pakket vs. het exacte
+// bestandspad van de worker op een andere CDN), en dat kon ik in de
+// sandbox niet testen. Nu laden we pdf.js volledig als klassiek <script>
+// vanaf cdnjs — bibliotheek én worker van exact dezelfde, vastgepinde
+// versie, dezelfde CDN, geen npm/bundelaar-afhankelijkheid meer nodig
+// (pdfjs-dist is dan ook weer uit package.json gehaald).
 // -----------------------------------------------------------------------------
 
 const PDF_URL = "/api/rapport/voorbeeld-pdf";
+// Vastgepinde, stabiele pdf.js-versie — bewust een "oudere" 3.x-release
+// i.p.v. de nieuwste, omdat dit precies de UMD-build+worker-combinatie is
+// die al jaren op cdnjs staat en in talloze voorbeelden zo gebruikt wordt.
+const PDFJS_VERSION = "3.11.174";
+const PDFJS_BASE_URL = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}`;
+
 // Interne rendering-resolutie (device pixels per PDF-punt) — hoger dan de
 // uiteindelijke CSS-weergavegrootte, zodat de pagina scherp blijft op een
 // groot/retina-scherm terwijl de canvas zelf via CSS kleiner getoond wordt.
 const RENDER_SCHAAL = 2.2;
 
-// Minimale vorm die we uit pdf.js gebruiken — bewust los getypeerd (i.p.v. de
-// volledige pdfjs-dist-typedefinities) omdat dit pakket alleen client-side,
-// dynamisch geïmporteerd wordt (zie hieronder) en niet server-side/tijdens
-// tsc met een aparte node-omgeving hoeft te worden meegecompileerd.
+// Minimale vorm die we uit pdf.js gebruiken — bewust los getypeerd, want de
+// bibliotheek wordt hier als los <script> geladen (window.pdfjsLib) en niet
+// als npm-module met eigen typedefinities meegecompileerd.
 interface PdfPaginaProxy {
   getViewport(params: { scale: number }): { width: number; height: number };
   render(params: { canvasContext: CanvasRenderingContext2D; viewport: unknown }): { promise: Promise<void>; cancel: () => void };
@@ -33,6 +48,43 @@ interface PdfPaginaProxy {
 interface PdfDocumentProxy {
   numPages: number;
   getPage(pageNumber: number): Promise<PdfPaginaProxy>;
+}
+interface PdfjsLibGlobal {
+  GlobalWorkerOptions: { workerSrc: string };
+  getDocument(src: string): { promise: Promise<PdfDocumentProxy> };
+}
+
+let pdfjsScriptPromise: Promise<PdfjsLibGlobal> | null = null;
+
+// pdf.js als klassiek script laden (i.p.v. dynamische import) — voorkomt elk
+// risico op een bundelaar/ESM-mismatch met de worker. Wordt maar één keer
+// daadwerkelijk ingeladen, ook als de modal meerdere keren geopend wordt.
+function laadPdfjs(): Promise<PdfjsLibGlobal> {
+  if (pdfjsScriptPromise) return pdfjsScriptPromise;
+
+  pdfjsScriptPromise = new Promise((resolve, reject) => {
+    const bestaand = (window as unknown as { pdfjsLib?: PdfjsLibGlobal }).pdfjsLib;
+    if (bestaand) {
+      resolve(bestaand);
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = `${PDFJS_BASE_URL}/pdf.min.js`;
+    script.onload = () => {
+      const lib = (window as unknown as { pdfjsLib?: PdfjsLibGlobal }).pdfjsLib;
+      if (!lib) {
+        reject(new Error("pdfjsLib niet gevonden na laden van script"));
+        return;
+      }
+      lib.GlobalWorkerOptions.workerSrc = `${PDFJS_BASE_URL}/pdf.worker.min.js`;
+      resolve(lib);
+    };
+    script.onerror = () => reject(new Error(`Kon pdf.js-script niet laden vanaf ${script.src}`));
+    document.head.appendChild(script);
+  });
+
+  return pdfjsScriptPromise;
 }
 
 function PdfPaginaCanvas({ doc, paginaNummer, laatstePagina }: { doc: PdfDocumentProxy | null; paginaNummer: number; laatstePagina: number }) {
@@ -69,6 +121,7 @@ function PdfPaginaCanvas({ doc, paginaNummer, laatstePagina }: { doc: PdfDocumen
         // Een geannuleerde render-taak gooit zelf ook een (verwachte) fout —
         // die stil negeren, dat is geen echte fout, alleen een ingehaalde render.
         if (actief && (err as { name?: string })?.name !== "RenderingCancelledException") {
+          console.error("Voorbeeldrapport: pagina renderen mislukt", err);
           setStatus("fout");
         }
       }
@@ -115,19 +168,17 @@ export default function VoorbeeldrapportSlider() {
 
     (async () => {
       try {
-        const pdfjsLib = await import("pdfjs-dist");
-        // Worker laden vanaf jsdelivr, exact dezelfde versie als het lokaal
-        // geïnstalleerde npm-pakket (pdfjsLib.version) — zo kan de
-        // workerversie nooit uit de pas lopen met de hoofdbibliotheek, zonder
-        // dat we zelf een vaste versie hoeven bij te houden.
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
-
+        const pdfjsLib = await laadPdfjs();
         const taak = pdfjsLib.getDocument(PDF_URL);
-        const geladenDoc = (await taak.promise) as unknown as PdfDocumentProxy;
+        const geladenDoc = await taak.promise;
         if (!actief) return;
         setDoc(geladenDoc);
         setTotaalPaginas(geladenDoc.numPages);
-      } catch {
+      } catch (err) {
+        // Fout altijd naar de console loggen — de gebruiker ziet alleen de
+        // vriendelijke tekst, maar zo blijft dit debugbaar vanuit devtools
+        // i.p.v. dat de echte oorzaak stil verdwijnt.
+        console.error("Voorbeeldrapport: PDF laden mislukt", err);
         if (actief) setLadenFout("Het voorbeeldrapport kon niet geladen worden. Probeer het later opnieuw.");
       }
     })();
