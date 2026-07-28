@@ -60,6 +60,15 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
   },
+  // Facebook Business Manager domeinverificatie — rendert server-side mee in
+  // <head> (via Next.js' Metadata API, niet client-side/JS-geladen), precies
+  // zoals Facebook vereist. Geen functionele invloed op de site zelf, puur
+  // een bewijs-tag zodat Meta dit domein aan het bedrijfsaccount koppelt.
+  verification: {
+    other: {
+      "facebook-domain-verification": "2zl4ard24px540k74x3ajh1myp5vvq",
+    },
+  },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

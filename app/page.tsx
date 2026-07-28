@@ -194,7 +194,7 @@ export default function HomePage() {
     name: "Kooprapport",
     url: APP_BASE_URL,
     description:
-      "Onafhankelijk woningrapport per adres: waarde-indicatie, buurtverkopen, energielabel, funderingsrisico en buurtprofiel, gebaseerd op Kadaster (BAG), RVO/EP-Online, CBS, KCAF en Altum AI.",
+      "Onafhankelijk woningrapport per adres: waarde-indicatie, buurtverkopen, energielabel, funderingsrisico en buurtprofiel, gebaseerd op officiële, erkende bronnen.",
   };
   const websiteJsonLd = {
     "@context": "https://schema.org",
@@ -505,7 +505,7 @@ export default function HomePage() {
                   </div>
                   <div className="mt-auto flex justify-between border-t border-line pt-1.5 text-[3.8px] text-ink/45">
                     <span>Ook als PDF</span>
-                    <span>Bronnen: Kadaster, RVO, CBS</span>
+                    <span>Officiële, erkende bronnen</span>
                   </div>
                 </div>
               </div>
@@ -541,32 +541,18 @@ export default function HomePage() {
       {/* Vertrouwensregel — verplaatst uit de hero (stond daar eerder als
           losse statsrij onderaan de tekstkolom) naar een eigen, rustige
           sectie: één regel i.p.v. een blok tussen de andere hero-elementen. */}
-      {/* SEO-fix: de bronnen stonden hier als platte tekst -- een SEO-check
-          signaleerde dat de pagina geen enkele uitgaande link had, terwijl
-          "wij gebruiken uitsluitend officiële bronnen" juist geloofwaardiger
-          wordt als die bronnen ook echt naar hun eigen, officiële site linken
-          (verifieerbaar i.p.v. alleen beweerd). Bewust GEEN rel="nofollow":
-          dit zijn precies de bronnen die de "onafhankelijk"-claim
-          onderbouwen, geen reden om daar linkwaarde van weg te houden. */}
+      {/* BEWUST AANGEPAST: deze regel somde eerder alle vier bronnen los op,
+          elk met een eigen backlink (zie git-historie voor de oude SEO-
+          motivatie daarachter). Op uitdrukkelijk verzoek noemen we bronnen nu
+          over de hele site minder vaak/minder gedetailleerd — dat volledige,
+          verifieerbare rijtje (met links) staat al canoniek in de FAQ
+          ("Is dit onafhankelijk, of zit er een makelaar achter?"), dus hier
+          volstaat de korte, generieke formulering. */}
       <section className="border-t border-ink/10 bg-white">
         <Container className="py-6 text-center text-[11px] text-ink/55">
           <span className="font-bold text-ink">1.240+</span> rapporten gegenereerd ·{" "}
-          <span className="font-bold text-ink">8</span> pagina&apos;s per rapport · bronnen:{" "}
-          <a href="https://www.kadaster.nl" target="_blank" rel="noopener" className="font-semibold text-ink underline underline-offset-2 hover:text-accent">
-            Kadaster
-          </a>
-          ,{" "}
-          <a href="https://www.ep-online.nl" target="_blank" rel="noopener" className="font-semibold text-ink underline underline-offset-2 hover:text-accent">
-            RVO
-          </a>
-          ,{" "}
-          <a href="https://www.cbs.nl" target="_blank" rel="noopener" className="font-semibold text-ink underline underline-offset-2 hover:text-accent">
-            CBS
-          </a>
-          ,{" "}
-          <a href="https://www.kcaf.nl" target="_blank" rel="noopener" className="font-semibold text-ink underline underline-offset-2 hover:text-accent">
-            KCAF
-          </a>
+          <span className="font-bold text-ink">8</span> pagina&apos;s per rapport · gebaseerd op officiële, erkende
+          bronnen
         </Container>
       </section>
 

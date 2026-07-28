@@ -233,7 +233,7 @@ export default function PreviewSummary({
         </button>
         <p className="mt-2 text-center text-[10px] text-ink/40">Eenmalig · geen abonnement · veilig via iDEAL</p>
         <EmailBewaarOptie adresLabel={adresLabel} />
-        <p className="mt-3 text-center text-[10px] text-ink/30">Bronnen: BAG, RVO, Altum AI, Kadaster</p>
+        <p className="mt-3 text-center text-[10px] text-ink/30">Gebaseerd op officiële, erkende bronnen</p>
       </div>
     </div>
   );
