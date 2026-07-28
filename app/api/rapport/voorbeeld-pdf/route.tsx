@@ -42,10 +42,16 @@ export async function GET() {
     headers: {
       "Content-Type": "application/pdf",
       "Content-Disposition": 'inline; filename="kooprapport-voorbeeld.pdf"',
-      // 1 dag cachen bij de browser/CDN, en op de achtergrond alvast een
-      // nieuwe versie ophalen zodra die verlopen is (stale-while-revalidate)
-      // i.p.v. de bezoeker daarop te laten wachten.
-      "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800",
+      // BUGFIX: stond eerst op max-age=86400 (1 dag) — na een inhoudelijke
+      // aanpassing (bv. de voorzieningen hieronder toegevoegd) bleven
+      // browser/CDN dan tot een dag lang de oude PDF tonen, wat als "nog
+      // niet aangepast" overkwam terwijl de code allang klopte. De echte
+      // cache-busting zit nu in de querystring-versie in
+      // components/VoorbeeldrapportSlider.tsx (PDF_URL met ?v=...) — die
+      // moet bij elke inhoudelijke wijziging omhoog. Dit max-age is alleen
+      // nog een vangnet voor de zeldzame keer dat die bump vergeten wordt,
+      // daarom bewust kort (1 uur) i.p.v. een dag.
+      "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
     },
   });
 }

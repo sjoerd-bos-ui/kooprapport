@@ -34,7 +34,18 @@ import { ArrowRightIcon, FileCheckIcon } from "@/components/report/icons";
 // eerst opgehaald wordt.
 // -----------------------------------------------------------------------------
 
-const PDF_URL = "/api/rapport/voorbeeld-pdf";
+// BUGFIX: de PDF-route cachet zijn respons nu een dag lang (Cache-Control,
+// zie app/api/rapport/voorbeeld-pdf/route.tsx — nodig omdat @react-pdf/
+// renderer anders bij élk bezoek opnieuw rendert, zie de PERF-toelichting
+// daar). Zonder versienummer in de URL bleef de browser/CDN daardoor een
+// oude PDF tonen ná elke inhoudelijke aanpassing aan voorbeeldRapport.ts of
+// ReportDocument.tsx, tot de cache vanzelf verliep — verwarrend ("nog niet
+// aangepast") vlak na een echte fix. Dit versienummer ophogen bij elke
+// inhoudelijke wijziging aan de voorbeeld-PDF forceert een verse, ongecachete
+// URL, zonder de caching zelf (die de laadtijd echt verbetert) te hoeven
+// opgeven.
+const VOORBEELD_INHOUD_VERSIE = "3";
+const PDF_URL = `/api/rapport/voorbeeld-pdf?v=${VOORBEELD_INHOUD_VERSIE}`;
 const PDFJS_MANIFEST_URL = "/pdfjs/manifest.json";
 
 // Interne rendering-resolutie (device pixels per PDF-punt) — hoger dan de
