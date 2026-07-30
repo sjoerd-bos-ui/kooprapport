@@ -11,15 +11,13 @@
 // bouwen, geen geheime waarde (een WhatsApp-zakelijk nummer is sowieso
 // publiek zodra iemand erop klikt).
 //
-// TIJDELIJKE PLACEHOLDER: Sjoerd heeft het echte Simyo/WhatsApp Business-
-// nummer nog niet, maar wilde de knop alvast live zien staan op de site.
-// Onderstaand nummer bestaat niet — de knop is dus wel zichtbaar, maar een
-// klik erop opent geen echt gesprek ("dit nummer is ongeldig" in WhatsApp).
-// Zodra Sjoerd het echte nummer heeft: vervang de placeholder hieronder (of
-// zet NEXT_PUBLIC_WHATSAPP_NUMMER in Vercel — die heeft altijd voorrang op
-// de placeholder, dus dat werkt ook zonder deze regel opnieuw aan te passen).
-const PLACEHOLDER_NUMMER = "31600000000";
-const RUW_NUMMER = process.env.NEXT_PUBLIC_WHATSAPP_NUMMER ?? PLACEHOLDER_NUMMER;
+// Het echte WhatsApp Business-nummer van Sjoerd (0644999727), omgezet naar
+// internationaal wa.me-formaat (landcode 31 i.p.v. de leidende 0). Nog steeds
+// als fallback-default i.p.v. hardcoded verspreid over componenten — zet
+// NEXT_PUBLIC_WHATSAPP_NUMMER in Vercel als dit nummer ooit wijzigt, die
+// env-var heeft altijd voorrang op onderstaande default.
+const STANDAARD_NUMMER = "31644999727";
+const RUW_NUMMER = process.env.NEXT_PUBLIC_WHATSAPP_NUMMER ?? STANDAARD_NUMMER;
 
 // Alleen cijfers, altijd met landcode, geen spaties/haakjes/plusteken —
 // exact het formaat dat wa.me verwacht (bv. "31612345678").
