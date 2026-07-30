@@ -83,9 +83,9 @@ export const ARTIKELEN: KoopgidsArtikel[] = [
     slug: "woningwaarde-bepalen",
     titel: "Hoe bepaalt u de waarde van een woning?",
     metaBeschrijving:
-      "Hoe een vraagprijs tot stand komt, waarom overbieden de norm is, welke factoren de waarde van een huis echt bepalen, en hoe een modelmatige schatting (AVM) dat samenbrengt in een bandbreedte.",
+      "Hoe een vraagprijs tot stand komt, waarom overbieden de norm is en hoe een modelmatige schatting (AVM) dit samenbrengt in een betrouwbare bandbreedte.",
     categorie: "Waarde-indicatie",
-    samenvatting: "Hoe een vraagprijs tot stand komt, waarom er vaak overboden wordt, en hoe een modelmatige schatting dat samenbrengt in een bandbreedte.",
+    samenvatting: "Hoe een vraagprijs tot stand komt, waarom er vaak overboden wordt en hoe een modelmatige schatting dat samenbrengt in een bandbreedte.",
     kleur: "indigo",
     icoon: TrendingUpIcon,
     leestijdMinuten: 6,
@@ -194,9 +194,9 @@ export const ARTIKELEN: KoopgidsArtikel[] = [
     slug: "bouwjaar-en-gebruiksdoel",
     titel: "Wat bouwjaar, oppervlakte en gebruiksdoel u eigenlijk vertellen",
     metaBeschrijving:
-      "Wat de BAG precies registreert, waarom gebruiksdoel niet hetzelfde is als het feitelijke gebruik, en hoe bouwjaar en oppervlakte de kwaliteit en grootte van een huis bepalen.",
+      "Wat de BAG precies registreert, waarom gebruiksdoel niet hetzelfde is als het feitelijke gebruik en wat bouwjaar en oppervlakte over een huis zeggen.",
     categorie: "Objectgegevens",
-    samenvatting: "Waarom gebruiksdoel niet hetzelfde is als wat er echt gebeurt, en hoe bouwjaar en oppervlakte meer zeggen dan op het eerste gezicht lijkt.",
+    samenvatting: "Waarom gebruiksdoel niet hetzelfde is als wat er echt gebeurt en hoe bouwjaar en oppervlakte meer zeggen dan op het eerste gezicht lijkt.",
     kleur: "indigo",
     icoon: BuildingIcon,
     leestijdMinuten: 6,
@@ -227,7 +227,7 @@ export const ARTIKELEN: KoopgidsArtikel[] = [
           "Hoe ouder het huis, hoe groter de kans op weinig isolatie. Voor 1925 zat er meestal geen enkele isolatie in de muren. Tussen 1925 en 1975 kregen huizen wel een spouwmuur, maar zonder isolatiemateriaal erin. Goed nieuws: die spouw is achteraf vaak alsnog te vullen.",
           "Extra opvallend zijn woningen uit 1965 tot 1975. De vloeren uit die tijd hadden een isolatiewaarde van slechts 0,17 (hoe hoger dit getal, hoe beter de isolatie). Vergelijk dat met een moderne vloer, die al snel twintig keer beter isoleert. Kort door de bocht: in een huis uit die periode staat u vaak letterlijk met koude voeten.",
           "Vanaf 1985 werden de regels strenger. Vanaf 1992 moest een huis verplicht een stuk beter isoleren (het Bouwbesluit eiste toen een isolatiewaarde van minimaal 2,5 voor de hele buitenkant van het huis). Sinds 2000 is de isolatie meestal echt goed.",
-          "Het bouwjaar zegt trouwens niet alleen iets over isolatie. Huizen van vóór 1970 zijn vaak gebouwd op houten palen, met een verhoogd risico op funderingsproblemen. Zie het artikel over funderingsrisico voor de volledige uitleg.",
+          "Het bouwjaar zegt trouwens niet alleen iets over isolatie. Huizen van vóór 1970 zijn vaak gebouwd op houten palen, met een verhoogd risico op funderingsproblemen. Zie het [artikel over funderingsrisico](funderingsrisico-herkennen) voor de volledige uitleg.",
         ],
         illustratie: IsolatieTijdlijnIllustratie,
       },
@@ -251,7 +251,7 @@ export const ARTIKELEN: KoopgidsArtikel[] = [
     slug: "energielabel-uitgelegd",
     titel: "Energielabel uitgelegd: wat de letters betekenen",
     metaBeschrijving:
-      "Hoe het energielabel wordt berekend, hoeveel Nederlandse woningen welk label hebben, waarom huurwoningen al harde deadlines kennen en wat een goed label voor uw hypotheek betekent.",
+      "Hoe het energielabel wordt berekend, welke deadlines er al gelden voor huurwoningen en wat een goed label voor uw hypotheek betekent.",
     categorie: "Energieprestatie en label",
     samenvatting: "Hoe het label werkt, actuele cijfers over de Nederlandse woningvoorraad en waarom dit label de komende jaren alleen maar belangrijker wordt.",
     kleur: "indigo",
@@ -287,7 +287,7 @@ export const ARTIKELEN: KoopgidsArtikel[] = [
       {
         kop: "Verduurzamen en wat u kunt doen",
         paragrafen: [
-          "Een laag label is dus geen reden om een huis links te laten liggen, wel een reden om te weten wat het kost om te verbeteren. In ons artikel over verduurzamen leggen we uit welke maatregelen het meeste opleveren en in welke volgorde: isoleren komt eerst, want een warmtepomp werkt pas echt efficiënt in een goed geïsoleerde woning, en pas daarna volgen een nieuwe installatie en zonnepanelen.",
+          "Een laag label is dus geen reden om een huis links te laten liggen, wel een reden om te weten wat het kost om te verbeteren. In ons [artikel over verduurzamen](verduurzamen-wat-loont) leggen we uit welke maatregelen het meeste opleveren en in welke volgorde: isoleren komt eerst, want een warmtepomp werkt pas echt efficiënt in een goed geïsoleerde woning, en pas daarna volgen een nieuwe installatie en zonnepanelen.",
           "Vraag bij een bezichtiging dus altijd naar het actuele definitieve energielabel en niet alleen naar het bouwjaar, want twee vergelijkbare huizen kunnen daarin flink verschillen. Reken bij een laag label niet alleen de energierekening mee, maar ook het effect op uw leenruimte en rente, en bekijk voordat u een bod uitbrengt wat er nodig is om naar een beter label te komen.",
         ],
       },
@@ -297,9 +297,9 @@ export const ARTIKELEN: KoopgidsArtikel[] = [
     slug: "funderingsrisico-herkennen",
     titel: "Funderingsrisico herkennen: waar moet u op letten?",
     metaBeschrijving:
-      "Wat funderingsrisico precies is, waarom taxatierapporten sinds 1 april 2026 verplicht een A-E funderingsscore bevatten, en wat u er zelf al vóór het bieden aan kunt zien.",
+      "Wat funderingsrisico precies is, waarom taxatierapporten sinds 2026 verplicht een A-E score bevatten en wat u er zelf al vóór het bieden aan kunt zien.",
     categorie: "Funderingsrisico",
-    samenvatting: "Waarom hypotheekverstrekkers sinds kort verplicht een funderingsscore laten opnemen, en wat u er zelf al vóór het bieden aan kunt herkennen.",
+    samenvatting: "Waarom hypotheekverstrekkers sinds kort verplicht een funderingsscore laten opnemen en wat u er zelf al vóór het bieden aan kunt herkennen.",
     kleur: "rust",
     icoon: AlertTriangleIcon,
     leestijdMinuten: 7,
@@ -408,7 +408,7 @@ export const ARTIKELEN: KoopgidsArtikel[] = [
     slug: "verduurzamen-wat-loont",
     titel: "Verduurzamen: welke maatregelen leveren het meeste op?",
     metaBeschrijving:
-      "Waarom de volgorde van verduurzamingsmaatregelen ertoe doet, wat isolatie, zonnepanelen en een warmtepomp qua terugverdientijd opleveren en wanneer een maatregel wel of niet zinvol is.",
+      "Waarom de volgorde van verduurzamingsmaatregelen ertoe doet, wat ze qua terugverdientijd opleveren en wanneer een maatregel wel of niet zinvol is.",
     categorie: "Verduurzamingsadvies",
     samenvatting: "Waarom de volgorde van maatregelen ertoe doet, wat elke maatregel qua terugverdientijd en waardestijging oplevert en wanneer het wel of niet zinvol is.",
     kleur: "green",

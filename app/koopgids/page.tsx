@@ -5,6 +5,7 @@ import SiteFooter from "@/components/layout/SiteFooter";
 import Container from "@/components/ui/Container";
 import { ArrowRightIcon } from "@/components/report/icons";
 import { ARTIKELEN, KLEUR_STIJL } from "@/lib/content/koopgids";
+import { APP_BASE_URL } from "@/lib/config/payment";
 
 // -----------------------------------------------------------------------------
 // Koopgids-hub: overzicht van alle artikelen, één per rapportonderdeel.
@@ -26,12 +27,43 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
+// JSON-LD voor de hub: CollectionPage met alle artikelen als ItemList, plus
+// een BreadcrumbList (Home > Koopgids). Zelfde aanpak als de losse
+// artikelpagina's, zie app/koopgids/[slug]/page.tsx.
+const collectionJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  name: "Koopgids",
+  description: metadata.description,
+  url: `${APP_BASE_URL}${CANONICAL_PATH}`,
+  inLanguage: "nl-NL",
+  mainEntity: {
+    "@type": "ItemList",
+    itemListElement: ARTIKELEN.map((a, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: a.titel,
+      url: `${APP_BASE_URL}/koopgids/${a.slug}`,
+    })),
+  },
+};
+const breadcrumbJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "Kooprapport", item: APP_BASE_URL },
+    { "@type": "ListItem", position: 2, name: "Koopgids", item: `${APP_BASE_URL}${CANONICAL_PATH}` },
+  ],
+};
+
 export default function KoopgidsPage() {
   const [uitgelicht, ...rest] = ARTIKELEN;
   const UitgelichtIcon = uitgelicht.icoon;
 
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
       <SiteHeader />
       <main>
         {/* Hero — zelfde dot-pattern als de rest van de site, plus twee
