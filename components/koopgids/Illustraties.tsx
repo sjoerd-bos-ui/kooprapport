@@ -375,3 +375,84 @@ export function DeadlineTijdlijnIllustratie() {
     </div>
   );
 }
+
+// -----------------------------------------------------------------------------
+// Illustraties voor "Funderingsrisico herkennen: waar moet u op letten?"
+// (artikel "funderingsrisico-herkennen").
+// -----------------------------------------------------------------------------
+
+export function VoorNa1970Illustratie() {
+  return (
+    <div className="my-5 grid grid-cols-2 gap-2.5">
+      <div className="rounded-2xl border border-[#f0cccb] bg-[#FBEAEA] p-3.5 text-center">
+        <p className="text-[11px] font-extrabold text-rust">Vóór 1970</p>
+        <p className="mt-0.5 text-[10px] leading-snug text-rust">Vaak houten paalfundering</p>
+      </div>
+      <div className="rounded-2xl border border-[#cfe3ba] bg-[#EAF3DE] p-3.5 text-center">
+        <p className="text-[11px] font-extrabold text-[#27500A]">Vanaf 1970</p>
+        <p className="mt-0.5 text-[10px] leading-snug text-[#27500A]">Betonpalen, standaard</p>
+      </div>
+    </div>
+  );
+}
+
+const FUNDERING_SCORES = [
+  { letter: "A", kleur: "#1F8A3D" },
+  { letter: "B", kleur: "#A8C93B" },
+  { letter: "C", kleur: "#F0C93B" },
+  { letter: "D", kleur: "#E8623B" },
+  { letter: "E", kleur: "#D8323B" },
+];
+
+export function FunderingsScoreSchaalIllustratie() {
+  return (
+    <div className="my-5 flex h-[26px] overflow-hidden rounded-lg">
+      {FUNDERING_SCORES.map((s) => (
+        <div
+          key={s.letter}
+          className="flex flex-1 items-center justify-center text-[10.5px] font-extrabold text-white"
+          style={{ backgroundColor: s.kleur }}
+        >
+          {s.letter}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const KOOPPROCES_STAPPEN = [
+  { label: "Bod uitgebracht", nadruk: false },
+  { label: "Koopovereenkomst getekend", nadruk: false },
+  { label: "Taxatie: A-E score", nadruk: true },
+  { label: "Hypotheek rond", nadruk: false },
+];
+
+export function KoopprocesTijdlijnIllustratie() {
+  return (
+    <div className="my-5 rounded-2xl bg-parchment p-5">
+      <p className="mb-3.5 text-[11px] font-bold uppercase tracking-wider3 text-ink/45">Waar in het proces zit de check?</p>
+      <div className="relative px-1">
+        <div className="absolute inset-x-0 top-[5px] h-0.5 bg-line" />
+        <div className="relative flex justify-between">
+          {KOOPPROCES_STAPPEN.map((s) => (
+            <div key={s.label} className="flex flex-col items-center gap-2">
+              <div
+                className={`rounded-full border-2 border-white ${s.nadruk ? "h-3.5 w-3.5 bg-rust" : "h-3 w-3 bg-accent"}`}
+              />
+              <p
+                className={`max-w-[64px] text-center text-[9.5px] leading-snug ${
+                  s.nadruk ? "font-bold text-rust" : "text-ink/55"
+                }`}
+              >
+                {s.label}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+      <p className="mt-4 text-[11.5px] text-ink/50">
+        De score komt pas ná de handtekening. Precies daarom is zelf vooraf checken zoveel waard.
+      </p>
+    </div>
+  );
+}

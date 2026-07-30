@@ -23,6 +23,9 @@ import {
   OppervlakteWelNietIllustratie,
   EnergielabelSchaalIllustratie,
   DeadlineTijdlijnIllustratie,
+  VoorNa1970Illustratie,
+  FunderingsScoreSchaalIllustratie,
+  KoopprocesTijdlijnIllustratie,
 } from "@/components/koopgids/Illustraties";
 
 // -----------------------------------------------------------------------------
@@ -290,43 +293,59 @@ export const ARTIKELEN: KoopgidsArtikel[] = [
     slug: "funderingsrisico-herkennen",
     titel: "Funderingsrisico herkennen: waar moet u op letten?",
     metaBeschrijving:
-      "Waarom 1970 de scheidslijn is bij funderingsrisico, hoe de officiële KCAF/RVO-bodemkaart werkt en welke zichtbare signalen wijzen op funderingsproblemen.",
+      "Wat funderingsrisico precies is, waarom taxatierapporten sinds 1 april 2026 verplicht een A-E funderingsscore bevatten, en wat u er zelf al vóór het bieden aan kunt zien.",
     categorie: "Funderingsrisico",
-    samenvatting: "Waarom bouwjaar en bodemgesteldheid samen het risico bepalen, en welke zichtbare signalen op funderingsproblemen kunnen wijzen.",
+    samenvatting: "Waarom hypotheekverstrekkers sinds kort verplicht een funderingsscore laten opnemen, en wat u er zelf al vóór het bieden aan kunt herkennen.",
     kleur: "rust",
     icoon: AlertTriangleIcon,
-    leestijdMinuten: 6,
-    ctaTekst: "Wilt u het funderingsrisico van een specifiek adres inzien?",
+    leestijdMinuten: 7,
+    intro:
+      "Een scheur in de muur kan gewoon zetting zijn of het eerste teken van een probleem dat tienduizenden euro's kan gaan kosten. Het verschil zit 'm in de fundering, letterlijk het fundament onder de waarde van een huis en het enige onderdeel waar niemand ooit een mooie foto van maakt voor de advertentie. Hieronder leggen we uit wat dit precies is, waarom hypotheekverstrekkers hier sinds kort veel scherper op letten en wat u er zelf aan kunt zien.",
+    ctaTekst: "Wilt u het funderingsrisico van uw eigen adres bekijken?",
     secties: [
       {
-        kop: "Waarom 1970 de scheidslijn is",
+        kop: "Wat funderingsrisico precies is",
         paragrafen: [
-          "Tot ongeveer 1970 werden woningen in Nederland vaak op houten palen gefundeerd, vooral in gebieden met een slappe, minder draagkrachtige bodem zoals veen of rivierklei. Vanaf ongeveer 1970 werd funderen op betonpalen de standaard, wat het bekende risico op houtrot in de fundering sterk verkleint. Het bouwjaar is dus het eerste, grofste signaal: bij een woning van na 1970 is het risico doorgaans laag, ongeacht de bodem.",
+          "Tot ongeveer 1970 werden huizen in Nederland vaak op houten palen gefundeerd, vooral in gebieden met een slappe bodem zoals veen of rivierklei. Zolang die palen permanent onder het grondwater staan blijven ze gezond: hout rot simpelweg niet in een zuurstofarme verzadigde omgeving. Het probleem ontstaat als de grondwaterstand daalt, bijvoorbeeld door langdurige droogte, waardoor de paalkoppen droog komen te staan en binnen enkele jaren kunnen wegrotten. Een beetje alsof u een houten steiger jarenlang droog laat staan in plaats van in het water: vroeg of laat gaat dat knagen.",
+          "Vanaf ongeveer 1970 werd funderen op betonpalen de standaard, wat dit specifieke risico grotendeels wegneemt. Funderingsrisico is dus vooral een zaak van oudere woningen gecombineerd met de bodemgesteldheid van de buurt.",
+        ],
+        illustratie: VoorNa1970Illustratie,
+      },
+      {
+        kop: "Waarom dit zoveel geld kost",
+        paragrafen: [
+          "Dit is geen klein ongemak. Funderingsherstel kost gemiddeld tussen de €60.000 en €120.000 voor een rijtjeswoning, ofwel grofweg €800 tot €1.500 per strekkende meter gevel. Naar schatting kampen bijna een half miljoen Nederlandse woningen met een verhoogd funderingsrisico. Dat is precies waarom dit geen detail is om te negeren bij het kopen van een oudere woning: het kan de grootste onvoorziene kostenpost van de hele aankoop worden.",
+          "Gelukkig bestaat er inmiddels ook steun. Sinds juli 2025 is het landelijke Fonds Duurzaam Funderingsherstel in heel Nederland beschikbaar, met NHG-gegarandeerde leningen voor urgent funderingsherstel, een looptijd tot 30 jaar en de eerste drie jaar geen aflossingsverplichting. Diverse gemeenten met bekende problematiek geven daarnaast eigen subsidies: Zaanstad tot 25% van de herstelkosten met een maximum van €30.000, Schiedam vergoedt 100% van de adviseurskosten plus een revolverende lening tot €120.000, en Dordrecht geeft 20% subsidie plus een gratis funderingsonderzoek voor inkomens onder modaal.",
         ],
       },
       {
-        kop: "Wat paalrot precies is",
+        kop: "Waarom hypotheekverstrekkers dit steeds belangrijker vinden",
         paragrafen: [
-          "Houten funderingspalen blijven gezond zolang ze permanent onder het grondwater staan: hout rot namelijk niet in een zuurstofarme, verzadigde omgeving. Het probleem ontstaat wanneer de grondwaterstand daalt, bijvoorbeeld door langdurige droogte of drainage in de omgeving. Zodra de paalkoppen boven het grondwater komen te staan, kunnen ze binnen enkele jaren ernstig aangetast raken door schimmels en bacteriën. Dat maakt paalrot een risico dat sterk verschilt per buurt en per periode, niet alleen per bouwjaar.",
+          "Dit is misschien wel het meest actuele punt van dit hele artikel. Sinds 1 april 2026 bevat het taxatierapport dat nodig is voor een hypotheekaanvraag verplicht een funderingsbeoordeling: de taxateur moet het risico scoren met een letter van A tot en met E. Voorheen was dit veel losser geregeld, nu is het een vast verplicht onderdeel van elke taxatie.",
+          "Blijkt uit die beoordeling een verhoogd risico, dan kan de geldverstrekker daar consequenties aan verbinden: een lager maximale hypotheekbedrag, andere financieringsvoorwaarden of een verplicht bouwdepot dat wordt gereserveerd voor toekomstig funderingsherstel. Bij woningen van vóór 1940 hanteren banken vaak sowieso standaard een bouwkundige keuring, omdat funderingsproblemen, verouderde elektra en loden leidingen in deze oudere woningen statistisch een stuk vaker voorkomen. Blijkt uit de taxatie dat direct noodzakelijk herstel meer dan 10% van de getaxeerde marktwaarde kost, dan wordt een bouwkundige keuring sowieso verplicht.",
+        ],
+        illustratie: FunderingsScoreSchaalIllustratie,
+      },
+      {
+        kop: "Waarom dit vaak te laat komt",
+        paragrafen: [
+          "Hier zit meteen de adder onder het gras. Deze verplichte taxatie met funderingsscore gebeurt doorgaans pas ná het tekenen van de koopovereenkomst, als onderdeel van uw hypotheekaanvraag. Komt er dan een slechte score uit? Dan bent u al juridisch aan de koop gebonden en resten er alleen nog ontbindende voorwaarden om onderuit te komen, als u die tenminste goed heeft afgesproken. Precies daarom is het zo waardevol om dit zelf al vóór het bieden te checken, in plaats van pas te horen dat er een probleem is op het moment dat u er al middenin zit.",
+        ],
+        illustratie: KoopprocesTijdlijnIllustratie,
+      },
+      {
+        kop: "Wat ons rapport hierin doet",
+        paragrafen: [
+          "Simpel gezegd kijken we naar twee dingen en tellen die bij elkaar op. Eerst het bouwjaar: vanaf 1970 is beton de standaard, wat het risico flink verlaagt. Daarna de officiële bodemkaart van KCAF en RVO, die per postcodegebied laat zien of de grond kwetsbaar is voor dit soort problemen, bijvoorbeeld veen of rivierklei, of juist niet.",
+          "Is het huis ouder dan 1970 en de bodem kwetsbaar? Dan komt er een hoger risico uit. Is de bodem juist stevig? Dan blijft het risico laag, ook bij een ouder huis. Weten we niets over de bodem in dat gebied? Dan kijken we voorzichtig alleen naar het bouwjaar, met extra aandacht bij een huis van vóór 1945.",
+          "Let op: dit is een indicatie op basis van openbare bronnen, geen bouwkundige inspectie. Geen kruipruimte-bezoek, geen boormonster, gewoon twee goede officiële databronnen slim gecombineerd.",
         ],
       },
       {
-        kop: "De officiële bodemkaart van KCAF en RVO",
+        kop: "Wat u zelf kunt herkennen",
         paragrafen: [
-          "Naast het bouwjaar bestaat er een officiële, publieke dataset: de indicatieve aandachtsgebieden funderingsproblematiek van KCAF en RVO, gepubliceerd via PDOK. Die kaart classificeert elk postcodegebied als kwetsbaar gebied (een minder draagkrachtige bodem zoals veen of rivierklei), niet kwetsbaar gebied (bijvoorbeeld hogere zandgronden), of stedelijk gebied, waarbij de bodem door dichte bebouwing niet goed in te delen is. Dat laatste betekent nadrukkelijk onbekend, niet automatisch veilig.",
-          "Deze kaart doet zelf ook geen uitspraak over de daadwerkelijke staat van de fundering van een specifiek pand: het blijft een indicatie op basis van de omgeving, geen bouwtechnische inspectie.",
-        ],
-      },
-      {
-        kop: "Zichtbare signalen om op te letten",
-        paragrafen: [
-          "Een aantal signalen kan wijzen op funderingsproblemen: scheuren in muren of plafonds breder dan ongeveer twee millimeter, vooral als ze diagonaal lopen, deuren of ramen die opeens klemmen, en een merkbaar hellende vloer of gevel. Voor woningen gebouwd tussen 1900 en 1930 geldt bovendien dat het risico op funderingsgebreken statistisch aanzienlijk hoger ligt dan bij modernere bouw.",
-        ],
-      },
-      {
-        kop: "Wat u concreet kunt doen",
-        paragrafen: [
-          "Bij twijfel is een funderingsonderzoek door een erkend bureau de enige manier om echt zekerheid te krijgen: geen enkele publieke kaart of dit artikel kan dat vervangen. Een aantal gemeenten met bekende funderingsproblematiek, waaronder Gouda, Schiedam, Zaanstad en Dordrecht, heeft bovendien een eigen funderingsloket met lokale kaarten en advies.",
+          "Een paar zichtbare signalen zijn de moeite waard om tijdens een bezichtiging op te letten. Scheuren in muren of plafonds breder dan ongeveer twee millimeter, vooral wanneer ze diagonaal lopen, kunnen wijzen op verzakking. Hetzelfde geldt voor deuren of ramen die opeens klemmen of een merkbaar hellende vloer of gevel. Loop gerust met een knikker door de woonkamer, rolt die spontaan naar één hoek, dan weet u genoeg. Voor woningen gebouwd tussen 1900 en 1930 geldt bovendien dat het risico op funderingsgebreken statistisch een stuk hoger ligt dan bij modernere bouw.",
+          "Woont u in of overweegt u een woning in een gemeente met bekende funderingsproblematiek, zoals Gouda, Schiedam, Zaanstad of Dordrecht? Deze gemeenten hebben allemaal een eigen funderingsloket met lokale kaarten, advies en soms subsidie. Bij twijfel is een funderingsonderzoek door een erkend bureau nog altijd de enige manier om echt zekerheid te krijgen, geen enkele kaart of dit artikel kan dat vervangen.",
         ],
       },
     ],
