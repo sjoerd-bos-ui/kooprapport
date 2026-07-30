@@ -17,6 +17,10 @@ import {
   KrimpflatieIllustratie,
   OppervlakteTolerantieIllustratie,
   TipsGridIllustratie,
+  GebruiksfunctiesIllustratie,
+  DrieLabelsIllustratie,
+  IsolatieTijdlijnIllustratie,
+  OppervlakteWelNietIllustratie,
 } from "@/components/koopgids/Illustraties";
 
 // -----------------------------------------------------------------------------
@@ -179,38 +183,57 @@ export const ARTIKELEN: KoopgidsArtikel[] = [
   },
   {
     slug: "bouwjaar-en-gebruiksdoel",
-    titel: "Bouwjaar, oppervlakte en gebruiksdoel: wat betekent dit voor u?",
+    titel: "Wat bouwjaar, oppervlakte en gebruiksdoel u eigenlijk vertellen",
     metaBeschrijving:
-      "Wat de BAG precies registreert, welke elf gebruiksfuncties er officieel bestaan en waarom het bouwjaar meer zegt dan alleen een jaartal.",
+      "Wat de BAG precies registreert, waarom gebruiksdoel niet hetzelfde is als het feitelijke gebruik, en hoe bouwjaar en oppervlakte de kwaliteit en grootte van een huis bepalen.",
     categorie: "Objectgegevens",
-    samenvatting: "Wat de officiële BAG-registratie precies vastlegt, en waarom bouwjaar en oppervlakte meer zeggen dan op het eerste gezicht lijkt.",
+    samenvatting: "Waarom gebruiksdoel niet hetzelfde is als wat er echt gebeurt, en hoe bouwjaar en oppervlakte meer zeggen dan op het eerste gezicht lijkt.",
     kleur: "indigo",
     icoon: BuildingIcon,
-    leestijdMinuten: 4,
-    ctaTekst: "Bekijk de objectgegevens van een specifiek adres",
+    leestijdMinuten: 6,
+    intro:
+      "U opent een Funda-advertentie. Bouwjaar 1932. 140 m². Woonfunctie. Drie feitjes die weinig zeggen, tenzij u weet wat erachter zit. Dat leggen we hieronder uit, met een paar dingen die de meeste mensen niet weten totdat het misgaat.",
+    ctaTekst: "Wilt u dit voor uw eigen adres bekijken?",
     secties: [
       {
-        kop: "De BAG: de officiële basis onder elk adres",
+        kop: "Waar deze gegevens vandaan komen",
         paragrafen: [
-          "De Basisregistratie Adressen en Gebouwen, kortweg BAG, is de officiële, publieke registratie waarin elk gebouw en elk adres in Nederland is vastgelegd. Gemeenten zijn verplicht deze registratie bij te houden, en het Kadaster ontsluit de gegevens publiek. Bouwjaar, oppervlakte en gebruiksdoel die in een woningrapport staan, komen rechtstreeks uit deze bron, niet uit een schatting.",
+          "Bouwjaar, oppervlakte en gebruiksdoel komen uit de BAG, de officiële registratie van elk gebouw in Nederland. Gemeenten houden deze bij en het Kadaster maakt de gegevens gratis openbaar. Geen schatting dus, maar een vastgelegd feit.",
+          "Gebruiksdoel is het officiële label voor waar een pand voor bedoeld is. Er bestaan elf officiële typen. De bekendste zijn woonfunctie, kantoorfunctie en winkelfunctie. Daarnaast bestaan er acht minder bekende typen zoals bijeenkomstfunctie voor bijvoorbeeld een buurthuis of gezondheidszorgfunctie voor een huisartsenpraktijk.",
         ],
+        illustratie: GebruiksfunctiesIllustratie,
       },
       {
-        kop: "De elf officiële gebruiksfuncties",
+        kop: "Let op: gebruiksdoel is niet hetzelfde als wat er echt gebeurt",
         paragrafen: [
-          "Het Bouwbesluit 2012 kent elf officiële gebruiksfuncties: woonfunctie, bijeenkomstfunctie, celfunctie, gezondheidszorgfunctie, industriefunctie, kantoorfunctie, logiesfunctie, onderwijsfunctie, sportfunctie, winkelfunctie en overige gebruiksfunctie. Bij een adres met woonfunctie staat vast dat het vergunde gebruik wonen is, wat relevant is bij bijvoorbeeld een pand dat ooit een winkel of kantoor was en later is omgebouwd: de BAG toont wat er nu officieel vergund is, niet noodzakelijk wat het gebouw ooit was.",
+          "Dit is het belangrijkste om te onthouden. De BAG registreert waarvoor een pand officieel een vergunning heeft, niet wat er in de praktijk gebeurt. Woont iemand al jaren in een oud pakhuis of voormalig kantoor? Dan kan er in de BAG nog gewoon \"kantoorfunctie\" staan. Dat blijft zo staan totdat er een nieuwe vergunning wordt aangevraagd. Niemand past dit automatisch aan.",
+          "Gebruiksdoel is trouwens ook iets anders dan het bestemmingsplan. Het bestemmingsplan van de gemeente bepaalt wat er op een locatie mag. Het gebruiksdoel in de BAG is een apart, los label. Twee verschillende systemen die makkelijk door elkaar gehaald worden.",
+          "Dit klinkt onschuldig maar kan grote gevolgen hebben. Een bank kijkt bij een hypotheek naar de officiële registratie. Staat er geen woonfunctie? Dan kan de financiering lastiger worden of zelfs misgaan. Koopt u een bijzonder pand, zoals een verbouwd pakhuis, een boerderij of een oud kantoor? Check dan altijd eerst het gebruiksdoel voordat u een bod uitbrengt.",
         ],
+        illustratie: DrieLabelsIllustratie,
       },
       {
-        kop: "Waarom bouwjaar meer zegt dan een jaartal",
+        kop: "Bouwjaar zegt iets over isolatie en fundering",
         paragrafen: [
-          "Het bouwjaar is niet alleen een historisch feitje. Bouwmethoden en normen veranderden met de tijd: het type fundering (zie het artikel over funderingsrisico), de gebruikelijke isolatienormen en de bouwvoorschriften hangen allemaal samen met de periode waarin een woning gebouwd is. Twee huizen met exact dezelfde oppervlakte kunnen daardoor in de praktijk heel verschillend presteren op bijvoorbeeld energieverbruik.",
+          "Hoe ouder het huis, hoe groter de kans op weinig isolatie. Voor 1925 zat er meestal geen enkele isolatie in de muren. Tussen 1925 en 1975 kregen huizen wel een spouwmuur, maar zonder isolatiemateriaal erin. Goed nieuws: die spouw is achteraf vaak alsnog te vullen.",
+          "Extra opvallend zijn woningen uit 1965 tot 1975. De vloeren uit die tijd hadden een isolatiewaarde van slechts 0,17 (hoe hoger dit getal, hoe beter de isolatie). Vergelijk dat met een moderne vloer, die al snel twintig keer beter isoleert. Kort door de bocht: in een huis uit die periode staat u vaak letterlijk met koude voeten.",
+          "Vanaf 1985 werden de regels strenger. Vanaf 1992 moest een huis verplicht een stuk beter isoleren (het Bouwbesluit eiste toen een isolatiewaarde van minimaal 2,5 voor de hele buitenkant van het huis). Sinds 2000 is de isolatie meestal echt goed.",
+          "Het bouwjaar zegt trouwens niet alleen iets over isolatie. Huizen van vóór 1970 zijn vaak gebouwd op houten palen, met een verhoogd risico op funderingsproblemen. Zie het artikel over funderingsrisico voor de volledige uitleg.",
         ],
+        illustratie: IsolatieTijdlijnIllustratie,
       },
       {
-        kop: "Oppervlakte: waarom advertenties soms verschillen",
+        kop: "Oppervlakte: waarom twee huizen anders tellen",
         paragrafen: [
-          "De officiële gebruiksoppervlakte wordt gemeten volgens de NEN 2580-norm, een vaste meetinstructie die precies voorschrijft wat wel en niet meetelt. Een advertentie op een woningsite hanteert niet altijd dezelfde norm, waardoor twee bronnen voor dezelfde woning een licht afwijkend oppervlak kunnen tonen. Bij twijfel is de BAG-registratie de betrouwbaarste, want die volgt een vaste, controleerbare meetmethode.",
+          "Oppervlakte klinkt simpel, maar de meetregels zijn preciezer dan u denkt. Een woonkamer, keuken en slaapkamer tellen altijd volledig mee. Een zolder telt alleen mee als u er minimaal 1,5 meter rechtop kunt staan. De ruimte onder een trap telt gewoon mee, zolang die niet groter is dan 4 vierkante meter.",
+          "Sommige ruimtes tellen juist niet mee. Een inpandige garage niet. Een balkon of terras ook niet, want dat is buitenruimte. Een groot trapgat of open vide van meer dan 4 vierkante meter wordt er zelfs vanaf getrokken. Daarom kunnen twee bijna identieke huizen toch een ander vierkantemeteraantal hebben. Vaak zit het verschil in een garage, een grote zolder of een schuin dak dat net niet hoog genoeg is.",
+        ],
+        illustratie: OppervlakteWelNietIllustratie,
+      },
+      {
+        kop: "Wat u hier praktisch mee kunt",
+        paragrafen: [
+          "Vergelijk huizen altijd op basis van deze officiële oppervlakte, niet op een los genoemd getal in een advertentie. Koopt u een bijzonder pand? Check dan eerst het gebruiksdoel voordat u een hypotheek aanvraagt. En gebruik het bouwjaar als eerste seintje: bij een huis van vóór 1975 zijn zowel het energielabel als het funderingsrisico al snel de moeite van het bekijken waard.",
         ],
       },
     ],

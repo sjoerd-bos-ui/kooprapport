@@ -223,3 +223,95 @@ export function TipsGridIllustratie() {
     </div>
   );
 }
+
+// -----------------------------------------------------------------------------
+// Illustraties voor "Wat bouwjaar, oppervlakte en gebruiksdoel u eigenlijk
+// vertellen" (artikel "bouwjaar-en-gebruiksdoel").
+// -----------------------------------------------------------------------------
+
+const OVERIGE_GEBRUIKSFUNCTIES = ["Kantoorfunctie", "Winkelfunctie", "Bijeenkomstfunctie", "+ 7 andere"];
+
+export function GebruiksfunctiesIllustratie() {
+  return (
+    <div className="my-5 flex flex-wrap gap-1.5">
+      <span className="flex items-center gap-1.5 rounded-full border border-[#cfe3ba] bg-[#EAF3DE] px-3 py-1.5 text-[11px] font-bold text-[#27500A]">
+        <CheckIcon className="h-2.5 w-2.5" /> Woonfunctie
+      </span>
+      {OVERIGE_GEBRUIKSFUNCTIES.map((f) => (
+        <span key={f} className="rounded-full bg-parchment px-3 py-1.5 text-[11px] text-ink/55">
+          {f}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+const DRIE_LABELS = [
+  { titel: "Gebruiksdoel", tekst: "BAG · vergund gebruik", accent: false },
+  { titel: "Bestemmingsplan", tekst: "Gemeente · wat er mag", accent: false },
+  { titel: "Feitelijk gebruik", tekst: "Wat er echt gebeurt", accent: true },
+];
+
+export function DrieLabelsIllustratie() {
+  return (
+    <div className="my-5 grid grid-cols-3 gap-2.5">
+      {DRIE_LABELS.map((l) => (
+        <div
+          key={l.titel}
+          className={`rounded-2xl p-3.5 text-center ${l.accent ? "border border-[#f0cccb] bg-[#FBEAEA]" : "bg-parchment"}`}
+        >
+          <p className={`text-[11px] font-bold ${l.accent ? "text-rust" : "text-ink"}`}>{l.titel}</p>
+          <p className={`mt-1 text-[10px] leading-snug ${l.accent ? "text-rust" : "text-ink/55"}`}>{l.tekst}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const ISOLATIE_PERIODES = [
+  { label: "voor 1925", hoogte: 12, kleur: "#E4E4EC" },
+  { label: "1925-1975", hoogte: 22, kleur: "#C7C6F0" },
+  { label: "1992", hoogte: 34, kleur: "#8B85E8" },
+  { label: "2000+", hoogte: 48, kleur: "#4F46E5" },
+];
+
+export function IsolatieTijdlijnIllustratie() {
+  return (
+    <div className="my-5 rounded-2xl bg-parchment p-5">
+      <p className="mb-3.5 text-[11px] font-bold uppercase tracking-wider3 text-ink/45">
+        Isolatiekwaliteit per bouwperiode
+      </p>
+      <div className="flex h-16 items-end gap-2.5">
+        {ISOLATIE_PERIODES.map((p) => (
+          <div key={p.label} className="flex flex-1 flex-col items-center gap-1.5">
+            <div className="w-full rounded-md" style={{ height: p.hoogte, backgroundColor: p.kleur }} />
+            <span className="text-center text-[9px] text-ink/50">{p.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const OPPERVLAKTE_ITEMS = [
+  { tekst: "Woonkamer, keuken, slaapkamer", telt: true },
+  { tekst: "Zolder vanaf 1,5 m hoogte", telt: true },
+  { tekst: "Inpandige garage", telt: false },
+  { tekst: "Balkon of terras", telt: false },
+];
+
+export function OppervlakteWelNietIllustratie() {
+  return (
+    <div className="my-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
+      {OPPERVLAKTE_ITEMS.map((item) => (
+        <div
+          key={item.tekst}
+          className={`flex items-center gap-2 rounded-lg px-3 py-2.5 ${item.telt ? "bg-[#EAF3DE]" : "bg-[#FBEAEA]"}`}
+        >
+          <span className={`font-extrabold ${item.telt ? "text-[#27500A]" : "text-rust"}`}>{item.telt ? "✓" : "✕"}</span>
+          <span className={`text-[11px] font-semibold ${item.telt ? "text-[#27500A]" : "text-rust"}`}>{item.tekst}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
