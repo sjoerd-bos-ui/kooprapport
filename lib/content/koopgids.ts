@@ -13,6 +13,10 @@ import {
   OverbiedenStaafjesIllustratie,
   BandbreedteIllustratie,
   GebruiksscenariosIllustratie,
+  MarktcijfersIllustratie,
+  KrimpflatieIllustratie,
+  OppervlakteTolerantieIllustratie,
+  TipsGridIllustratie,
 } from "@/components/koopgids/Illustraties";
 
 // -----------------------------------------------------------------------------
@@ -122,31 +126,53 @@ export const ARTIKELEN: KoopgidsArtikel[] = [
     slug: "verkopen-in-de-buurt",
     titel: "Wat verkopen in uw buurt zeggen over de prijs",
     metaBeschrijving:
-      "Waarom recente verkoopprijzen een betere leidraad zijn dan vraagprijzen, en waarom de prijs per vierkante meter alleen iets zegt binnen dezelfde soort woningen.",
+      "Actuele NVM-cijfers over verkochte woningen, gemiddelde prijzen en doorlooptijd, wanneer een verkoop echt vergelijkbaar is en waar u verder op moet letten.",
     categorie: "Verkopen in de buurt",
-    samenvatting: "Waarom verkoopprijzen een betere leidraad zijn dan vraagprijzen, en waar de prijs per m² wel en niet voor gebruikt kan worden.",
+    samenvatting: "Actuele marktcijfers, wanneer een verkoop echt vergelijkbaar is en een aantal dingen om extra op te letten.",
     kleur: "indigo",
     icoon: HistoryIcon,
-    leestijdMinuten: 4,
-    ctaTekst: "Wilt u zien wat er recent verkocht is bij uw adres?",
+    leestijdMinuten: 6,
+    intro:
+      "Er hangt een bordje \"VERKOCHT\" bij de buren en binnen een dag weet de hele straat ongeveer wat ervoor betaald is. Dat instinct klopt: kijk naar wat er echt verkocht is in plaats van naar wat er ergens gevraagd wordt. Hieronder leest u hoe dat systematisch werkt, wat de cijfers nu laten zien en wanneer een verkoop in de buurt daadwerkelijk iets over uw eigen woning zegt.",
+    ctaTekst: "Wilt u zien welke verkopen bij uw adres meetellen?",
     secties: [
       {
-        kop: "Vraagprijs versus verkoopprijs",
+        kop: "De markt in cijfers",
         paragrafen: [
-          "Een vraagprijs is een openingsbod, geen feit. De verkoper en de makelaar bepalen die op basis van een inschatting van de markt, maar de uiteindelijke verkoopprijs kan daar flink van afwijken, in beide richtingen. Wie alleen naar vraagprijzen op woningsites kijkt, krijgt dus een vertekend beeld van wat een buurt daadwerkelijk waard is.",
-          "De verkoopprijzen die het Kadaster registreert, zijn het enige harde gegeven: dat is het bedrag dat daadwerkelijk betaald is bij de notariële overdracht. Daarom is dat de basis waarop een betrouwbare marktinschatting hoort te steunen, niet de vraagprijs.",
+          "In het tweede kwartaal van 2026 wisselden ruim 45.200 woningen via NVM-makelaars van eigenaar, tegenover een recordaantal van bijna 56.700 nieuw te koop gezette woningen. Dat groeiende aanbod geeft kopers voor het eerst in jaren weer wat meer keuze en onderhandelingsruimte. De gemiddelde verkoopprijs kwam uit op €506.000, een stijging van 3,4% ten opzichte van het kwartaal ervoor, met opvallende verschillen per woningtype: vrijstaande woningen stegen dit jaar het hardst in prijs terwijl appartementen de kleinste stijging lieten zien.",
+          "Ook de snelheid waarmee huizen verkopen zegt iets over de markt. Woningen stonden in 2026 gemiddeld 28 tot 32 dagen te koop voordat ze verkocht waren, met vrijstaande woningen die er doorgaans wat langer over deden (rond de 35 dagen) dan appartementen. De gemiddelde vraagprijs per vierkante meter lag in juli 2026 op €4.510 met grote regionale verschillen: van rond de €3.700 in Ede tot €7.290 in Amsterdam.",
         ],
+        illustratie: MarktcijfersIllustratie,
       },
       {
-        kop: "Waarom de laatste twaalf maanden",
+        kop: "De valkuil van prijs per vierkante meter",
         paragrafen: [
-          "Een woningmarkt kan binnen een paar jaar flink veranderen door rente, aanbod en vraag. Verkopen van vijf jaar geleden zeggen weinig over de huidige prijs. Daarom kijkt Kooprapport specifiek naar de verkopen van de laatste twaalf maanden: recent genoeg om representatief te zijn voor de huidige markt, maar breed genoeg om voldoende vergelijkingsmateriaal te hebben, ook in rustigere buurten.",
+          "Twee cijfers klinken vergelijkbaar maar zijn dat lang niet altijd. De prijs per vierkante meter blijft namelijk stijgen deels omdat woningen gemiddeld kleiner worden: een effect dat in de markt weleens \"krimpflatie\" wordt genoemd. De totale prijs oogt daardoor behapbaarder terwijl u er in werkelijkheid minder vierkante meters voor terugkrijgt. Vergelijk daarom altijd binnen hetzelfde woningtype in dezelfde buurt en nooit los tussen een appartement en een eengezinswoning: die twee bewegen qua prijs per vierkante meter structureel anders.",
         ],
+        illustratie: KrimpflatieIllustratie,
       },
       {
-        kop: "De valkuil van de prijs per vierkante meter",
+        kop: "Wanneer een verkoop echt vergelijkbaar is",
         paragrafen: [
-          "De gemiddelde prijs per vierkante meter is een handig kengetal, maar alleen binnen hetzelfde soort woningen. Een compact appartement heeft doorgaans een hogere prijs per m² dan een ruime eengezinswoning, simpelweg omdat kleinere woningen relatief duurder geprijsd worden per vierkante meter. Vergelijk daarom vooral binnen hetzelfde woningtype en dezelfde buurt, niet los tussen verschillende typen woningen.",
+          "Niet elke verkoop in de buurt zegt evenveel over uw eigen woning. Een verkoop telt in het rapport van Kooprapport pas als daadwerkelijk vergelijkbaar zodra de oppervlakte binnen ongeveer 22% van uw eigen woonoppervlak valt, want een verkoop van een woning die twee keer zo groot is vertekent het beeld meer dan dat het helpt. Van elke vergelijkbare verkoop wordt bovendien het verschil in prijs per vierkante meter ten opzichte van uw eigen woning berekend zodat u meteen ziet of een verkoop erboven, eronder of ongeveer gelijk zat.",
+          "Een rustige straat met weinig verkopen is daarbij geen probleem. Kooprapport kijkt standaard naar de laatste twaalf maanden maar verruimt dat zoekvenster automatisch naar een langere periode zodra er te weinig vergelijkbare verkopen binnen die twaalf maanden te vinden zijn. Zo blijft de vergelijking altijd gebaseerd op daadwerkelijke vergelijkbare verkopen in plaats van op een handvol toevallige transacties die niet representatief zijn.",
+        ],
+        illustratie: OppervlakteTolerantieIllustratie,
+      },
+      {
+        kop: "Een paar dingen om extra op te letten",
+        paragrafen: [
+          "Kijk niet alleen naar het gemiddelde maar ook naar de spreiding tussen de verkopen. Eén dure uitschieter, bijvoorbeeld een net gerenoveerde woning of een riant hoekhuis, kan het gemiddelde in een verder bescheiden straat flink omhoog trekken. Een individuele verkoop zegt daarom meer in combinatie met de andere vergelijkbare verkopen dan op zichzelf.",
+          "Let ook op wat er aan een vergelijkbare woning is veranderd vlak vóór de verkoop. Een woning die net een nieuwe keuken, badkamer of volledige verduurzaming kreeg verkoopt vaak boven het niveau van vergelijkbare niet-gerenoveerde huizen in dezelfde straat. Dat zegt dan meer over die renovatie dan over de buurt zelf.",
+          "Houd daarnaast rekening met het seizoen. Het voorjaar en de zomer kennen doorgaans het meeste aanbod en de snelste verkopen terwijl de wintermaanden vaak wat rustiger verlopen. Een lage doorlooptijd in juni zegt dus niet automatisch hetzelfde als een lage doorlooptijd in december.",
+          "Vergeet ten slotte niet dat de kale verkoopprijs niet het volledige kostenplaatje is. Overdrachtsbelasting, notariskosten en eventuele makelaarscourtage komen daar voor een koper nog bovenop en spelen dus mee bij wat een woning uiteindelijk werkelijk kost.",
+        ],
+        illustratie: TipsGridIllustratie,
+      },
+      {
+        kop: "Hoe u dit praktisch gebruikt",
+        paragrafen: [
+          "Let bij het bepalen van uw eigen bod of vraagprijs altijd op de prijs per vierkante meter binnen hetzelfde woningtype en let ook op de transactiedatum: een verkoop van anderhalf jaar geleden zegt minder over de huidige markt dan een verkoop van vorige maand, zeker in een markt die per kwartaal merkbaar beweegt zoals nu. Combineer dit vervolgens met de waarde-indicatie van uw eigen woning: de buurtverkopen laten zien wat de markt doet terwijl de waarde-indicatie dat vertaalt naar uw specifieke adres.",
         ],
       },
     ],

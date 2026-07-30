@@ -118,3 +118,108 @@ export function GebruiksscenariosIllustratie() {
     </div>
   );
 }
+
+// -----------------------------------------------------------------------------
+// Illustraties voor "Wat verkopen in uw buurt zeggen over de prijs"
+// (artikel "verkopen-in-de-buurt").
+// -----------------------------------------------------------------------------
+
+const MARKTCIJFERS = [
+  { waarde: "45.200", label: "verkocht Q2", accent: false },
+  { waarde: "56.700", label: "te koop gezet", accent: false },
+  { waarde: "€506k", label: "gem. prijs (+3,4%)", accent: true },
+  { waarde: "28-32", label: "dagen te koop", accent: false },
+];
+
+export function MarktcijfersIllustratie() {
+  return (
+    <div className="my-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+      {MARKTCIJFERS.map((m) => (
+        <div
+          key={m.label}
+          className={`rounded-xl p-3 text-center ${m.accent ? "bg-[#EEF0FF]" : "bg-parchment"}`}
+        >
+          <p className={`text-[15px] font-extrabold ${m.accent ? "text-accent" : "text-ink"}`}>{m.waarde}</p>
+          <p className={`mt-0.5 text-[9px] leading-snug ${m.accent ? "text-accent" : "text-ink/50"}`}>{m.label}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function KrimpflatieIllustratie() {
+  return (
+    <div className="my-5 rounded-2xl bg-parchment p-5">
+      <p className="mb-3.5 text-[11px] font-bold uppercase tracking-wider3 text-ink/45">"Krimpflatie" in beeld</p>
+      <div className="flex gap-6">
+        <div className="flex-1">
+          <p className="mb-1.5 text-[10px] text-ink/50">Prijs per m²</p>
+          <svg viewBox="0 0 100 36" className="h-9 w-full">
+            <polyline
+              points="0,30 25,24 50,18 75,10 100,4"
+              fill="none"
+              stroke="#4F46E5"
+              strokeWidth={3}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </div>
+        <div className="flex-1">
+          <p className="mb-1.5 text-[10px] text-ink/50">Gem. oppervlakte</p>
+          <svg viewBox="0 0 100 36" className="h-9 w-full">
+            <polyline
+              points="0,6 25,12 50,18 75,24 100,28"
+              fill="none"
+              stroke="#D97706"
+              strokeWidth={3}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function OppervlakteTolerantieIllustratie() {
+  return (
+    <div className="my-5 rounded-2xl bg-parchment p-5">
+      <p className="mb-3 text-[11px] font-bold uppercase tracking-wider3 text-ink/45">
+        ±22% oppervlaktetolerantie · voorbeeld bij 120 m²
+      </p>
+      <div className="relative mb-2 h-2 rounded-full bg-line">
+        <div className="absolute inset-y-0 left-[22%] right-[22%] rounded-full bg-accent" />
+        <div className="absolute top-1/2 left-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-ink" />
+      </div>
+      <div className="flex justify-between text-[10px] text-ink/45">
+        <span>94 m²</span>
+        <span className="font-extrabold text-ink">120 m² (uw woning)</span>
+        <span>146 m²</span>
+      </div>
+    </div>
+  );
+}
+
+const TIPS = [
+  { emoji: "📈", titel: "Spreiding", tekst: "Eén uitschieter trekt het gemiddelde scheef." },
+  { emoji: "🛠", titel: "Renovatie", tekst: "Zegt meer over de verbouwing dan de buurt." },
+  { emoji: "☀️", titel: "Seizoen", tekst: "Zomer beweegt anders dan winter." },
+  { emoji: "💳", titel: "Bijkomende kosten", tekst: "Overdrachtsbelasting zit niet in de koopsom." },
+];
+
+export function TipsGridIllustratie() {
+  return (
+    <div className="my-5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+      {TIPS.map((t) => (
+        <div key={t.titel} className="rounded-2xl border border-ink/10 bg-white p-3.5">
+          <p className="text-[11px] font-bold text-ink">
+            {t.emoji} {t.titel}
+          </p>
+          <p className="mt-0.5 text-[10px] leading-snug text-ink/55">{t.tekst}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
