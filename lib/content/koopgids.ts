@@ -8,6 +8,12 @@ import {
   ShieldCheckIcon,
   LeafIcon,
 } from "@/components/report/icons";
+import {
+  DriePrijzenIllustratie,
+  OverbiedenStaafjesIllustratie,
+  BandbreedteIllustratie,
+  GebruiksscenariosIllustratie,
+} from "@/components/koopgids/Illustraties";
 
 // -----------------------------------------------------------------------------
 // Koopgids: SEO-contentsectie (/koopgids, /koopgids/[slug]), zie het gesprek
@@ -32,6 +38,11 @@ export type KoopgidsKleur = "indigo" | "rust" | "green";
 export interface KoopgidsSectie {
   kop: string;
   paragrafen: string[];
+  // Optioneel: een kleine, feitelijke datavisualisatie tussen de tekst van
+  // deze sectie, zie components/koopgids/Illustraties.tsx. Bewust geen
+  // stockfoto's/AI-plaatjes — alleen bij "woningwaarde-bepalen" gebruikt
+  // vooralsnog, andere artikelen kunnen dit patroon later hergebruiken.
+  illustratie?: ComponentType;
 }
 
 export interface KoopgidsArtikel {
@@ -43,6 +54,9 @@ export interface KoopgidsArtikel {
   kleur: KoopgidsKleur;
   icoon: ComponentType<{ className?: string }>;
   leestijdMinuten: number;
+  // Korte, koploze openingsalinea direct onder de H1 (de "haak") — apart van
+  // secties gehouden zodat die altijd zonder eigen kop verschijnt.
+  intro?: string;
   secties: KoopgidsSectie[];
   ctaTekst: string;
 }
@@ -52,34 +66,55 @@ export const ARTIKELEN: KoopgidsArtikel[] = [
     slug: "woningwaarde-bepalen",
     titel: "Hoe bepaalt u de waarde van een woning?",
     metaBeschrijving:
-      "Waarom er geen gratis officiële woningwaarde bestaat, hoe een modelmatige schatting (AVM) werkt en waarom een bandbreedte betrouwbaarder is dan één los getal.",
+      "Hoe een vraagprijs tot stand komt, waarom overbieden de norm is, welke factoren de waarde van een huis echt bepalen, en hoe een modelmatige schatting (AVM) dat samenbrengt in een bandbreedte.",
     categorie: "Waarde-indicatie",
-    samenvatting: "Waarom een bandbreedte betrouwbaarder is dan één los getal, en wat een modelschatting wel en niet is.",
+    samenvatting: "Hoe een vraagprijs tot stand komt, waarom er vaak overboden wordt, en hoe een modelmatige schatting dat samenbrengt in een bandbreedte.",
     kleur: "indigo",
     icoon: TrendingUpIcon,
-    leestijdMinuten: 5,
-    ctaTekst: "Benieuwd naar de waarde-indicatie van uw eigen adres?",
+    leestijdMinuten: 6,
+    intro:
+      "Het is half elf 's avonds, u scrolt door Funda, en u vraagt zich af: wat zou ons eigen huis nu eigenlijk waard zijn? Herkenbaar. Het antwoord zit 'm niet in één simpel getal, maar het is ook geen mysterie. Er zit een vrij logische opbouw achter, en die leggen we hieronder stap voor stap uit.",
+    ctaTekst: "Wilt u dit voor uw eigen adres bekijken?",
     secties: [
       {
-        kop: "Waarom er geen gratis officiële woningwaarde bestaat",
+        kop: "Hoe een vraagprijs eigenlijk tot stand komt",
         paragrafen: [
-          "Veel mensen gaan ervan uit dat er ergens een officiële, actuele woningwaarde te vinden is. In de praktijk bestaat die niet. Het WOZ-waardeloket toont wel de WOZ-waarde per adres, maar verbiedt geautomatiseerde bevraging, en die waarde is bovendien vooral bedoeld voor belastingdoeleinden en loopt achter op de actuele markt. Het Kadaster heeft daarnaast een WOZ-bevragingsdienst, maar die is wettelijk beperkt tot specifieke doeleinden zoals de Huisvestingswet of verhuurderschap, niet voor consumenten die gewoon willen weten wat hun huis waard is.",
-          "De werkelijke verkoopprijzen staan wel bij het Kadaster, in het Koopsommenregister, maar dat is een betaald product dat je per adres apart moet opvragen. Er is dus geen bron die gratis, actueel en direct toegankelijk is. Daarom werkt elk platform dat een woningwaarde toont, inclusief Kooprapport, met een modelmatige schatting in plaats van een officieel cijfer.",
+          "Een vraagprijs valt niet zomaar uit de lucht. Een makelaar begint met referentiewoningen: recent verkochte huizen in dezelfde buurt met vergelijkbare kenmerken zoals bouwjaar, grootte en staat van onderhoud. Daarnaast speelt de actuele marktsituatie mee, en tijdens de bezichtiging wordt gekeken naar dingen die op papier lastig te vangen zijn: lichtinval, indeling, en wat er recent verbouwd is.",
+          "Een vraagprijs is daarnaast ook een strategische keuze, niet alleen een objectieve uitkomst. Een woning bewust scherp in de markt zetten trekt meer bezichtigingen en kan tot een biedingsstrijd leiden, terwijl een hogere vraagprijs meer ademruimte geeft om te onderhandelen. Twee vergelijkbare huizen kunnen dus met een andere vraagprijs de markt op gaan, puur door een andere verkoopstrategie.",
+        ],
+        illustratie: DriePrijzenIllustratie,
+      },
+      {
+        kop: "Waarom de vraagprijs zelden het eindbedrag is",
+        paragrafen: [
+          "Dat merkt u meteen als u naar de actuele cijfers kijkt. In het tweede kwartaal van 2026 werd er landelijk gemiddeld 4,6% boven de vraagprijs geboden, tegenover 3,7% in het kwartaal ervoor. De verschillen per regio zijn groot: in Amsterdam ging 78% van de woningen boven de vraagprijs weg, en in Groningen lag het gemiddelde overbiedingspercentage zelfs op 8,8%. Ook het woningtype maakt uit: bij tussenwoningen werd meer dan 80% boven de vraagprijs verkocht, bij vrijstaande woningen minder dan de helft.",
+          "Kortom, een vraagprijs is een uitgangspunt voor de onderhandeling, niet de uiteindelijke waarde. Dat is precies waarom een goede waarde-inschatting zich baseert op wat er daadwerkelijk betaald is, niet op wat er gevraagd werd.",
+        ],
+        illustratie: OverbiedenStaafjesIllustratie,
+      },
+      {
+        kop: "De factoren die de waarde van een huis echt bepalen",
+        paragrafen: [
+          "Onder de streep komt de waarde van een woning neer op vijf dingen: de locatie, de staat van onderhoud, de kenmerken van de woning zelf (oppervlakte, kaveloppervlak, bouwjaar), de actuele marktomstandigheden, en vergelijkbare verkopen in de buurt.",
+          "Locatie weegt doorgaans het zwaarst, gevolgd door onderhoudsstaat en grootte. Het energielabel speelt daarbij een steeds grotere rol: onderzoek van taxatiedata-specialist Calcasa laat zien dat woningen met een beter energielabel gemiddeld zo'n 4,1% meer opbrengen dan vergelijkbare woningen met een slechter label. Een nieuwe cv-ketel verkoopt dus niet alleen lekkerder warm water, maar telt ook mee bij de uiteindelijke prijs.",
         ],
       },
       {
-        kop: "Wat een modelschatting (AVM) precies doet",
+        kop: "Dus hoe vertaalt zich dat naar één schatting?",
         paragrafen: [
-          "Een Automated Valuation Model, afgekort AVM, schat de waarde van een woning op basis van kenmerken zoals oppervlakte, bouwjaar, woningtype en locatie, vergeleken met recente verkopen van vergelijkbare woningen in de buurt. Het is dezelfde soort methode die banken en taxateurs als hulpmiddel gebruiken, maar dan geautomatiseerd en direct beschikbaar.",
-          "Het belangrijkste verschil met een taxatie: een taxateur bezoekt de woning fysiek en beoordeelt de staat van onderhoud, verbouwingen en bijzonderheden die een model niet kan zien. Een AVM werkt uitsluitend met geregistreerde kenmerken en marktdata. Dat maakt het sneller en gratis, maar ook minder precies dan een taxatie ter plekke.",
+          "Hier komt het model om de hoek kijken. Een Automated Valuation Model, met de nogal stoere afkorting AVM, legt de kenmerken van uw woning naast recente verkopen van vergelijkbare woningen in de buurt en trekt daar een schatting uit. Zie het als een buurman die verstand heeft van huizenprijzen en alle recente verkopen in de straat kent, maar nooit bij u binnen is geweest.",
+          "In het rapport van Kooprapport heet dit onderdeel Waarde-indicatie, en dat werkt precies zo: een modelmatige schatting op basis van uw eigen adres en de verkopen in de buurt.",
+          "Zo'n model geeft trouwens bewust geen los getal, maar een boven- en ondergrens. Eén stellig bedrag klinkt lekker duidelijk, maar een huis is geen blikje cola met een prijssticker erop. Bij een standaard rijtjeswoning met veel vergelijkbare verkopen in de buurt is die bandbreedte vaak smal. Bij een afwijkende woning, met een ongebruikelijke plattegrond of weinig vergelijkingsmateriaal in de buurt, wordt de bandbreedte eerlijk gezegd wat breder. Dat is geen fout in het model, dat is precies hoe zeker het model daadwerkelijk is.",
         ],
+        illustratie: BandbreedteIllustratie,
       },
       {
-        kop: "Waarom een bandbreedte belangrijker is dan één getal",
+        kop: "Wat u met deze schatting kunt, en wat niet",
         paragrafen: [
-          "Een enkel getal wekt een precisie die een model nooit kan waarmaken. Daarom toont een goede waarde-indicatie altijd een bandbreedte in plaats van één bedrag: die geeft eerlijk weer hoe zeker het model van zijn eigen schatting is. Bij een standaard rijtjeswoning met veel vergelijkbare recente verkopen in de buurt is die bandbreedte vaak smal. Bij een afwijkende woning, bijvoorbeeld met een ongebruikelijke plattegrond, een grote kavel of weinig vergelijkbare verkopen in de buurt, wordt de bandbreedte vanzelf breder.",
-          "Belangrijk om te onthouden: een waarde-indicatie is geen taxatie, geen WOZ-waarde en geen garantie voor de uiteindelijke verkoopprijs. Het is een goed onderbouwd startpunt om een gevoel te krijgen bij het prijsniveau, niet het laatste woord.",
+          "Voor de duidelijkheid: een waarde-indicatie is geen taxatie (daar komt een mens fysiek voor langs), geen WOZ-waarde, en geen garantie voor de uiteindelijke verkoopprijs. Het is een stevig onderbouwd startpunt, dat u het beste combineert met de daadwerkelijke verkopen in uw buurt van de afgelopen twaalf maanden.",
+          "Concreet kunt u deze schatting op een paar manieren gebruiken. Staat u op het punt te bieden op een woning, dan geeft de bandbreedte u een steviger onderbouwd verhaal om mee te onderhandelen, of weet u in elk geval waar u qua bod ongeveer aan toe bent. Overweegt u zelf te verkopen, dan is de indicatie een handig ijkpunt voordat u met een makelaar om tafel gaat. En bij het aanvragen van een hypotheek geeft een reële inschatting alvast een idee van de verhouding tussen de vraagprijs en wat de bank waarschijnlijk als onderpandwaarde zal hanteren.",
         ],
+        illustratie: GebruiksscenariosIllustratie,
       },
     ],
   },

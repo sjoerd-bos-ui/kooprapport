@@ -50,10 +50,6 @@ export default async function KoopgidsArtikelPagina({ params }: { params: Promis
 
   const Icon = artikel.icoon;
   const stijl = KLEUR_STIJL[artikel.kleur];
-  // Middenin het artikel (na de eerste sectie) een CTA plaatsen, niet pas
-  // helemaal onderaan — zie de eerder afgestemde visualize-mockup: iemand die
-  // afhaakt vóór het einde van het artikel krijgt de CTA dan alsnog te zien.
-  const [eersteSectie, ...overigeSecties] = artikel.secties;
 
   return (
     <>
@@ -77,17 +73,26 @@ export default async function KoopgidsArtikelPagina({ params }: { params: Promis
             {artikel.titel}
           </h1>
 
-          <article className="mt-8 space-y-8">
-            <section>
-              <h2 className="font-display text-lg font-bold text-ink">{eersteSectie.kop}</h2>
-              {eersteSectie.paragrafen.map((p, i) => (
-                <p key={i} className="mt-3 text-[15px] leading-relaxed text-ink/70">
-                  {p}
-                </p>
-              ))}
-            </section>
+          {artikel.intro && <p className="mt-4 text-[15px] leading-relaxed text-ink/70">{artikel.intro}</p>}
 
-            {/* CTA — echte, werkende adreszoekbalk, geen mockup-invoerveld */}
+          <article className="mt-8 space-y-8">
+            {artikel.secties.map((sectie, idx) => {
+              const Illustratie = sectie.illustratie;
+              return (
+                <section key={idx}>
+                  <h2 className="font-display text-lg font-bold text-ink">{sectie.kop}</h2>
+                  {sectie.paragrafen.map((p, i) => (
+                    <p key={i} className="mt-3 text-[15px] leading-relaxed text-ink/70">
+                      {p}
+                    </p>
+                  ))}
+                  {Illustratie && <Illustratie />}
+                </section>
+              );
+            })}
+
+            {/* CTA aan het einde van het artikel — echte, werkende
+                adreszoekbalk, geen mockup-invoerveld. */}
             <div className="rounded-2xl bg-[#EEF0FF] p-6">
               <p className="text-sm font-bold text-ink">{artikel.ctaTekst}</p>
               <p className="mt-1 text-xs text-ink/55">Typ een adres en bekijk in enkele seconden een gratis preview.</p>
@@ -95,17 +100,6 @@ export default async function KoopgidsArtikelPagina({ params }: { params: Promis
                 <AddressSearchBar />
               </div>
             </div>
-
-            {overigeSecties.map((sectie, idx) => (
-              <section key={idx}>
-                <h2 className="font-display text-lg font-bold text-ink">{sectie.kop}</h2>
-                {sectie.paragrafen.map((p, i) => (
-                  <p key={i} className="mt-3 text-[15px] leading-relaxed text-ink/70">
-                    {p}
-                  </p>
-                ))}
-              </section>
-            ))}
           </article>
 
           <div className="mt-12 border-t border-ink/10 pt-8">
