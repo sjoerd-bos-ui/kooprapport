@@ -28,6 +28,8 @@ import {
   KoopprocesTijdlijnIllustratie,
   NabijheidAfstandIllustratie,
   BuurtTipsGridIllustratie,
+  TerugverdientijdIllustratie,
+  RapportOverzichtIllustratie,
 } from "@/components/koopgids/Illustraties";
 
 // -----------------------------------------------------------------------------
@@ -406,31 +408,52 @@ export const ARTIKELEN: KoopgidsArtikel[] = [
     slug: "verduurzamen-wat-loont",
     titel: "Verduurzamen: welke maatregelen leveren het meeste op?",
     metaBeschrijving:
-      "Welke verduurzamingsmaatregelen het meeste opleveren, waarom de volgorde ertoe doet en hoe terugverdientijd zich verhoudt tot waardestijging.",
+      "Waarom de volgorde van verduurzamingsmaatregelen ertoe doet, wat isolatie, zonnepanelen en een warmtepomp qua terugverdientijd opleveren en wanneer een maatregel wel of niet zinvol is.",
     categorie: "Verduurzamingsadvies",
-    samenvatting: "Waarom de volgorde van maatregelen ertoe doet, en hoe terugverdientijd zich verhoudt tot de waardestijging van een woning.",
+    samenvatting: "Waarom de volgorde van maatregelen ertoe doet, wat elke maatregel qua terugverdientijd en waardestijging oplevert en wanneer het wel of niet zinvol is.",
     kleur: "green",
     icoon: LeafIcon,
-    leestijdMinuten: 5,
-    ctaTekst: "Wilt u zien welke maatregelen bij een specifiek adres lonen?",
+    leestijdMinuten: 7,
+    intro:
+      "Zonnepanelen op het dak of eerst die tochtige vloer aanpakken? De meeste mensen kiezen voor wat het meest zichtbaar is en dat is meestal niet de slimste volgorde.",
+    ctaTekst: "Wilt u zien welke maatregelen bij uw eigen adres het meeste opleveren?",
     secties: [
       {
-        kop: "Van huidig naar haalbaar label",
+        kop: "Waarom de volgorde ertoe doet",
         paragrafen: [
-          "Een verduurzamingsadvies begint bij het huidige energielabel van een woning (zie het artikel over het energielabel) en berekent, volgens dezelfde officiële NTA 8800-methode, welk label haalbaar is met concrete maatregelen. Dat maakt het verschil tussen abstract advies en een concreet stappenplan: niet alleen wat het huidige label is, maar ook wat er nodig is om een beter label te bereiken.",
+          "Verduurzamen werkt het beste als een ketting van stappen die op elkaar voortbouwen: eerst isoleren en pas daarna een nieuwe verwarming of zonnepanelen toevoegen. Een warmtepomp in een slecht geïsoleerd huis moet voortdurend keihard werken om de warmte bij te houden die via ondermaats geïsoleerde muren weer wegglipt, een beetje alsof u hardloopt met de handrem erop. Isoleer eerst, dan hoeft de installatie daarna veel minder hard te knokken.",
         ],
       },
       {
-        kop: "De maatregelen, en waarom de volgorde ertoe doet",
+        kop: "Wat elke maatregel u oplevert",
         paragrafen: [
-          "De meest voorkomende maatregelen zijn, ruwweg in volgorde van wat meestal als eerst zinvol is: gevel-, vloer- en dakisolatie, beter glas in woonkamer en slaapkamers, ventilatie, een andere verwarmingsinstallatie zoals een warmtepomp, zonnepanelen, en soms douche-warmteterugwinning.",
-          "Die volgorde is geen toeval. Isoleren komt doorgaans eerst, omdat een warmtepomp pas echt efficiënt werkt in een goed geïsoleerde woning: in een slecht geïsoleerd huis moet een warmtepomp voortdurend hard werken om warmteverlies te compenseren, wat het rendement en de besparing flink drukt. Eerst isoleren en dan pas de verwarmingsinstallatie vervangen, levert doorgaans het beste resultaat op.",
+          "Isoleren levert vrijwel altijd de snelste winst op. Spouwmuurisolatie verdient zich meestal al terug binnen 2 tot 5 jaar, dakisolatie binnen 5 tot 8 jaar en vloerisolatie binnen 5 tot 10 jaar. Zonnepanelen zitten met 6 tot 9 jaar daar net tussenin, mede dankzij de btw-vrijstelling die sinds 2023 geldt. Nieuwe ramen met isolatieglas en een warmtepomp hebben de langste adem, meestal 10 tot 15 jaar: logisch, want dat zijn de duurdere maatregelen die pas echt renderen zodra de rest van het huis al goed geïsoleerd is.",
+        ],
+        illustratie: TerugverdientijdIllustratie,
+      },
+      {
+        kop: "Wat de overheid meebetaalt",
+        paragrafen: [
+          "Via de ISDE-subsidie krijgt u een flink deel van de kosten terug en het budget daarvoor is dit jaar verder verhoogd. Voor een warmtepomp kan de subsidie oplopen tot bijna €13.000. Isoleert u twee onderdelen tegelijk, bijvoorbeeld het dak én de vloer, dan verdubbelt het subsidiebedrag per vierkante meter ten opzichte van één losse maatregel. Alles in één keer aanpakken levert dus verhoudingsgewijs meer subsidie op dan het uitsmeren over losse jaren. Ook voor een zonneboiler is subsidie beschikbaar, met een minimumbedrag van ongeveer €300.",
         ],
       },
       {
-        kop: "Terugverdientijd versus waardestijging",
+        kop: "Terugverdientijd is niet het hele verhaal",
         paragrafen: [
-          "Rendement op verduurzaming kan op twee manieren bekeken worden. De terugverdientijd zet de investering af tegen de jaarlijkse besparing op de energierekening: hoeveel jaar duurt het voordat de investering zichzelf heeft terugbetaald. De waardestijging, ook wel Ecowaarde genoemd, is een aparte inschatting van hoeveel een woning meer waard wordt door de verbeterde energieprestatie, los van de besparing op de energierekening. Beide zijn relevant: de terugverdientijd is vooral interessant voor wie lang blijft wonen, de waardestijging telt ook mee bij een eventuele verkoop op kortere termijn.",
+          "Een beter energielabel doet ook iets met de waarde van uw huis, los van wat u maandelijks bespaart. Onderzoek laat zien dat een woning met een beter energielabel gemiddeld ruim 7% meer waard is dan een vergelijkbaar huis met een slechter label en bij een sprong van label D naar A kan dat oplopen tot zo'n 10%. Bij een huis van vier ton scheelt dat al snel €40.000. Blijft u nog jarenlang wonen, dan telt vooral de energierekening. Verkoopt u binnenkort, dan mag die waardestijging net zo zwaar meewegen.",
+        ],
+      },
+      {
+        kop: "Wat ons rapport voor u op een rijtje zet",
+        paragrafen: [
+          "In het Verduurzamingsadvies van Kooprapport rekenen we dit uit voor uw eigen adres, niet in algemene termen. Vanaf het huidige energielabel berekenen we, met dezelfde officiële methode als het label zelf, welk label haalbaar is met concrete maatregelen. Per maatregel ziet u wat hij ongeveer kost, wat de terugverdientijd is en de Ecowaarde: de geschatte waardestijging door een beter label. Geen tien losse rekentools zelf hoeven uitzoeken, wij zetten dat overzicht al voor u klaar.",
+        ],
+        illustratie: RapportOverzichtIllustratie,
+      },
+      {
+        kop: "Wanneer dit wél zin heeft en wanneer niet",
+        paragrafen: [
+          "Niet elk huis leent zich zomaar voor spouwmuurisolatie: de spouw moet breed en schoon genoeg zijn en de gevel moet er goed bij staan, anders ontstaat er eerder vocht dan besparing. Laat dit daarom altijd eerst controleren door een erkend bedrijf. Woont u in een monument of een beschermde straat, dan mag lang niet alles zomaar worden aangepast en heeft u vaak een vergunning nodig, al bestaan er meestal wel oplossingen op maat. En blijft u niet lang meer in de woning wonen, begin dan eerst bij isolatie: dat verdient zich het snelst terug en de volgende bewoner profiteert alsnog van de rest.",
         ],
       },
     ],

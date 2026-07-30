@@ -1,4 +1,4 @@
-import { CheckIcon, HomeIcon, BuildingIcon } from "@/components/report/icons";
+import { CheckIcon, HomeIcon, BuildingIcon, ArrowRightIcon } from "@/components/report/icons";
 
 // -----------------------------------------------------------------------------
 // Kleine, zelfstandige illustraties tussen de lopende tekst van een
@@ -510,6 +510,78 @@ export function BuurtTipsGridIllustratie() {
           <p className="mt-0.5 text-[10px] leading-snug text-ink/55">{t.tekst}</p>
         </div>
       ))}
+    </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// Illustraties voor "Verduurzamen: welke maatregelen leveren het meeste op?"
+// (artikel "verduurzamen-wat-loont"). Ook hier bewust maar twee illustraties.
+// -----------------------------------------------------------------------------
+
+const TERUGVERDIENTIJDEN = [
+  { label: "Spouwmuurisolatie", jaren: "2-5 jaar", breedte: 25 },
+  { label: "Dakisolatie", jaren: "5-8 jaar", breedte: 40 },
+  { label: "Vloerisolatie", jaren: "5-10 jaar", breedte: 50 },
+  { label: "Zonnepanelen", jaren: "6-9 jaar", breedte: 45 },
+  { label: "Isolatieglas / warmtepomp", jaren: "10-15 jaar", breedte: 75 },
+];
+
+export function TerugverdientijdIllustratie() {
+  return (
+    <div className="my-5 rounded-2xl bg-parchment p-5">
+      <p className="mb-3.5 text-[11px] font-bold uppercase tracking-wider3 text-ink/45">
+        Terugverdientijd per maatregel
+      </p>
+      <div className="flex flex-col gap-3">
+        {TERUGVERDIENTIJDEN.map((t) => (
+          <div key={t.label}>
+            <div className="mb-1 flex justify-between text-[11.5px]">
+              <span className="font-semibold text-ink">{t.label}</span>
+              <span className="text-ink/55">{t.jaren}</span>
+            </div>
+            <div className="h-2 rounded-full bg-line">
+              <div className="h-2 rounded-full bg-[#3B6D11]" style={{ width: `${t.breedte}%` }} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const RAPPORT_MAATREGELEN = [
+  { naam: "Dakisolatie", kosten: "€2.400", terugverdientijd: "6 jaar", ecowaarde: "+€8.100" },
+  { naam: "Warmtepomp", kosten: "€9.500", terugverdientijd: "12 jaar", ecowaarde: "+€14.300" },
+  { naam: "Zonnepanelen", kosten: "€5.200", terugverdientijd: "7 jaar", ecowaarde: "+€6.900" },
+];
+
+export function RapportOverzichtIllustratie() {
+  return (
+    <div className="my-5 rounded-2xl bg-parchment p-5">
+      <div className="mb-3.5 flex items-center gap-2">
+        <span className="text-[10.5px] font-bold uppercase tracking-wider3 text-ink/45">Huidig label</span>
+        <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[#F0C93B] text-[11px] font-extrabold text-ink">C</span>
+        <ArrowRightIcon className="h-3.5 w-3.5 text-ink/30" />
+        <span className="text-[10.5px] font-bold uppercase tracking-wider3 text-ink/45">Haalbaar</span>
+        <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[#1F8A3D] text-[11px] font-extrabold text-white">A</span>
+      </div>
+      <div className="flex flex-col gap-2">
+        {RAPPORT_MAATREGELEN.map((m) => (
+          <div key={m.naam} className="grid grid-cols-4 items-center gap-2 rounded-xl border border-ink/10 bg-white px-3.5 py-3">
+            <span className="text-[11.5px] font-bold text-ink">{m.naam}</span>
+            <span className="text-[10.5px] text-ink/55">{m.kosten}</span>
+            <span className="text-[10.5px] text-ink/55">{m.terugverdientijd}</span>
+            <span className="text-[10.5px] font-bold text-[#3B6D11]">{m.ecowaarde}</span>
+          </div>
+        ))}
+        <div className="grid grid-cols-4 gap-2 px-3.5">
+          <span />
+          <span className="text-[9px] text-ink/40">kosten</span>
+          <span className="text-[9px] text-ink/40">terugverdientijd</span>
+          <span className="text-[9px] text-ink/40">Ecowaarde</span>
+        </div>
+      </div>
     </div>
   );
 }
