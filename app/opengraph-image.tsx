@@ -1,4 +1,6 @@
 import { ImageResponse } from "next/og";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 
 // Bricolage Grotesque (ExtraBold, 800) — hetzelfde lettertype als de kop op de
 // homepage (zie --font-display in app/layout.tsx). next/font/google levert
@@ -15,9 +17,16 @@ import { ImageResponse } from "next/og";
 // opslaat) en is dus bewust niet gebruikt. Alleen de tekens die dit bestand
 // nodig heeft zitten in de subset (Latijnse basisset + é, €, ², · e.d.) --
 // geen volledig lettertype, dus klein (~10 KB).
-const bricolageGrotesqueOg = fetch(new URL("./bricolage-grotesque-og.ttf", import.meta.url)).then((res) =>
-  res.arrayBuffer()
-);
+//
+// BUGFIX: was eerst fetch(new URL("./bricolage-grotesque-og.ttf",
+// import.meta.url)) — werkt lokaal (`next dev`), maar breekt de productiebuild
+// onder Turbopack ("TypeError: Invalid URL", input een kale
+// "/_next/static/media/..."-pad zonder host, dus geen geldige fetch-URL in de
+// Node.js-buildomgeving). Dit is geen edge-runtime route (geen `export const
+// runtime = "edge"`), dus fs.readFile werkt hier gewoon en is ook exact het
+// patroon dat Next.js zelf documenteert voor lokale lettertypebestanden bij
+// opengraph-image (proces.cwd() = projectroot, geen fetch nodig).
+const bricolageGrotesqueOg = readFile(join(process.cwd(), "app/bricolage-grotesque-og.ttf"));
 
 // Site-wide OG-afbeelding (er was er nog helemaal geen — social previews en
 // WhatsApp/LinkedIn-kaarten toonden dus niets). Geldt als fallback voor élke
