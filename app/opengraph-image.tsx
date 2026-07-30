@@ -1,5 +1,24 @@
 import { ImageResponse } from "next/og";
 
+// Bricolage Grotesque (ExtraBold, 800) — hetzelfde lettertype als de kop op de
+// homepage (zie --font-display in app/layout.tsx). next/font/google levert
+// alleen CSS-classes voor gewone DOM-rendering, geen los lettertypebestand dat
+// ImageResponse (Satori) kan gebruiken -- vandaar dit losse .ttf-bestand.
+//
+// Herkomst: Satori ondersteunt geen WOFF2 (alleen TTF/OTF/WOFF), en het enige
+// lokaal beschikbare Bricolage Grotesque-bestand (uit next/font's eigen cache
+// na een eerdere `next dev`-run) was een WOFF2. Omgezet naar dit .ttf via een
+// handmatig SFNT-opbouwscript (fontkit voor het uitlezen van de originele
+// glyph-contouren + cmap/head/hhea/maxp/glyf/loca zelf samengesteld) --
+// fontkit's eigen font.createSubset() bleek stuk voor een WOFF2-bron
+// (verondersteld een normale TTF glyf/loca-tabel, terwijl WOFF2 die getransformeerd
+// opslaat) en is dus bewust niet gebruikt. Alleen de tekens die dit bestand
+// nodig heeft zitten in de subset (Latijnse basisset + é, €, ², · e.d.) --
+// geen volledig lettertype, dus klein (~10 KB).
+const bricolageGrotesqueOg = fetch(new URL("./bricolage-grotesque-og.ttf", import.meta.url)).then((res) =>
+  res.arrayBuffer()
+);
+
 // Site-wide OG-afbeelding (er was er nog helemaal geen — social previews en
 // WhatsApp/LinkedIn-kaarten toonden dus niets). Geldt als fallback voor élke
 // pagina die zelf geen eigen opengraph-image definieert, dus ook voor de
@@ -34,6 +53,14 @@ export const contentType = "image/png";
 // internettoegang, maar dat is een onnodige, trage en breekbare afhankelijkheid
 // voor een louter decoratief icoontje — daarom hier bewust weggelaten i.p.v.
 // simpelweg "toevallig getest en het werkte".
+//
+// v3 — de kop gebruikte tot nu toe Satori's default-lettertype (een generieke
+// sans), niet het echte merklettertype. Nu ingebonden via het losse .ttf-
+// bestand hierboven en toegepast op de kop (fontFamily: "Bricolage
+// Grotesque"). De rest (badge/subkop/tegels/kaarten) blijft bewust op het
+// default-lettertype staan -- dat komt overeen met hoe de echte site het ook
+// doet: Bricolage Grotesque is alleen voor koppen, Inter voor lopende
+// tekst/UI (zie de font-instellingen in app/layout.tsx).
 const PILLS = [
   { label: "Waarde", actief: false },
   { label: "Verkopen", actief: false },
@@ -42,6 +69,7 @@ const PILLS = [
 ];
 
 export default async function Image() {
+  const fontData = await bricolageGrotesqueOg;
   return new ImageResponse(
     (
       <div
@@ -81,6 +109,7 @@ export default async function Image() {
               marginTop: 28,
               fontSize: 46,
               fontWeight: 800,
+              fontFamily: "Bricolage Grotesque",
               color: "#1F1F2E",
               lineHeight: 1.18,
               letterSpacing: -1,
@@ -241,6 +270,9 @@ export default async function Image() {
         </div>
       </div>
     ),
-    { ...size }
+    {
+      ...size,
+      fonts: [{ name: "Bricolage Grotesque", data: fontData, weight: 800, style: "normal" }],
+    }
   );
 }

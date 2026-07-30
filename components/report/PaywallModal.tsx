@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { TrendingUpIcon, BoltIcon, HistoryIcon, AlertTriangleIcon, BuildingIcon, ShieldCheckIcon, FileCheckIcon, FlagIcon } from "./icons";
 import { RAPPORT_PRIJS } from "@/lib/utils/prijs";
+import { bouwWhatsAppLink, heeftWhatsAppSupport } from "@/lib/config/whatsapp";
 import type { AddressMeta } from "@/types/report";
 
 // Alle acht onderdelen van het ontgrendelde rapport (zelfde namen en
@@ -321,6 +322,24 @@ export default function PaywallModal({
           {paying ? "Bezig met betalen…" : "Betaal met iDEAL"}
         </Button>
         {fout && <p className="relative mt-3 text-center text-xs text-rust">{fout}</p>}
+        {/* Vertrouwensregel vlak boven de betaalmodus-tekst — precies het
+            moment waarop iemand mogelijk twijfelt vlak vóór het afrekenen.
+            Alleen zichtbaar zodra er een echt WhatsApp-nummer geconfigureerd
+            is (zie lib/config/whatsapp.ts), anders gewoon weg. */}
+        {heeftWhatsAppSupport() && (
+          <a
+            href={bouwWhatsAppLink("Hoi, ik heb een vraag over mijn betaling")}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="relative mt-3 flex items-center justify-center gap-1.5 text-xs text-ink/55 hover:text-ink"
+          >
+            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0" fill="#25D366" aria-hidden="true">
+              <path d="M17.5 14.4c-.3-.1-1.7-.8-1.9-.9-.3-.1-.4-.1-.6.1-.2.3-.7.9-.8 1-.2.2-.3.2-.5.1-.3-.1-1.2-.4-2.3-1.4-.8-.7-1.4-1.6-1.6-1.9-.2-.3 0-.5.1-.6.1-.1.3-.3.4-.5.1-.1.2-.3.2-.4.1-.1 0-.3 0-.4-.1-.1-.6-1.4-.8-1.9-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.4.1-.7.3-.2.3-.9.9-.9 2.1 0 1.2.9 2.4 1 2.6.1.1 1.8 2.8 4.4 3.9.6.3 1.1.4 1.5.6.6.2 1.2.2 1.6.1.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.1-1.2-.1-.1-.2-.2-.5-.3Z" />
+              <path d="M20.5 3.5A11 11 0 0 0 3.1 16.9L2 21.5l4.7-1.2a11 11 0 0 0 5.3 1.4h.1a11 11 0 0 0 8.4-18.2Zm-8.4 16.8h-.1a9.1 9.1 0 0 1-4.6-1.3l-.3-.2-3.1.8.8-3-.2-.3a9.1 9.1 0 1 1 16.9-4.7 9.1 9.1 0 0 1-9.4 8.7Z" />
+            </svg>
+            Vragen over de betaling? App ons, we reageren snel.
+          </a>
+        )}
         <p className="relative mt-3 text-center text-xs text-ink/35">
           {/* NEXT_PUBLIC_PAYMENT_MODE is puur voor deze tekst — de échte,
               beveiligingsrelevante controle staat server-side in

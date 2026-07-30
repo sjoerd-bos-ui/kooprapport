@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Bricolage_Grotesque, Inter } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import CookieConsent from "@/components/analytics/CookieConsent";
+import WhatsAppFloatingButton from "@/components/support/WhatsAppFloatingButton";
 import { APP_BASE_URL } from "@/lib/config/payment";
 import "./globals.css";
 
@@ -88,6 +89,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             funnels) dan Vercel Analytics, maar vereist daarom wél een
             toestemmingsbanner. */}
         <CookieConsent />
+        {/* Site-breed zwevende WhatsApp-contactknop — rendert zichzelf weg
+            zolang NEXT_PUBLIC_WHATSAPP_NUMMER nog niet gezet is, zie
+            components/support/WhatsAppFloatingButton.tsx. */}
+        <WhatsAppFloatingButton />
       </body>
     </html>
   );
