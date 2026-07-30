@@ -21,6 +21,8 @@ import {
   DrieLabelsIllustratie,
   IsolatieTijdlijnIllustratie,
   OppervlakteWelNietIllustratie,
+  EnergielabelSchaalIllustratie,
+  DeadlineTijdlijnIllustratie,
 } from "@/components/koopgids/Illustraties";
 
 // -----------------------------------------------------------------------------
@@ -242,36 +244,44 @@ export const ARTIKELEN: KoopgidsArtikel[] = [
     slug: "energielabel-uitgelegd",
     titel: "Energielabel uitgelegd: wat de letters betekenen",
     metaBeschrijving:
-      "Hoe het energielabel via de officiële NTA 8800-methode wordt berekend, wat de schaal van A tot G betekent en waarom het label bij kopen ertoe doet.",
+      "Hoe het energielabel wordt berekend, hoeveel Nederlandse woningen welk label hebben, waarom huurwoningen al harde deadlines kennen en wat een goed label voor uw hypotheek betekent.",
     categorie: "Energieprestatie en label",
-    samenvatting: "Hoe het energielabel officieel wordt berekend, wat de schaal precies betekent en waarom het label meeweegt bij financiering.",
+    samenvatting: "Hoe het label werkt, actuele cijfers over de Nederlandse woningvoorraad en waarom dit label de komende jaren alleen maar belangrijker wordt.",
     kleur: "indigo",
     icoon: BoltIcon,
-    leestijdMinuten: 5,
-    ctaTekst: "Wilt u het energielabel van een specifiek adres bekijken?",
+    leestijdMinuten: 7,
+    intro:
+      "Bij het bezichtigen van een huis let iedereen op de keuken en de tuin. Het energielabel op de deur krijgt vaak een half oog. Dat is jammer, want dat labeltje zegt steeds meer over uw portemonnee. Hieronder leggen we uit hoe het werkt, waarom het nu al meetelt bij uw hypotheek en waarom dat de komende jaren alleen maar belangrijker wordt.",
+    ctaTekst: "Wilt u het energielabel van uw eigen adres bekijken?",
     secties: [
       {
-        kop: "NTA 8800: de officiële rekenmethode",
+        kop: "Hoe het label werkt",
         paragrafen: [
-          "Sinds januari 2021 is NTA 8800 de officiële, in Nederlandse regelgeving aangewezen methode om de energieprestatie van een gebouw te berekenen. De uitkomst daarvan is het energielabel dat via RVO wordt geregistreerd. Het label is dus geen losse inschatting, maar het resultaat van een vaste, landelijk voorgeschreven rekenmethode die rekening houdt met isolatie, installaties, ventilatie en de vorm van het gebouw.",
+          "Sinds 2021 wordt elk energielabel berekend met dezelfde officiële methode, NTA 8800, die rekening houdt met isolatie, installaties, ventilatie en de vorm van het gebouw, en RVO registreert de uitkomst. Het label loopt van A tot en met G, met A het meest zuinig en G het minst; voor de allerbeste woningen bestaan tot 2030 nog extra plusklassen boven de A, maar die verdwijnen daarna geleidelijk richting een simpele schaal van A tot G.",
+          "Vier dingen bepalen het label het zwaarst: isolatie van gevel, vloer en dak (meestal de grootste factor), het type beglazing (enkel glas scoort flink slechter dan HR++ of triple glas), de verwarmingsinstallatie (een cv-ketel scoort structureel lager dan een warmtepomp) en de ventilatie. Zonnepanelen helpen ook, maar lossen een matig geïsoleerde woning niet op: isolatie blijft meestal de eerste stap met het meeste effect. Let hierop tijdens een bezichtiging door simpelweg te vragen naar het bouwjaar van de cv-ketel en of er dubbel glas zit, dat vertelt vaak al veel.",
+        ],
+        illustratie: EnergielabelSchaalIllustratie,
+      },
+      {
+        kop: "Het label in cijfers",
+        paragrafen: [
+          "Eind 2024 had ruim 5,1 miljoen woningen een geldig energielabel, ongeveer 61% van alle 8,3 miljoen woningen in Nederland, met zo'n 35% label A of hoger, 16% label B, 25% label C en minder dan 14% nog label E, F of G. Die verhouding is flink verbeterd: in 2010 had nog maar 16% van de gelabelde woningen label A of B, nu is dat ruim 51%. Let wel op een belangrijk detail: 3,2 miljoen woningen hebben helemaal geen geldig label, dus staat u op het punt een huis te bezichtigen zonder recent label, vraag er dan actief naar.",
+          "Belangrijk om te weten: elke woning kreeg automatisch een gratis voorlopig label, een schatting op basis van bouwjaar, woningtype en oppervlakte, maar dat is niet geldig bij verkoop of verhuur. Voor een definitief label komt een erkende energieadviseur langs, meestal een uur of twee, en checkt isolatie, installatie en het gebruik van hernieuwbare energie, voor doorgaans €190 tot €300. Ziet u een woning te koop staan, dan hoort daar een definitief label bij, geen voorlopige schatting.",
         ],
       },
       {
-        kop: "De schaal van A tot en met G",
+        kop: "Waarom dit steeds belangrijker wordt",
         paragrafen: [
-          "Het energielabel loopt van A, het meest energiezuinig, tot G, het minst zuinig. Voor de meest zuinige woningen bestaan tot 2030 extra plusklassen boven de A, om onderscheid te maken tussen bijvoorbeeld een goed geïsoleerde woning en een woning die vrijwel energieneutraal is. Vanaf 2030 vereenvoudigt de Europese EPBD IV-richtlijn dit stelsel geleidelijk naar een schaal van A tot G zonder plusklassen, aangevuld met concreet verduurzamingsadvies per woning.",
+          "Dit is niet zomaar een sticker meer. Voor huurwoningen gelden inmiddels harde deadlines: sinds 1 januari 2026 mag een woning met energielabel E niet meer nieuw verhuurd worden, en vanaf 2029 moet elke huurwoning met label E, F of G minimaal naar label D verbeterd zijn. Voor de hele Nederlandse woningvoorraad geldt bovendien een landelijk doel: het gemiddelde energiegebruik moet in 2030 met 16% omlaag ten opzichte van 2020 en in 2035 met 20 tot 22%. Geen verplichting per los huis, maar de richting is duidelijk en de druk wordt de komende jaren alleen maar groter, ook voor kopers.",
+          "Ook uw hypotheek voelt dit nu al. Sinds 2024 telt het energielabel mee bij hoeveel u maximaal kunt lenen: bij label A kunt u vanaf 2026 tot €40.000 extra lenen, en het Energiebespaarbudget van de NHG geeft daarbovenop tot 6% extra leenruimte. Grote banken zoals Rabobank en ABN AMRO geven bovendien een rentekorting van 0,1 tot 0,15% bij label A of hoger, meestal voor de hele rentevaste periode, en sommige geldverstrekkers passen het rentetarief zelfs direct aan op basis van het label. Een slecht label is dan niet alleen duur aan de meterkast, maar ook duurder aan de hypotheek.",
         ],
+        illustratie: DeadlineTijdlijnIllustratie,
       },
       {
-        kop: "Wat het label beïnvloedt",
+        kop: "Verduurzamen en wat u kunt doen",
         paragrafen: [
-          "Vier zaken bepalen het grootste deel van het label: de isolatie van gevel, vloer en dak, het type beglazing, het soort verwarmingsinstallatie (een cv-ketel scoort structureel lager dan een warmtepomp) en de ventilatie. Zonnepanelen tellen ook mee, maar lossen een slecht geïsoleerde schil niet op: isolatie is meestal de eerste stap met de meeste impact.",
-        ],
-      },
-      {
-        kop: "Waarom het label meeweegt bij kopen",
-        paragrafen: [
-          "Het energielabel is niet alleen informatief. Sommige hypotheekverstrekkers geven een gunstigere leencapaciteit bij een energiezuinige woning, en een laag label betekent vaak dat er op afzienbare termijn geïnvesteerd moet worden in verduurzaming, zeker met de aangescherpte Europese eisen die eraan komen. Bij het vergelijken van twee vergelijkbare woningen kan het label dus een reëel verschil in de totale woonlasten betekenen, niet alleen een sticker op een advertentie.",
+          "Een laag label is dus geen reden om een huis links te laten liggen, wel een reden om te weten wat het kost om te verbeteren. In ons artikel over verduurzamen leggen we uit welke maatregelen het meeste opleveren en in welke volgorde: isoleren komt eerst, want een warmtepomp werkt pas echt efficiënt in een goed geïsoleerde woning, en pas daarna volgen een nieuwe installatie en zonnepanelen.",
+          "Vraag bij een bezichtiging dus altijd naar het actuele definitieve energielabel en niet alleen naar het bouwjaar, want twee vergelijkbare huizen kunnen daarin flink verschillen. Reken bij een laag label niet alleen de energierekening mee, maar ook het effect op uw leenruimte en rente, en bekijk voordat u een bod uitbrengt wat er nodig is om naar een beter label te komen.",
         ],
       },
     ],

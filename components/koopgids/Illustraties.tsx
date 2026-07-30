@@ -315,3 +315,63 @@ export function OppervlakteWelNietIllustratie() {
     </div>
   );
 }
+
+// -----------------------------------------------------------------------------
+// Illustraties voor "Energielabel uitgelegd: wat de letters betekenen"
+// (artikel "energielabel-uitgelegd"). Bewust maar twee illustraties, rustiger
+// dan de eerste opzet (4 illustraties met statkaarten oogde te druk) — de
+// cijfers over labelverdeling, voorlopig/definitief en hypotheekimpact staan
+// in de lopende tekst zelf, niet nog eens los in een kaartje.
+// -----------------------------------------------------------------------------
+
+const LABEL_KLASSEN = [
+  { letter: "A", kleur: "#1F8A3D", tekst: "#fff" },
+  { letter: "B", kleur: "#5BAA3B", tekst: "#fff" },
+  { letter: "C", kleur: "#A8C93B", tekst: "#1F1F2E" },
+  { letter: "D", kleur: "#F0C93B", tekst: "#1F1F2E" },
+  { letter: "E", kleur: "#F0983B", tekst: "#fff" },
+  { letter: "F", kleur: "#E8623B", tekst: "#fff" },
+  { letter: "G", kleur: "#D8323B", tekst: "#fff" },
+];
+
+export function EnergielabelSchaalIllustratie() {
+  return (
+    <div className="my-5 flex h-[26px] overflow-hidden rounded-lg">
+      {LABEL_KLASSEN.map((k) => (
+        <div
+          key={k.letter}
+          className="flex flex-1 items-center justify-center text-[10.5px] font-extrabold"
+          style={{ backgroundColor: k.kleur, color: k.tekst }}
+        >
+          {k.letter}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const DEADLINES = [
+  { jaar: "2026", tekst: "geen verhuur label E" },
+  { jaar: "2029", tekst: "huur min. label D" },
+  { jaar: "2030", tekst: "-16% verbruik" },
+  { jaar: "2035", tekst: "-20 tot 22%" },
+];
+
+export function DeadlineTijdlijnIllustratie() {
+  return (
+    <div className="relative my-5 px-1">
+      <div className="absolute inset-x-0 top-[5px] h-0.5 bg-line" />
+      <div className="relative flex justify-between">
+        {DEADLINES.map((d) => (
+          <div key={d.jaar} className="flex flex-col items-center gap-2.5">
+            <div className="h-3 w-3 rounded-full border-2 border-white bg-accent" />
+            <div>
+              <p className="text-center text-[11px] font-extrabold text-ink">{d.jaar}</p>
+              <p className="mt-0.5 max-w-[70px] text-center text-[9px] leading-snug text-ink/50">{d.tekst}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
