@@ -342,7 +342,7 @@ export const ARTIKELEN: KoopgidsArtikel[] = [
         paragrafen: [
           "Simpel gezegd kijken we naar twee dingen en tellen die bij elkaar op. Eerst het bouwjaar: vanaf 1970 is beton de standaard, wat het risico flink verlaagt. Daarna de officiële bodemkaart van KCAF en RVO, die per postcodegebied laat zien of de grond kwetsbaar is voor dit soort problemen, bijvoorbeeld veen of rivierklei, of juist niet.",
           "Is het huis ouder dan 1970 en de bodem kwetsbaar? Dan komt er een hoger risico uit. Is de bodem juist stevig? Dan blijft het risico laag, ook bij een ouder huis. Weten we niets over de bodem in dat gebied? Dan kijken we voorzichtig alleen naar het bouwjaar, met extra aandacht bij een huis van vóór 1945.",
-          "Let op: dit is een indicatie op basis van openbare bronnen, geen bouwkundige inspectie. Geen kruipruimte-bezoek, geen boormonster, gewoon twee goede officiële databronnen slim gecombineerd.",
+          "Let op: dit is een indicatie op basis van openbare bronnen, geen bouwkundige inspectie. Geen kruipruimte-bezoek, geen boormonster, gewoon twee goede officiële databronnen slim gecombineerd. Voor de hypotheekaanvraag zelf blijft de officiële taxatie met verplichte funderingsscore van een erkend taxateur nodig; onze indicatie is een waardevolle oriëntatie vooraf, geen vervanging daarvan.",
         ],
       },
       {

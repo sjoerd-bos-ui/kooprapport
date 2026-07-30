@@ -96,11 +96,6 @@ const VEELGESTELDE_VRAGEN = [
       "Geen makelaar in zicht. Kooprapport gebruikt uitsluitend officiële, erkende bronnen: Kadaster (BAG), RVO/EP-Online (energielabel), CBS (buurtcijfers), KCAF (funderingsrisico) en Altum AI (waardebepaling en verkoopdata). Wij hebben geen belang bij een hoge of lage uitkomst. Alleen bij een kloppende.",
   },
   {
-    vraag: "Is de geschatte waarde hetzelfde als een officiële taxatie?",
-    antwoord:
-      "Nee, en dat beloven we ook niet. De waarde-indicatie is een modelmatige schatting op basis van kenmerken en vergelijkbare verkopen, een prima onderhandelingsbasis en eerste oriëntatie, maar geen vervanging voor een officieel taxatierapport van een erkend taxateur.",
-  },
-  {
     vraag: "Wat kost het?",
     antwoord: `De preview (bouwjaar, energielabel, oppervlakte, indicatie funderingsrisico) is en blijft gratis. Het volledige rapport ontgrendelt u eenmalig voor ${RAPPORT_PRIJS}. Geen abonnement, geen kleine lettertjes.`,
   },
@@ -108,11 +103,6 @@ const VEELGESTELDE_VRAGEN = [
     vraag: "Hoe actueel zijn de gegevens?",
     antwoord:
       "Vers van de pers: verkoopcijfers, energielabels en bodemclassificaties komen rechtstreeks uit de laatste officiële registraties van de genoemde bronnen, niet uit een oud Excel-bestand.",
-  },
-  {
-    vraag: "Kan ik dit gebruiken bij een hypotheekaanvraag?",
-    antwoord:
-      "Als oriëntatie en onderhandelingsbasis zeker. Voor de officiële taxatie die uw hypotheekverstrekker wil zien, blijft een erkend taxateur helaas verplichte kost.",
   },
   {
     vraag: "Kan ik meerdere adressen opzoeken?",
