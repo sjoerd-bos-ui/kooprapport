@@ -1,11 +1,16 @@
 import Link from "next/link";
 import Container from "@/components/ui/Container";
 import { Logo } from "@/components/ui/Logo";
+import KoopgidsNavLink from "@/components/layout/KoopgidsNavLink";
 
 // Exact dezelfde lichte masthead als de lokale header op de homepage
 // (zelfde bg-white, border-b border-ink/10, wordmark-formaat en CTA-stijl)
 // — geen crosshair-motief en geen colofon-navrij meer, zodat rapportpagina's
 // en homepage visueel identiek ogen.
+//
+// Koopgids-link toegevoegd als rustige tekstlink naast de bestaande
+// CTA-knop, bewust geen tweede knop: "Nieuw adres opzoeken" blijft de enige
+// echte call-to-action in de header (zie de visualize-afstemming hierover).
 export default function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-ink/10 bg-white">
@@ -13,12 +18,15 @@ export default function SiteHeader() {
         <Link href="/">
           <Logo />
         </Link>
-        <Link
-          href="/"
-          className="rounded-full bg-accent px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-accent-dark"
-        >
-          Nieuw adres opzoeken
-        </Link>
+        <div className="flex items-center gap-6">
+          <KoopgidsNavLink />
+          <Link
+            href="/"
+            className="rounded-full bg-accent px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-accent-dark"
+          >
+            Nieuw adres opzoeken
+          </Link>
+        </div>
       </Container>
     </header>
   );

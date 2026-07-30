@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { APP_BASE_URL } from "@/lib/config/payment";
+import { ARTIKELEN } from "@/lib/content/koopgids";
 
 // Bewust ALLEEN de homepage. Rapportpagina's (/rapport/[slug]) bestaan pas
 // zodra iemand daadwerkelijk een adres opzoekt — er is geen database met
@@ -44,5 +45,22 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "yearly",
       priority: 0.3,
     },
+    // Koopgids: net als privacy/voorwaarden/contact statisch en voor
+    // iedereen identiek, dus hoort hier wel in, in tegenstelling tot de
+    // rapportpagina's hierboven. Hogere prioriteit dan de losse
+    // voorwaardenpagina's: dit is bewust bedoeld om organisch verkeer aan te
+    // trekken (zie het gesprek in Cowork over deze SEO-contentsectie).
+    {
+      url: `${APP_BASE_URL}/koopgids`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.6,
+    },
+    ...ARTIKELEN.map((artikel) => ({
+      url: `${APP_BASE_URL}/koopgids/${artikel.slug}`,
+      lastModified: new Date(),
+      changeFrequency: "monthly" as const,
+      priority: 0.5,
+    })),
   ];
 }
