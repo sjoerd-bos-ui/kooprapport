@@ -5,7 +5,7 @@ import {
   BuildingIcon,
   BoltIcon,
   AlertTriangleIcon,
-  ShieldCheckIcon,
+  MapPinIcon,
   LeafIcon,
 } from "@/components/report/icons";
 import {
@@ -26,6 +26,8 @@ import {
   VoorNa1970Illustratie,
   FunderingsScoreSchaalIllustratie,
   KoopprocesTijdlijnIllustratie,
+  NabijheidAfstandIllustratie,
+  BuurtTipsGridIllustratie,
 } from "@/components/koopgids/Illustraties";
 
 // -----------------------------------------------------------------------------
@@ -354,31 +356,49 @@ export const ARTIKELEN: KoopgidsArtikel[] = [
     slug: "buurt-en-voorzieningen",
     titel: "Buurt en voorzieningen: wat zit er echt om de hoek?",
     metaBeschrijving:
-      "Waarom de afstand tot voorzieningen als school, station en huisarts vaak belangrijker is dan gemeentelijke gemiddelden, en wat een buurtprofiel concreet laat zien.",
+      "Wat het CBS precies meet aan afstand tot voorzieningen, waarom dichtbij niet altijd beter is en wat het buurtprofiel van Kooprapport per adres laat zien.",
     categorie: "Buurtprofiel",
-    samenvatting: "Waarom de afstand tot voorzieningen vaak belangrijker is dan een gemeentelijk gemiddelde, en wat een buurtprofiel concreet toevoegt.",
+    samenvatting: "Waarom de buurt vaak zwaarder weegt dan het huis zelf, wat het CBS daarover meet en een paar praktische tips voor bij een bezichtiging.",
     kleur: "indigo",
-    icoon: ShieldCheckIcon,
-    leestijdMinuten: 4,
+    icoon: MapPinIcon,
+    leestijdMinuten: 5,
+    intro:
+      "U kunt smoorverliefd worden op een keuken en drie maanden later spijt hebben van de straat. Herkenbaar? Onderzoek bevestigt het gevoel: voor de meeste Nederlanders weegt de buurt uiteindelijk zwaarder dan het huis zelf. Tijd om verder te kijken dan de voordeur.",
     ctaTekst: "Bekijk het buurtprofiel van een specifiek adres",
     secties: [
       {
-        kop: "Meer dan de woning alleen",
+        kop: "Waarom de buurt vaak zwaarder weegt dan het huis",
         paragrafen: [
-          "Een woning koopt u niet los van de omgeving. Dezelfde plattegrond kan totaal anders aanvoelen afhankelijk van wat er binnen loop- of fietsafstand ligt: een school voor de kinderen, een treinstation voor het woon-werkverkeer, een huisarts of apotheek, of juist rust en groen. Een buurtprofiel brengt die praktische kant van een adres in beeld, naast de harde cijfers over de woning zelf.",
+          "Sfeer, veiligheid en de juiste voorzieningen bepalen of een plek prettig woont, meer nog dan de kleur van de keukenkastjes. Zeven op de tien woningzoekers noemen groen in de buurt expliciet belangrijk. Een boom voor het raam blijkt voor veel kopers structureel zwaarder te wegen dan een extra slaapkamer. Grappig genoeg is de tuin van de buren dus soms belangrijker dan uw eigen tuin.",
+          "Dat past bij een breder patroon. Mensen kiezen niet alleen een huis, ze kiezen een dagelijks ritme: de route naar werk, de supermarkt waar u toch drie keer per week loopt, de school waar de kinderen straks fietsend naartoe moeten. Bij een verhuizing van 65-plussers is gezondheid of zorgbehoefte zelfs de belangrijkste reden om te verhuizen, wat verklaart waarom afstand tot huisarts en apotheek voor een grote groep kopers ineens veel zwaarder gaat tellen dan een paar jaar eerder.",
         ],
       },
       {
-        kop: "Waarom afstand meer zegt dan een gemeentelijk gemiddelde",
+        kop: "Wat er precies gemeten wordt",
         paragrafen: [
-          "Statistieken op gemeenteniveau, bijvoorbeeld het gemiddeld aantal voorzieningen per gemeente, zeggen weinig over één specifiek adres. Een gemeente kan gemiddeld genomen goed voorzien zijn, terwijl een adres aan de rand daarvan alsnog ver van alles af ligt. Daarom is de daadwerkelijke afstand vanaf het adres zelf tot concrete voorzieningen, zoals de dichtstbijzijnde apotheek, kinderdagverblijf, treinstation of park, veel betekenisvoller dan een gemeentelijk gemiddelde.",
+          "Nederland heeft hier een harde bron voor: de Nabijheidsstatistiek van het CBS. Die meet, tot op buurtniveau, hoe ver elk adres daadwerkelijk van een voorziening ligt. Sinds 2022 gebeurt dat via de echte route in plaats van hemelsbreed, inclusief bruggen, spoorwegovergangen en doodlopende straten. Een sloot tussen u en de supermarkt telt dus nu ook echt mee in de afstand.",
+          "Gemiddeld woont een Nederlander op ongeveer 900 meter van de huisarts. Basisscholen en openbaar groen liggen gemiddeld het dichtstbij van alle voorzieningen, rond de 600 meter. Interessant is dat deze afstanden de laatste jaren juist toenemen. Kleinere voorzieningen in dunbevolkte gebieden verdwijnen of worden samengevoegd, waardoor een postcode die tien jaar geleden nog een eigen buurtsuper had dat nu niet meer heeft. Precies daarom is het slim om dit per adres te checken in plaats van te vertrouwen op hoe de buurt er tien jaar geleden bij lag.",
+        ],
+        illustratie: NabijheidAfstandIllustratie,
+      },
+      {
+        kop: "Dichtbij is niet altijd beter",
+        paragrafen: [
+          "Hier wordt het pas echt interessant, want de aanname \"hoe dichterbij hoe beter\" klopt lang niet altijd. Onderzoek naar treinstations laat zien dat nabijheid meestal een positief effect heeft op de waarde, maar in sommige wijken juist averechts werkt: een huis vlak naast het spoor is minder waard door geluidsoverlast, ondanks het gemak. Iets soortgelijks geldt voor scholen. Sommig onderzoek laat zien dat een woning net iets verder van de basisschool zelfs meer waard is, wat vermoedelijk komt door het verkeer en de herrie rond kwart voor negen 's ochtends. Voorzieningen om de hoek zijn dus fijn, tenzij die hoek zelf te druk wordt.",
         ],
       },
       {
-        kop: "Wat een buurtprofiel typisch laat zien",
+        kop: "Wat ons rapport hierin laat zien",
         paragrafen: [
-          "Een volledig buurtprofiel toont doorgaans de nabijheid van dagelijkse voorzieningen zoals een apotheek en kinderopvang, bereikbaarheid via het treinstation en de oprit of parkeersituatie, en groen in de vorm van een park of ander openbaar groen in de buurt. Samen met de recente verkopen in de buurt (zie dat artikel) geeft dit een vollediger beeld van wat een adres in de praktijk betekent, niet alleen wat het kost.",
+          "In het buurtprofiel van Kooprapport rekenen we dit uit voor uw eigen adres, niet voor de gemeente of postcode als geheel. U ziet de afstand tot de dichtstbijzijnde apotheek, kinderopvang, treinstation, oprit of parkeergelegenheid en park of ander groen. Precies de voorzieningen waarvan onderzoek laat zien dat ze er voor de meeste mensen echt toe doen, berekend voor dit specifieke huis in plaats van een gemiddelde die voor de hele wijk geldt.",
         ],
+      },
+      {
+        kop: "Praktische tips voor bij een bezichtiging",
+        paragrafen: [
+          "Een paar dingen die helpen om verder te kijken dan de plattegrond. Vraag niet naar de buurt in algemene termen maar naar concrete looptijden: hoe lang is het naar de dichtstbijzijnde supermarkt, school en huisarts. Fiets of loop die route zelf een keer op een gewone doordeweekse ochtend, want een kaartje laat geen spitsverkeer of drukte bij het schoolplein zien. Kijk niet alleen naar wat er nu is, maar ook naar wat er over vijf of tien jaar nog is, aangezien kleinere voorzieningen in sommige buurten juist verdwijnen. En bedenk dat te dichtbij soms net zo goed een nadeel is als te ver weg, zeker bij een spoorlijn of een schoolplein onder het slaapkamerraam. Staat er een nieuwbouwwijk of ontwikkeling gepland vlak achter de tuin? Ook dat is het checken waard, want dat verandert de rust en het uitzicht sneller dan u denkt.",
+        ],
+        illustratie: BuurtTipsGridIllustratie,
       },
     ],
   },

@@ -456,3 +456,60 @@ export function KoopprocesTijdlijnIllustratie() {
     </div>
   );
 }
+
+// -----------------------------------------------------------------------------
+// Illustraties voor "Buurt en voorzieningen: wat zit er echt om de hoek?"
+// (artikel "buurt-en-voorzieningen"). Ook hier bewust maar twee illustraties.
+// -----------------------------------------------------------------------------
+
+const NABIJHEID_AFSTANDEN = [
+  { label: "Huisarts", meter: 900, breedte: 90 },
+  { label: "Basisschool", meter: 600, breedte: 60 },
+  { label: "Openbaar groen", meter: 600, breedte: 60 },
+];
+
+export function NabijheidAfstandIllustratie() {
+  return (
+    <div className="my-5 rounded-2xl bg-parchment p-5">
+      <p className="mb-3.5 text-[11px] font-bold uppercase tracking-wider3 text-ink/45">
+        Gemiddelde afstand tot voorziening
+      </p>
+      <div className="flex flex-col gap-3">
+        {NABIJHEID_AFSTANDEN.map((a) => (
+          <div key={a.label}>
+            <div className="mb-1 flex justify-between text-[11.5px]">
+              <span className="font-semibold text-ink">{a.label}</span>
+              <span className="text-ink/55">{a.meter} m</span>
+            </div>
+            <div className="h-2 rounded-full bg-line">
+              <div className="h-2 rounded-full bg-accent" style={{ width: `${a.breedte}%` }} />
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="mt-4 text-[10.5px] text-ink/40">Bron: CBS Nabijheidsstatistiek, route-gebaseerd</p>
+    </div>
+  );
+}
+
+const BUURT_TIPS = [
+  { emoji: "🚶", titel: "Loop de route zelf", tekst: "Op een gewone ochtend, geen zondagmiddag." },
+  { emoji: "⏱", titel: "Vraag looptijden", tekst: "Concreet in minuten, geen \"vlakbij\"." },
+  { emoji: "🏗", titel: "Check toekomstplannen", tekst: "Staat er nieuwbouw achter de tuin gepland?" },
+  { emoji: "🔊", titel: "Let op geluid", tekst: "Een spoorlijn of schoolplein dichtbij telt mee." },
+];
+
+export function BuurtTipsGridIllustratie() {
+  return (
+    <div className="my-5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+      {BUURT_TIPS.map((t) => (
+        <div key={t.titel} className="rounded-2xl border border-ink/10 bg-white p-3.5">
+          <p className="text-[11px] font-bold text-ink">
+            {t.emoji} {t.titel}
+          </p>
+          <p className="mt-0.5 text-[10px] leading-snug text-ink/55">{t.tekst}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
