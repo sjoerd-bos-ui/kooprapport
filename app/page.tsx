@@ -241,9 +241,14 @@ export default function HomePage() {
             <Logo />
           </Link>
           <div className="flex items-center gap-6">
-            <SiteNavLink href="/koopgids" label="Koopgids" />
-            <SiteNavLink href="/werkwijze" label="Werkwijze" />
-            <SiteNavLink href="/marktupdates" label="Marktupdates" />
+            {/* Zelfde mobiele fix als SiteHeader.tsx: op smalle schermen
+                verdrongen deze drie links + de CTA elkaar, met
+                "Marktupdates" half buiten beeld. */}
+            <div className="hidden items-center gap-6 sm:flex">
+              <SiteNavLink href="/koopgids" label="Koopgids" />
+              <SiteNavLink href="/werkwijze" label="Werkwijze" />
+              <SiteNavLink href="/marktupdates" label="Marktupdates" />
+            </div>
             <a
               href="#zoeken"
               className="rounded-full bg-accent px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-accent-dark"
@@ -532,7 +537,37 @@ export default function HomePage() {
               te zijn i.p.v. als gewone tekst. Zelfde reden bij "Veelgestelde
               vragen" verderop. */}
           <h2 className="text-center text-[11px] font-bold uppercase tracking-wider3 text-ink/70">Zo werkt het</h2>
-          <div className="relative mx-auto mt-8 max-w-xl">
+
+          {/* Horizontaal op tablet/desktop (sm en groter) — de eerder
+              gebouwde verticale tijdlijn oogde op grotere schermen te klein,
+              dus vanaf sm nu een brede horizontale variant (3 kolommen, lijn
+              achter de badges) i.p.v. één smalle kolom. Onder sm (mobiel)
+              blijft de al goedgekeurde verticale tijdlijn staan, zie
+              verderop — die werkte daar juist wel goed. */}
+          <div className="relative mx-auto mt-10 hidden max-w-4xl sm:grid sm:grid-cols-3 sm:gap-8">
+            <div className="absolute left-[16.6%] right-[16.6%] top-[26px] h-0.5 bg-gradient-to-r from-accent via-[#8B85EE] to-[#3B6D11] opacity-20" />
+            {STAPPEN.map((s, i) => {
+              const Icon = s.icoon;
+              return (
+                <div key={s.titel} className="relative flex flex-col items-center text-center">
+                  <span
+                    className={`relative z-10 flex h-[52px] w-[52px] items-center justify-center rounded-full ${s.badgeBg} ring-4 ring-white`}
+                  >
+                    <Icon className={`h-5 w-5 ${s.badgeKleur}`} />
+                  </span>
+                  <p className={`mt-3 text-[10.5px] font-bold uppercase tracking-wider3 ${s.labelKleur}`}>
+                    Stap {i + 1}
+                  </p>
+                  <h3 className="mt-0.5 text-[14.5px] font-extrabold text-ink">{s.titel}</h3>
+                  <p className="mt-1 max-w-[210px] text-xs leading-relaxed text-ink/70">{s.tekst}</p>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Verticaal op mobiel (onder sm) — ongewijzigd t.o.v. de eerder
+              goedgekeurde versie. */}
+          <div className="relative mx-auto mt-8 max-w-xl sm:hidden">
             {/* Verbindingslijn achter de drie stap-badges, kleurverloop van
                 indigo (stap 1) naar groen (stap 3, "voltooid/ontgrendeld") --
                 zie de visualize-afstemming hierover. */}
