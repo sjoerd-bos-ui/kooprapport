@@ -75,7 +75,7 @@ export const MARKTUPDATES: MarktupdateArtikel[] = [
     periodeLabel: "Q1 2026",
     titel: "Marktupdate Q1 2026: de markt haalt even adem",
     metaBeschrijving:
-      "Meer aanbod, minder overbieden en voor het eerst in lange tijd een gemiddelde prijs onder de €500.000: de Nederlandse woningmarkt in het eerste kwartaal van 2026.",
+      "Meer aanbod, minder overbieden en een gemiddelde prijs die weer onder de €500.000 duikt: de woningmarkt in het eerste kwartaal van 2026.",
     samenvatting:
       "Meer aanbod, iets minder overbieden en een gemiddelde prijs die weer onder de €500.000 duikt. De cijfers van het eerste kwartaal op een rijtje.",
     gepubliceerd: "16 april 2026",

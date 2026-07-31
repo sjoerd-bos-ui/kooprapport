@@ -60,6 +60,14 @@ export default async function MarktupdatePagina({ params }: { params: Promise<{ 
 
   const canonicalUrl = `${APP_BASE_URL}/marktupdates/${update.slug}`;
 
+  // De vorige update in MARKTUPDATES (chronologische array, dus één positie
+  // eerder) -- als die bestaat, wordt "Vorig kwartaal" hieronder een echte
+  // interne link naar die pagina i.p.v. losse tekst. Bij de eerst-gepubliceerde
+  // update (nu Q1 2026) bestaat die vorige pagina simpelweg nog niet, dan
+  // blijft het bij platte tekst.
+  const huidigeIndex = MARKTUPDATES.findIndex((m) => m.slug === update.slug);
+  const vorigeUpdate = huidigeIndex > 0 ? MARKTUPDATES[huidigeIndex - 1] : null;
+
   // Percentage van de NHG-grens t.o.v. de gemiddelde prijs, voor de twee
   // vergelijkingsbalken (nooit boven de 100% laten uitsteken op de kortste
   // balk, de langste balk is altijd de hoogste van de twee waarden).
@@ -234,8 +242,18 @@ export default async function MarktupdatePagina({ params }: { params: Promise<{ 
           </article>
 
           <p className="mt-8 text-[12px] text-ink/45">
-            Vorig kwartaal ({update.vorigKwartaal.periodeLabel}): {update.vorigKwartaal.overbieden}, gemiddelde
-            prijs {update.vorigKwartaal.gemPrijs}.{" "}
+            Vorig kwartaal (
+            {vorigeUpdate ? (
+              <Link
+                href={`/marktupdates/${vorigeUpdate.slug}`}
+                className="font-semibold text-accent underline underline-offset-2"
+              >
+                {update.vorigKwartaal.periodeLabel}
+              </Link>
+            ) : (
+              update.vorigKwartaal.periodeLabel
+            )}
+            ): {update.vorigKwartaal.overbieden}, gemiddelde prijs {update.vorigKwartaal.gemPrijs}.{" "}
             <Link href="/marktupdates" className="font-semibold text-accent underline underline-offset-2">
               Bekijk alle marktupdates
             </Link>
