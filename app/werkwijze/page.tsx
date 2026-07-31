@@ -52,38 +52,39 @@ export default function WerkwijzePagina() {
             gewone taal hoe we eraan komen en hoe vers het is.
           </p>
 
-          <div className="mt-8 flex flex-col gap-3">
-            {WERKWIJZE_ONDERDELEN.map((onderdeel) => {
+          <div className="mt-9 rounded-[20px] bg-white px-6 shadow-sm sm:px-8">
+            {WERKWIJZE_ONDERDELEN.map((onderdeel, i) => {
               const Icon = onderdeel.icoon;
               const stijl = KLEUR_STIJL[onderdeel.kleur];
+              const laatste = i === WERKWIJZE_ONDERDELEN.length - 1;
               return (
-                <div key={onderdeel.titel} className="rounded-2xl border border-ink/10 p-5">
-                  <div className="mb-2 flex items-center gap-3">
-                    <span
-                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${stijl.bg} ${stijl.tekst}`}
-                    >
-                      <Icon className="h-4 w-4" />
-                    </span>
-                    <p className="text-[13.5px] font-bold text-ink">{onderdeel.titel}</p>
+                <div key={onderdeel.titel} className={`flex gap-3.5 py-6 sm:gap-4 ${laatste ? "" : "border-b border-ink/[0.06]"}`}>
+                  <span
+                    className={`mt-0.5 flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[10px] ${stijl.bg} ${stijl.tekst}`}
+                  >
+                    <Icon className="h-[17px] w-[17px]" />
+                  </span>
+                  <div className="flex-1">
+                    <p className="text-[15px] font-bold text-ink">{onderdeel.titel}</p>
+                    <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink/60">{onderdeel.tekst}</p>
+                    <p className="mt-2.5 text-[11.5px] font-semibold text-accent">
+                      {onderdeel.bijgewerkt} <span className="mx-1.5 text-ink/20">·</span>
+                      <Link
+                        href={`/koopgids/${onderdeel.koopgidsSlug}`}
+                        className="inline-flex items-center gap-0.5 underline underline-offset-2 hover:text-accent-dark"
+                      >
+                        Meer lezen <ArrowRightIcon className="h-2.5 w-2.5" />
+                      </Link>
+                    </p>
                   </div>
-                  <p className="text-[12.5px] leading-relaxed text-ink/60">{onderdeel.tekst}</p>
-                  <p className="mt-2.5 text-[11px] font-semibold text-accent">
-                    {onderdeel.bijgewerkt} ·{" "}
-                    <Link
-                      href={`/koopgids/${onderdeel.koopgidsSlug}`}
-                      className="inline-flex items-center gap-0.5 underline underline-offset-2 hover:text-accent-dark"
-                    >
-                      Meer lezen <ArrowRightIcon className="h-2.5 w-2.5" />
-                    </Link>
-                  </p>
                 </div>
               );
             })}
           </div>
 
-          <div className="mt-6 rounded-2xl bg-parchment p-5">
-            <p className="text-[12.5px] font-bold text-ink">Onafhankelijk en eerlijk over wat we niet weten</p>
-            <p className="mt-1.5 text-[12px] leading-relaxed text-ink/60">
+          <div className="mt-5 rounded-2xl bg-white p-5 shadow-sm sm:p-6">
+            <p className="text-[13px] font-bold text-ink">Onafhankelijk en eerlijk over wat we niet weten</p>
+            <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink/60">
               Geen makelaar die meekijkt, dus geen belang bij een hoog of laag getal, alleen bij een kloppend getal.
               En weten we iets niet zeker over uw adres? Dan zeggen we gewoon eerlijk &ldquo;niet beschikbaar&rdquo;.
               We verzinnen nooit een getal om een rapport voller te laten lijken.
