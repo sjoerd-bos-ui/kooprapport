@@ -19,18 +19,18 @@ export default function SiteFooter() {
       <Container className="flex flex-col justify-between gap-3 text-xs sm:flex-row sm:items-center">
         <span className="font-display font-semibold text-ink">© {new Date().getFullYear()} Kooprapport</span>
         <div className="flex gap-4">
-          <Link href="/privacy" className="text-ink/55 underline underline-offset-2 hover:text-ink">
+          <Link href="/privacy" className="text-ink/70 underline underline-offset-2 hover:text-ink">
             Privacy
           </Link>
-          <Link href="/voorwaarden" className="text-ink/55 underline underline-offset-2 hover:text-ink">
+          <Link href="/voorwaarden" className="text-ink/70 underline underline-offset-2 hover:text-ink">
             Voorwaarden
           </Link>
-          <Link href="/contact" className="text-ink/55 underline underline-offset-2 hover:text-ink">
+          <Link href="/contact" className="text-ink/70 underline underline-offset-2 hover:text-ink">
             Contact
           </Link>
         </div>
         {!volledigLive && (
-          <span className="text-ink/40">Mockdata ter illustratie. Nog geen live databronnen gekoppeld.</span>
+          <span className="text-ink/70">Mockdata ter illustratie. Nog geen live databronnen gekoppeld.</span>
         )}
       </Container>
     </footer>

@@ -285,7 +285,7 @@ export default function HomePage() {
               <h1 className="mt-4 font-display text-[2.3rem] font-extrabold leading-[1.12] text-ink sm:text-[2.9rem]">
                 Alles wat u moet weten over een woning, op één plek.
               </h1>
-              <p className="mt-3 max-w-md text-[13.5px] leading-relaxed text-ink/60">
+              <p className="mt-3 max-w-md text-[13.5px] leading-relaxed text-ink/70">
                 Waarde, verkopen in de buurt, fundering en nog veel meer, per adres.
               </p>
 
@@ -329,7 +329,7 @@ export default function HomePage() {
                 </span>
                 <VoorbeeldrapportSlider />
               </div>
-              <p className="mt-2 text-[11px] text-ink/55">Gratis preview, geen abonnement, geen account nodig</p>
+              <p className="mt-2 text-[11px] text-ink/70">Gratis preview, geen abonnement, geen account nodig</p>
             </div>
 
             {/* Drie gestapelde paginakaartjes i.p.v. één vlakke statskaart —
@@ -342,7 +342,7 @@ export default function HomePage() {
                 puur decoratieve blok, dat toch al onder de tekst gestapeld
                 werd getoond, vooral drukte toe zonder extra functie — op
                 desktop, met de ruimte ernaast, blijft het staan). */}
-            <div className="relative mx-auto hidden h-[300px] w-full max-w-[460px] lg:block lg:h-[320px]">
+            <div aria-hidden="true" className="relative mx-auto hidden h-[300px] w-full max-w-[460px] lg:block lg:h-[320px]">
               <span className="absolute -top-1.5 right-2 z-10 rounded-full bg-gradient-to-br from-accent to-accent-dark px-3.5 py-1.5 text-[11px] font-bold text-white shadow-overlay">
                 10 pagina&apos;s, écht volledig
               </span>
@@ -531,7 +531,7 @@ export default function HomePage() {
               met 3 stappen), en hoort dus ook semantisch als kop gemarkeerd
               te zijn i.p.v. als gewone tekst. Zelfde reden bij "Veelgestelde
               vragen" verderop. */}
-          <h2 className="text-center text-[11px] font-bold uppercase tracking-wider3 text-ink/45">Zo werkt het</h2>
+          <h2 className="text-center text-[11px] font-bold uppercase tracking-wider3 text-ink/70">Zo werkt het</h2>
           <div className="relative mx-auto mt-8 max-w-xl">
             {/* Verbindingslijn achter de drie stap-badges, kleurverloop van
                 indigo (stap 1) naar groen (stap 3, "voltooid/ontgrendeld") --
@@ -554,7 +554,7 @@ export default function HomePage() {
                           Stap {i + 1}
                         </p>
                         <h3 className="mt-0.5 text-[14.5px] font-extrabold text-ink">{s.titel}</h3>
-                        <p className="mt-0.5 text-xs leading-relaxed text-ink/55">{s.tekst}</p>
+                        <p className="mt-0.5 text-xs leading-relaxed text-ink/70">{s.tekst}</p>
                       </div>
                     </div>
                   </div>
@@ -576,7 +576,7 @@ export default function HomePage() {
           ("Is dit onafhankelijk, of zit er een makelaar achter?"), dus hier
           volstaat de korte, generieke formulering. */}
       <section className="border-t border-ink/10 bg-white">
-        <Container className="py-6 text-center text-[11px] text-ink/55">
+        <Container className="py-6 text-center text-[11px] text-ink/70">
           <span className="font-bold text-ink">1.240+</span> rapporten gegenereerd ·{" "}
           <span className="font-bold text-ink">8</span> pagina&apos;s per rapport · gebaseerd op officiële, erkende
           bronnen
@@ -589,7 +589,7 @@ export default function HomePage() {
           dicht). */}
       <section className="border-t border-ink/10 bg-parchment">
         <Container className="py-16">
-          <h2 className="text-center text-[11px] font-bold uppercase tracking-wider3 text-ink/45">Veelgestelde vragen</h2>
+          <h2 className="text-center text-[11px] font-bold uppercase tracking-wider3 text-ink/70">Veelgestelde vragen</h2>
           <div className="mx-auto mt-7 flex max-w-2xl flex-col gap-2">
             {VEELGESTELDE_VRAGEN.map((item) => (
               <details
@@ -609,7 +609,7 @@ export default function HomePage() {
                     }`}
                   />
                 </summary>
-                <p className="mt-2 text-[12.5px] leading-relaxed text-ink/60">{item.antwoord}</p>
+                <p className="mt-2 text-[12.5px] leading-relaxed text-ink/70">{item.antwoord}</p>
               </details>
             ))}
           </div>
@@ -625,7 +625,7 @@ export default function HomePage() {
       <footer className="border-t border-ink/10 bg-white py-10">
         <Container className="flex flex-col items-start gap-4 text-xs sm:flex-row sm:items-center sm:justify-between">
           <span className="font-display font-semibold text-ink">© {new Date().getFullYear()} Kooprapport</span>
-          <div className="flex flex-wrap gap-4 text-ink/55">
+          <div className="flex flex-wrap gap-4 text-ink/70">
             <Link href={buildReportHref(VOORBEELD_ADRES)} className="underline underline-offset-2 hover:text-ink">
               Voorbeeldrapport
             </Link>
@@ -646,7 +646,7 @@ export default function HomePage() {
             </Link>
           </div>
           {!volledigLive && (
-            <span className="text-ink/40">Mockdata ter illustratie. Nog geen live databronnen gekoppeld.</span>
+            <span className="text-ink/70">Mockdata ter illustratie. Nog geen live databronnen gekoppeld.</span>
           )}
         </Container>
       </footer>

@@ -18,7 +18,7 @@ export default function SiteNavLink({ href, label }: { href: string; label: stri
   return (
     <Link
       href={href}
-      className={`relative text-[13px] font-semibold transition-colors ${actief ? "text-accent" : "text-ink/55 hover:text-ink"}`}
+      className={`relative text-[13px] font-semibold transition-colors ${actief ? "text-accent" : "text-ink/70 hover:text-ink"}`}
     >
       {label}
       {actief && <span className="absolute -bottom-1.5 left-0 right-0 h-0.5 rounded-full bg-accent" />}
