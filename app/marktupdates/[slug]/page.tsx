@@ -8,6 +8,8 @@ import AddressSearchBar from "@/components/address/AddressSearchBar";
 import { ArrowRightIcon, TrendingUpIcon } from "@/components/report/icons";
 import { MARKTUPDATES, getMarktupdateBySlug, type RegioRichting } from "@/lib/content/marktupdates";
 import { APP_BASE_URL } from "@/lib/config/payment";
+import AbonneerFormulier from "@/components/marktupdates/AbonneerFormulier";
+import { MailIcon } from "@/components/report/icons";
 
 // -----------------------------------------------------------------------------
 // Losse Marktupdate-pagina. Statisch gegenereerd (generateStaticParams), zelfde
@@ -204,6 +206,22 @@ export default async function MarktupdatePagina({ params }: { params: Promise<{ 
               <h2 className="font-display text-lg font-bold text-ink">Wat dit voor u betekent</h2>
               <p className="mt-3 text-[14.5px] leading-relaxed text-ink/65">{update.watDitBetekent}</p>
             </section>
+
+            {/* Nieuwsbrief-aanmelding */}
+            <div className="rounded-2xl border border-ink/10 bg-white p-6 shadow-sm">
+              <div className="flex items-start gap-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-[#EEF0FF] text-accent">
+                  <MailIcon className="h-[18px] w-[18px]" />
+                </span>
+                <div className="flex-1">
+                  <p className="text-sm font-bold text-ink">Nieuwe marktupdate direct in uw inbox</p>
+                  <p className="mt-1 text-xs leading-relaxed text-ink/55">
+                    Vier keer per jaar, geen extra reclame ertussen. Afmelden kan met één klik.
+                  </p>
+                  <AbonneerFormulier variant="groot" />
+                </div>
+              </div>
+            </div>
 
             {/* CTA */}
             <div className="rounded-2xl bg-[#EEF0FF] p-6">

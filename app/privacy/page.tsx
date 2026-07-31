@@ -112,6 +112,14 @@ export default function PrivacyPage() {
                 afgerond, eenmalig een herinnering met eventuele tijdelijke korting te ontvangen. Dit gebeurt nooit
                 automatisch — alleen na uw eigen invoer. Zie sectie 5 voor hoe lang we dit bewaren.
               </p>
+              <p>
+                <strong className="font-semibold text-ink">E-mailadres voor de Marktupdates-nieuwsbrief.</strong>{" "}
+                Meldt u zich op <a href="/marktupdates" className="text-accent underline underline-offset-2">
+                  /marktupdates
+                </a> aan voor de kwartaalupdate over de woningmarkt, dan bewaren we uw e-mailadres pas nadat u dit
+                zelf heeft bevestigd via een link in een bevestigingsmail (dubbele opt-in). Elke update die u
+                vervolgens ontvangt bevat een directe afmeldlink; na afmelden ontvangt u niets meer.
+              </p>
             </Sectie>
 
             <Sectie id="cookies" titel="3. Cookies en vergelijkbare technieken">
@@ -204,15 +212,19 @@ export default function PrivacyPage() {
                     <tr>
                       <td className="px-4 py-2.5 font-medium text-ink">Resend</td>
                       <td className="px-4 py-2.5 text-ink/65">E-mailadres (alleen als u dat zelf invult)</td>
-                      <td className="px-4 py-2.5 text-ink/65">Versturen van de preview-mail of herinneringsmail</td>
+                      <td className="px-4 py-2.5 text-ink/65">
+                        Versturen van de preview-mail, herinneringsmail of Marktupdates-nieuwsbrief
+                      </td>
                     </tr>
                     <tr>
                       <td className="px-4 py-2.5 font-medium text-ink">Upstash</td>
                       <td className="px-4 py-2.5 text-ink/65">
-                        E-mailadres + opgezocht adres (tijdelijk, alleen bij herinneringsmail)
+                        E-mailadres + opgezocht adres (tijdelijk, herinneringsmail) of e-mailadres (doorlopend,
+                        Marktupdates-nieuwsbrief, zolang u niet bent afgemeld)
                       </td>
                       <td className="px-4 py-2.5 text-ink/65">
-                        Tijdelijke wachtrij om de eenmalige herinnering na 48 uur te versturen
+                        Tijdelijke wachtrij voor de eenmalige herinnering, en de abonneelijst voor de
+                        Marktupdates-nieuwsbrief
                       </td>
                     </tr>
                     <tr>
@@ -258,6 +270,12 @@ export default function PrivacyPage() {
                 daarvan — genoeg om te herkennen dat u zich afmeldde, niet om uw adres zelf uit af te leiden. Deze
                 afmelding bewaren we voor onbepaalde tijd, uitsluitend om uw keuze te kunnen blijven respecteren (zie
                 ook sectie 7, "recht op verwijdering").
+              </p>
+              <p>
+                Meldt u zich aan voor de Marktupdates-nieuwsbrief, dan bewaren we uw e-mailadres zolang u abonnee
+                bent, om u daadwerkelijk elk kwartaal een update te kunnen sturen. Meldt u zich af (via de link
+                onderaan elke update), dan versturen we vanaf dat moment niets meer; zie sectie 7 voor hoe u dit ook
+                volledig kunt laten verwijderen.
               </p>
             </Sectie>
 

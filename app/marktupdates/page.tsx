@@ -6,6 +6,7 @@ import Container from "@/components/ui/Container";
 import { ArrowRightIcon, TrendingUpIcon } from "@/components/report/icons";
 import { MARKTUPDATES } from "@/lib/content/marktupdates";
 import { APP_BASE_URL } from "@/lib/config/payment";
+import AbonneerFormulier from "@/components/marktupdates/AbonneerFormulier";
 
 // -----------------------------------------------------------------------------
 // Marktupdates-hub: overzicht van alle kwartaalupdates, nieuwste eerst.
@@ -72,7 +73,15 @@ export default function MarktupdatesPagina() {
             op een rijtje, gebaseerd op de nieuwste cijfers van NVM, Kadaster en CBS.
           </p>
 
-          <div className="mt-9 flex flex-col gap-4">
+          <div className="mt-8 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-ink/10 bg-white p-5 shadow-sm">
+            <div>
+              <p className="text-sm font-bold text-ink">Mis geen enkele update</p>
+              <p className="mt-0.5 text-xs text-ink/55">Eén e-mail per kwartaal, zodra de nieuwe cijfers binnen zijn.</p>
+            </div>
+            <AbonneerFormulier variant="compact" />
+          </div>
+
+          <div className="mt-6 flex flex-col gap-4">
             {updates.map((update) => (
               <Link
                 key={update.slug}
