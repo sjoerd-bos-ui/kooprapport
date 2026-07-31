@@ -13,10 +13,6 @@ import type { AddressMeta } from "@/types/report";
 import {
   ChevronDownIcon,
   StoreIcon,
-  RulerIcon,
-  CalendarIcon,
-  DoorIcon,
-  FlagIcon,
   TrendingUpIcon,
   AlertTriangleIcon,
   BoltIcon,
@@ -220,7 +216,37 @@ export default function HomePage() {
   };
 
   return (
-    <main className="bg-white">
+    // BUGFIX (te wit/te leeg op brede schermen): de hele pagina stond
+    // hiervoor op een vlak bg-white, met per sectie een wisselend bg-white/
+    // bg-parchment (zebra-effect) — op een breed extern beeldscherm oogde
+    // dat kaal en gaven de sectiegrenzen harde, blokkerige overgangen. De
+    // pagina heeft nu één doorlopend parchment-canvas met een paar zachte,
+    // laagopaciteit kleurvlekken (indigo/paars/groen) die over de
+    // sectiegrenzen heen lopen — zie de visualize-afstemming hierover. De
+    // vlekken zijn direct hier, als kinderen van <main>, gepositioneerd i.p.v.
+    // per sectie, zodat ze doorlopen i.p.v. per sectie opnieuw beginnen.
+    <main className="relative overflow-hidden bg-parchment">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -left-20 -top-10 h-[280px] w-[280px] rounded-full"
+        style={{ background: "radial-gradient(circle, #4F46E524 0%, rgba(79,70,229,0) 70%)" }}
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -right-24 top-[420px] h-[320px] w-[320px] rounded-full"
+        style={{ background: "radial-gradient(circle, #8B85EE20 0%, rgba(139,133,238,0) 70%)" }}
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -left-16 top-[820px] h-[260px] w-[260px] rounded-full"
+        style={{ background: "radial-gradient(circle, #3B6D111E 0%, rgba(59,109,17,0) 70%)" }}
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -right-16 top-[1080px] h-[240px] w-[240px] rounded-full"
+        style={{ background: "radial-gradient(circle, #4F46E51E 0%, rgba(79,70,229,0) 70%)" }}
+      />
+
       {/* eslint-disable-next-line react/no-danger -- statische, vaste JSON-LD, geen user input */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }} />
       {/* eslint-disable-next-line react/no-danger */}
@@ -259,11 +285,7 @@ export default function HomePage() {
         </Container>
       </header>
 
-      <section
-        id="zoeken"
-        className="relative overflow-hidden bg-white"
-        style={{ backgroundImage: "radial-gradient(#4F46E51A 1px, transparent 1px)", backgroundSize: "18px 18px" }}
-      >
+      <section id="zoeken" className="relative">
         <Container className="py-16 sm:py-20">
           <div className="grid items-center gap-14 lg:grid-cols-[1.05fr_0.95fr]">
             {/* Tekstkolom.
@@ -337,190 +359,51 @@ export default function HomePage() {
               <p className="mt-2 text-[11px] text-ink/70">Gratis preview, geen abonnement, geen account nodig</p>
             </div>
 
-            {/* Drie gestapelde paginakaartjes i.p.v. één vlakke statskaart —
-                laat direct zien dat dit een écht meerpagina-rapport is.
-                Cijfers zijn bewust dezelfde als in het voorbeeldrapport
-                (lib/pdf/voorbeeldRapport.ts, Amsterdam Rijnkanaalkade 1)
-                zodat deze preview en de daadwerkelijke voorbeeld-PDF elkaar
-                niet tegenspreken.
-                Alleen vanaf lg zichtbaar (feedback: op mobiel voegde dit
-                puur decoratieve blok, dat toch al onder de tekst gestapeld
-                werd getoond, vooral drukte toe zonder extra functie — op
-                desktop, met de ruimte ernaast, blijft het staan). */}
-            <div aria-hidden="true" className="relative mx-auto hidden h-[300px] w-full max-w-[460px] lg:block lg:h-[320px]">
-              <span className="absolute -top-1.5 right-2 z-10 rounded-full bg-gradient-to-br from-accent to-accent-dark px-3.5 py-1.5 text-[11px] font-bold text-white shadow-overlay">
+            {/* Eén rustig browserscherm i.p.v. de eerdere 3 losse gestapelde
+                paginakaartjes — na een reeks visualize-rondes bleek dat de
+                gestapelde kaartjes naast alle andere elementen in de hero
+                (zoekbalk, iconentegels, voorbeeldrapport-kaartje) samen
+                iets te druk oogden. Dit ene kaartje toont letterlijk het
+                product ("dit zie je"), met dezelfde cijfers als het echte
+                voorbeeldrapport (lib/pdf/voorbeeldRapport.ts, Amsterdam
+                Rijnkanaalkade 1) zodat dit en de daadwerkelijke voorbeeld-PDF
+                elkaar niet tegenspreken.
+                Alleen vanaf lg zichtbaar (zelfde reden als voorheen: op
+                mobiel voegde dit decoratieve blok vooral drukte toe). */}
+            <div aria-hidden="true" className="relative mx-auto hidden h-[320px] w-full max-w-[420px] items-center justify-center lg:flex">
+              <span className="absolute -top-2 right-2 z-10 rounded-full bg-gradient-to-br from-accent to-accent-dark px-3.5 py-1.5 text-[11px] font-bold text-white shadow-overlay">
                 10 pagina&apos;s, écht volledig
               </span>
 
-              {/* Kaart 1 — Verkopen in de buurt */}
-              <div className="absolute left-0 top-[62px] flex h-[224px] w-[168px] -rotate-[9deg] flex-col rounded-xl border border-line bg-white p-2.5 shadow-overlay">
-                <div className="flex items-center justify-between">
-                  <span className="text-[6px] font-bold uppercase tracking-wide text-ink/45">Verkopen in de buurt</span>
-                  <span className="flex h-3 w-3 items-center justify-center rounded-full bg-[#E6FBF7] text-[#0F766E]">
-                    <StoreIcon className="h-2 w-2" />
-                  </span>
+              <div className="w-[280px] -rotate-2 overflow-hidden rounded-2xl border border-line bg-white shadow-overlay">
+                <div className="flex h-5 items-center gap-1 border-b border-line bg-parchment px-2.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-line" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-line" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-line" />
                 </div>
-                <div className="mt-1.5 flex justify-between rounded-lg bg-gradient-to-br from-[#0F766E] to-[#0B5A54] px-1.5 py-1.5">
-                  <div>
-                    <div className="text-[4px] text-white/70">AANTAL</div>
-                    <div className="text-[8px] font-extrabold text-white">30</div>
-                  </div>
-                  <div>
-                    <div className="text-[4px] text-white/70">GEM. €/M²</div>
-                    <div className="text-[8px] font-extrabold text-white">€7.908</div>
-                  </div>
-                </div>
-                <div className="mt-1.5 text-[4.3px] font-bold text-[#0F766E]">VERGELIJKBAAR MET DEZE WONING</div>
-                <div className="mt-1 flex flex-col gap-1">
-                  <div>
-                    <div className="flex items-baseline justify-between">
-                      <span className="text-[4.3px] font-bold text-ink">Pedro de Medinalaan 90</span>
-                      <span className="text-[4.8px] font-extrabold text-ink">€ 850.000</span>
+                <div className="p-4">
+                  <div className="text-[7px] font-bold uppercase tracking-wide text-ink/45">Premium Kooprapport</div>
+                  <div className="mt-1 text-[13px] font-extrabold text-ink">Rijnkanaalkade 1</div>
+                  <div className="mt-3 flex gap-2">
+                    <div className="flex-1 rounded-lg bg-gradient-to-br from-accent to-accent-dark p-2">
+                      <div className="text-[6px] text-white/70">WAARDE-INDICATIE</div>
+                      <div className="mt-1 text-[10px] font-extrabold text-white">€1.264.239</div>
                     </div>
-                    <div className="mt-0.5 flex items-center gap-1">
-                      <div className="h-[3.5px] flex-[0.71] rounded-sm bg-[#5FB3AA]" />
-                      <span className="text-[3.3px] text-ink/45">€5,6k/m²</span>
+                    <div className="flex-1 rounded-lg bg-parchment p-2">
+                      <div className="text-[6px] text-ink/45">FUNDERING</div>
+                      <div className="mt-1 text-[9.5px] font-extrabold text-[#3B6D11]">Laag risico</div>
                     </div>
                   </div>
-                  <div>
-                    <div className="flex items-baseline justify-between">
-                      <span className="text-[4.3px] font-bold text-ink">Borneokade 147</span>
-                      <span className="text-[4.8px] font-extrabold text-ink">€ 1.375.000</span>
-                    </div>
-                    <div className="mt-0.5 flex items-center gap-1">
-                      <div className="h-[3.5px] flex-[1.18] rounded-sm bg-[#0F766E]" />
-                      <span className="text-[3.3px] text-ink/45">€9,3k/m²</span>
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex items-baseline justify-between">
-                      <span className="text-[4.3px] font-bold text-ink">D.L. Hudigstraat 43</span>
-                      <span className="text-[4.8px] font-extrabold text-ink">€ 950.000</span>
-                    </div>
-                    <div className="mt-0.5 flex items-center gap-1">
-                      <div className="h-[3.5px] flex-[0.97] rounded-sm bg-[#0F766E]" />
-                      <span className="text-[3.3px] text-ink/45">€7,7k/m²</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-auto rounded-md border-l-2 border-accent bg-mist px-1.5 py-1">
-                  <div className="text-[4px] font-extrabold text-accent-dark">Wat betekent &quot;vergelijkbaar&quot;?</div>
-                  <div className="mt-0.5 text-[3.3px] leading-tight text-ink">Oppervlakte binnen ±22% van deze woning.</div>
-                </div>
-              </div>
-
-              {/* Kaart 2 — Waarde-indicatie.
-                  Horizontale positie is responsive (was: vast left-[150px]).
-                  Bij een vaste 150px werd dit kaartje op mobiel al met de
-                  volle 168px breedte + 150px offset (dus 318px) buiten de
-                  daadwerkelijke, veel smallere containerbreedte geduwd en
-                  door de overflow-hidden op de sectie eromheen afgesneden.
-                  Op mobiel schuiven de kaarten daarom dichter op elkaar
-                  (nog steeds een gestapeld effect door de afwijkende
-                  top-offset en rotatie per kaart), en vanaf sm/lg weer verder
-                  uit elkaar zoals oorspronkelijk bedoeld. */}
-              <div className="absolute left-[40px] top-10 flex h-[224px] w-[168px] rotate-[4deg] flex-col rounded-xl border border-line bg-white p-2.5 shadow-overlay sm:left-[120px] lg:left-[150px]">
-                <div className="flex items-center justify-between">
-                  <span className="text-[6px] font-bold uppercase tracking-wide text-ink/45">Waarde-indicatie</span>
-                  <span className="rounded-full bg-mist px-1.5 py-0.5 text-[4.5px] font-extrabold text-accent">+4%</span>
-                </div>
-                <div className="mt-1.5 flex gap-[1.5px]">
-                  <div className="flex-[1.2] rounded-l-md bg-gradient-to-br from-accent to-accent-dark p-1">
-                    <div className="text-[4px] text-white/70">DEZE WONING</div>
-                    <div className="text-[7px] font-extrabold text-white">€1.264.239</div>
-                  </div>
-                  <div className="flex-1 rounded-r-md bg-parchment p-1">
-                    <div className="text-[4px] text-ink/45">BUURTGEM.</div>
-                    <div className="text-[7px] font-extrabold text-ink">€7.908/m²</div>
-                  </div>
-                </div>
-                <div className="relative mt-1.5 h-[5px] rounded-full bg-mist">
-                  <div className="absolute -top-[1.5px] left-1/2 h-2 w-[1.5px] bg-ink" />
-                </div>
-                <div className="mt-0.5 flex justify-between text-[3.3px] text-ink/45">
-                  <span>€1,14M</span>
-                  <span>90% zeker</span>
-                  <span>€1,39M</span>
-                </div>
-                <div className="mt-1.5 flex gap-1">
-                  <div className="flex-1 text-center">
-                    <div className="mx-auto flex h-2.5 w-2.5 items-center justify-center rounded-full bg-mist text-accent">
-                      <RulerIcon className="h-1.5 w-1.5" />
-                    </div>
-                    <div className="mt-0.5 text-[3.3px] font-bold text-ink">154 m²</div>
-                  </div>
-                  <div className="flex-1 text-center">
-                    <div className="mx-auto flex h-2.5 w-2.5 items-center justify-center rounded-full bg-mist text-accent">
-                      <CalendarIcon className="h-1.5 w-1.5" />
-                    </div>
-                    <div className="mt-0.5 text-[3.3px] font-bold text-ink">2021</div>
-                  </div>
-                  <div className="flex-1 text-center">
-                    <div className="mx-auto flex h-2.5 w-2.5 items-center justify-center rounded-full bg-mist text-accent">
-                      <DoorIcon className="h-1.5 w-1.5" />
-                    </div>
-                    <div className="mt-0.5 text-[3.3px] font-bold text-ink">539 m³</div>
-                  </div>
-                  <div className="flex-1 text-center">
-                    <div className="mx-auto flex h-2.5 w-2.5 items-center justify-center rounded-full bg-accent text-white">
-                      <FlagIcon className="h-1.5 w-1.5" />
-                    </div>
-                    <div className="mt-0.5 text-[3.3px] font-bold text-accent">€1,26M</div>
-                  </div>
-                </div>
-                <div className="mt-auto rounded-md bg-parchment px-1.5 py-1">
-                  <div className="text-[4px] font-bold text-ink">Wat kun je hiermee?</div>
-                  <div className="mt-0.5 text-[3.3px] leading-tight text-ink/45">Onderhandelingsbasis, hypotheek, verzekerde waarde.</div>
-                </div>
-              </div>
-
-              {/* Kaart 3 — volledige inhoudsopgave (alle 9 onderdelen) i.p.v.
-                  de eerdere cover-kaart die er met een quote + "+N" belofte
-                  maar 5 met naam noemde. Sluit nu 1-op-1 aan bij de "10
-                  pagina's, écht volledig"-badge hierboven i.p.v. die belofte
-                  tegen te spreken. Volgorde/namen identiek aan de 9
-                  tabbladen in ReportView.tsx; kleuren hergebruikt uit de
-                  rest van deze pagina (geen nieuwe hexwaarden verzonnen). */}
-              {/* Kaart 3 — zelfde reden als bij kaart 2 hierboven: was vast
-                  left-[300px], waardoor de rechterrand (300+168=468px) zelfs
-                  op een breed desktopscherm nooit paste binnen deze kolom
-                  (die door de grid ernaast en Container's max-w-5xl nooit
-                  breder dan ~422px wordt) en op mobiel bijna volledig
-                  onzichtbaar/afgesneden was — precies de kaart die dit
-                  onderdeel de volledige inhoudsopgave laat zien. */}
-              <div className="absolute left-[84px] top-0 flex h-[250px] w-[168px] flex-col overflow-hidden rounded-xl border border-line shadow-lg sm:left-[240px] lg:left-[250px]">
-                <div className="shrink-0 bg-gradient-to-br from-accent to-accent-dark p-2.5">
-                  <div className="text-[5.5px] font-bold text-white/70">PREMIUM KOOPRAPPORT</div>
-                  <div className="mt-1 text-[10px] font-extrabold text-white">Rijnkanaalkade 1</div>
-                  <div className="text-[5.5px] text-white/60">1019 VA Amsterdam</div>
-                </div>
-                <div className="flex flex-1 flex-col bg-white p-2">
-                  <div className="text-[5px] font-bold uppercase tracking-wide text-ink/45">
-                    Volledige inhoudsopgave
-                  </div>
-                  <div className="mt-1.5 flex flex-col gap-[3.5px]">
-                    {[
-                      { kleur: "bg-accent", tekst: "Rapportoverzicht" },
-                      { kleur: "bg-accent-dark", tekst: "Waarde-indicatie" },
-                      { kleur: "bg-[#0F766E]", tekst: "Verkopen in de buurt" },
-                      { kleur: "bg-sun", tekst: "Objectgegevens" },
-                      { kleur: "bg-[#0D9488]", tekst: "Energieprestatie" },
-                      { kleur: "bg-[#0F766E]", tekst: "Verduurzamingsadvies" },
-                      { kleur: "bg-rust", tekst: "Funderingsrisico" },
-                      { kleur: "bg-[#8B85EE]", tekst: "Buurtprofiel" },
-                      { kleur: "bg-ink", tekst: "Samenvatting" },
-                    ].map((item, i) => (
-                      <div key={item.tekst} className="flex items-center gap-[5px]">
-                        <span className={`flex h-[9px] w-[9px] shrink-0 items-center justify-center rounded-full text-[4.3px] font-extrabold text-white ${item.kleur}`}>
-                          {i + 1}
-                        </span>
-                        <span className="text-[5px] text-ink">{item.tekst}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-auto flex justify-between border-t border-line pt-1.5 text-[3.8px] text-ink/45">
-                    <span>Ook als PDF</span>
-                    <span>Officiële, erkende bronnen</span>
+                  <div className="mt-2 flex gap-1.5">
+                    <span className="flex-1 rounded-md bg-mist py-1.5 text-center text-[9px] font-extrabold text-accent-dark">
+                      A+
+                    </span>
+                    <span className="flex-1 rounded-md bg-mist py-1.5 text-center text-[7px] font-bold text-accent-dark">
+                      154 m²
+                    </span>
+                    <span className="flex-1 rounded-md bg-mist py-1.5 text-center text-[7px] font-bold text-accent-dark">
+                      2021
+                    </span>
                   </div>
                 </div>
               </div>
@@ -529,7 +412,7 @@ export default function HomePage() {
         </Container>
       </section>
 
-      <section className="border-t border-ink/10 bg-white">
+      <section className="relative">
         <Container className="py-20">
           {/* h2 i.p.v. eerder een <p> — visueel identiek (zelfde classes),
               maar dit is inhoudelijk een sectiekop (opent een nieuwe sectie
@@ -610,7 +493,7 @@ export default function HomePage() {
           verifieerbare rijtje (met links) staat al canoniek in de FAQ
           ("Is dit onafhankelijk, of zit er een makelaar achter?"), dus hier
           volstaat de korte, generieke formulering. */}
-      <section className="border-t border-ink/10 bg-white">
+      <section className="relative border-y border-ink/[0.06]">
         <Container className="py-6 text-center text-[11px] text-ink/70">
           <span className="font-bold text-ink">1.240+</span> rapporten gegenereerd ·{" "}
           <span className="font-bold text-ink">8</span> pagina&apos;s per rapport · gebaseerd op officiële, erkende
@@ -622,7 +505,7 @@ export default function HomePage() {
           side state, blijft toegankelijk, en toont meteen meer inhoud zonder
           dat de pagina drukker oogt (alles behalve de eerste vraag staat
           dicht). */}
-      <section className="border-t border-ink/10 bg-parchment">
+      <section className="relative">
         <Container className="py-16">
           <h2 className="text-center text-[11px] font-bold uppercase tracking-wider3 text-ink/70">Veelgestelde vragen</h2>
           <div className="mx-auto mt-7 flex max-w-2xl flex-col gap-2">

@@ -296,6 +296,9 @@ export default function VoorbeeldrapportSlider() {
 
   return (
     <>
+      {/* Herstijld van een platte tekstlink naar een tastbaar mini-kaartje —
+          oogt als een klikbaar object i.p.v. verdwaalde tekst tussen de
+          zoekbalk en de iconentegels, zie de visualize-afstemming hierover. */}
       <button
         type="button"
         onClick={() => {
@@ -310,11 +313,16 @@ export default function VoorbeeldrapportSlider() {
           laadDocument().catch(() => {});
         }}
         onFocus={() => laadDocument().catch(() => {})}
-        className="group inline-flex items-center gap-1.5 text-sm font-bold text-ink hover:text-accent"
+        className="group inline-flex items-center gap-2.5 rounded-xl border border-line bg-white p-2 pr-3 text-left shadow-flat transition-shadow hover:shadow-overlay"
       >
-        <FileCheckIcon className="h-3.5 w-3.5 text-accent" />
-        Bekijk het echte voorbeeldrapport
-        <ArrowRightIcon className="h-3 w-3 shrink-0 text-accent transition-transform group-hover:translate-x-1" />
+        <span className="flex h-9 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-accent to-accent-dark">
+          <FileCheckIcon className="h-4 w-4 text-white" />
+        </span>
+        <span>
+          <span className="block text-[12.5px] font-bold text-ink">Bekijk het echte voorbeeldrapport</span>
+          <span className="block text-[10.5px] text-ink/70">10 pagina&apos;s · gratis, geen account nodig</span>
+        </span>
+        <ArrowRightIcon className="h-3.5 w-3.5 shrink-0 text-accent transition-transform group-hover:translate-x-1" />
       </button>
 
       {open && (
