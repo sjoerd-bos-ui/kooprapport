@@ -7,7 +7,7 @@ import { APP_BASE_URL } from "@/lib/config/payment";
 import { isVolledigLive } from "@/lib/config/launchStatus";
 import { buildReportHref, slugify } from "@/lib/utils/slug";
 import { Logo } from "@/components/ui/Logo";
-import KoopgidsNavLink from "@/components/layout/KoopgidsNavLink";
+import SiteNavLink from "@/components/layout/SiteNavLink";
 import VoorbeeldrapportSlider from "@/components/VoorbeeldrapportSlider";
 import type { AddressMeta } from "@/types/report";
 import {
@@ -225,7 +225,8 @@ export default function HomePage() {
             <Logo />
           </Link>
           <div className="flex items-center gap-6">
-            <KoopgidsNavLink />
+            <SiteNavLink href="/koopgids" label="Koopgids" />
+            <SiteNavLink href="/werkwijze" label="Werkwijze" />
             <a
               href="#zoeken"
               className="rounded-full bg-accent px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-accent-dark"

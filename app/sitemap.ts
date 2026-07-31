@@ -62,5 +62,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "monthly" as const,
       priority: 0.5,
     })),
+    // Werkwijze: zelfde categorie als Koopgids (statisch, voor iedereen
+    // identiek, gericht op vertrouwen/SEO), dus ook hier in de sitemap.
+    {
+      url: `${APP_BASE_URL}/werkwijze`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.5,
+    },
   ];
 }
