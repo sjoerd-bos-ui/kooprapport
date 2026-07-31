@@ -71,6 +71,68 @@ export interface MarktupdateArtikel {
 
 export const MARKTUPDATES: MarktupdateArtikel[] = [
   {
+    slug: "q1-2026",
+    periodeLabel: "Q1 2026",
+    titel: "Marktupdate Q1 2026: de markt haalt even adem",
+    metaBeschrijving:
+      "Meer aanbod, minder overbieden en voor het eerst in lange tijd een gemiddelde prijs onder de €500.000: de Nederlandse woningmarkt in het eerste kwartaal van 2026.",
+    samenvatting:
+      "Meer aanbod, iets minder overbieden en een gemiddelde prijs die weer onder de €500.000 duikt. De cijfers van het eerste kwartaal op een rijtje.",
+    gepubliceerd: "16 april 2026",
+    leestijdMinuten: 6,
+    intro:
+      "Na een laatste kwartaal van 2025 waarin de gemiddelde verkoopprijs voor het eerst boven een half miljoen euro uitkwam, deed de woningmarkt in het eerste kwartaal van 2026 iets ongebruikelijks: ze temperde zichzelf. Meer aanbod, iets minder overbieden en voor het eerst in lange tijd een gemiddelde prijs die weer onder de €500.000 dook. Geen ineenstorting, eerder een verkeerslicht dat van knalrood naar oranje sprong, al verschilt dat nogal per regio.",
+
+    landelijkeCijfers: {
+      tekst: [
+        "Er wisselden dit kwartaal ongeveer 34.600 bestaande woningen van eigenaar, 27% minder dan het laatste kwartaal van 2025. Een deel daarvan is een normaal winterdipje (minder bezichtigingen door sneeuw en ijzel), maar de terugval was dit keer groter dan gebruikelijk.",
+        "De gemiddelde verkoopprijs kwam uit op €485.000, een daling van 2,7% ten opzichte van het kwartaal ervoor. Op jaarbasis staat de prijs nog altijd zo'n €10.000 hoger, maar die stijging vlakt duidelijk af.",
+      ],
+      stats: [
+        { label: "verkocht", waarde: "34.600" },
+        { label: "in aanbod (+20% jaar)", waarde: "30.000" },
+        { label: "gem. prijs", waarde: "€485k", nadruk: true },
+        { label: "overboden", waarde: "3,7%" },
+      ],
+      tekstNaStats:
+        "Ook het overbieden koelt merkbaar af: gemiddeld werd 3,7% boven de vraagprijs betaald (was 4,7% in het laatste kwartaal van 2025), en 67% van de woningen ging boven de vraagprijs weg in plaats van 72%. Het woningaanbod groeide intussen naar bijna 30.000 woningen, 20% meer dan een jaar eerder, waardoor de NVM-krapte-indicator opliep van 1,9 naar 2,6: kopers konden voor het eerst in een tijd uit iets meer dan twee woningen kiezen in plaats van uit maar twee.",
+    },
+
+    perRegio: {
+      tekst:
+        "Die afkoeling voelt niet overal hetzelfde. Landelijk verkochten NVM-makelaars in ongeveer de helft van de regio's minder woningen dan een jaar eerder, vooral in het westen en noorden van het land. In delen van het oosten en zuiden was juist sprake van groei, vaak in regio's waar het aanbod het sterkst was toegenomen. In de regio Haaglanden (Den Haag e.o.) daalde de gemiddelde prijs licht met 0,2% naar €499.000, al steeg die op jaarbasis nog wel met 2,9%, en werden er 3% meer woningen verkocht dan een jaar eerder.",
+      rijen: [
+        { naam: "Landelijk", jaarVergelijking: "+2,0% jaar", extra: "67% overb.", richting: "flat" },
+        { naam: "Haaglanden", jaarVergelijking: "+2,9% jaar", extra: "-0,2% kwart.", richting: "flat" },
+        { naam: "Overig Groningen", jaarVergelijking: "+3,9% jaar", extra: "76% overb.", richting: "up" },
+      ],
+      conclusie:
+        "Niet elke regio in het noorden volgde trouwens hetzelfde patroon: de regio rond de stad Groningen zag het aantal verkopen juist met 3,7% stijgen. Het landelijke gemiddelde vertelt dus lang niet het hele verhaal, de verschillen tussen (en binnen) regio's blijven groot.",
+    },
+
+    betaalbaarheid: {
+      tekst:
+        "Sinds 1 januari 2026 ligt de NHG-grens op €470.000. De landelijke gemiddelde prijs van €485.000 ligt daar, ondanks de afkoeling, nog altijd boven: een \"gemiddeld\" huis valt voor de gemiddelde koper nog steeds net buiten de garantie. In de regio Groningen ligt dat anders: met een gemiddelde prijs van €374.000 blijft dat ruim onder de grens, wat de garantie daar voor starters beduidend bereikbaarder maakt.",
+      nhgGrensLabel: "NHG-grens 2026",
+      nhgGrens: 470000,
+      gemPrijsLabel: "Gem. verkoopprijs Q1 (landelijk)",
+      gemPrijs: 485000,
+      conclusie:
+        "Waar u zoekt, bepaalt dus behoorlijk of de NHG-garantie binnen bereik ligt of net erbuiten valt.",
+    },
+
+    watDitBetekent:
+      "Zoekt u in de Randstad, dan heeft u dit kwartaal voor het eerst in een tijd iets meer keuze en iets minder haast nodig, al blijft overbieden met 67% nog altijd de norm, geen uitzondering. Bent u starter en afhankelijk van de NHG-grens, dan loont het de moeite om ook regio's buiten de Randstad mee te nemen in uw zoektocht: daar ligt de gemiddelde prijs vaker onder die grens dan erboven.",
+
+    vorigKwartaal: {
+      periodeLabel: "Q4 2025",
+      overbieden: "4,7% gemiddeld overboden",
+      gemPrijs: "€502.000",
+    },
+
+    ctaTekst: "Benieuwd wat deze cijfers voor uw eigen adres betekenen?",
+  },
+  {
     slug: "q2-2026",
     periodeLabel: "Q2 2026",
     titel: "Marktupdate Q2 2026: meer aanbod en toch weer harder overboden",
