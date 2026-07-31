@@ -10,6 +10,7 @@ import { Logo } from "@/components/ui/Logo";
 import SiteNavLink from "@/components/layout/SiteNavLink";
 import VoorbeeldrapportSlider from "@/components/VoorbeeldrapportSlider";
 import type { AddressMeta } from "@/types/report";
+import { MARKTUPDATES } from "@/lib/content/marktupdates";
 import {
   ChevronDownIcon,
   StoreIcon,
@@ -20,6 +21,7 @@ import {
   TrendingUpIcon,
   AlertTriangleIcon,
   BoltIcon,
+  ArrowRightIcon,
 } from "@/components/report/icons";
 
 // Vierde homepage-richting: indigo "SaaS"-uitstraling, gekozen na een reeks
@@ -549,6 +551,59 @@ export default function HomePage() {
           bronnen
         </Container>
       </section>
+
+      {/* Marktupdate-uitlichting — pakt automatisch de nieuwste update uit
+          MARKTUPDATES (laatste item in de chronologische array), dus na elke
+          nieuwe kwartaalupdate verschijnt hier vanzelf de juiste zonder
+          handmatige aanpassing. Zie de visualize-afstemming hierover. */}
+      {(() => {
+        const laatsteUpdate = MARKTUPDATES[MARKTUPDATES.length - 1];
+        const nadrukStat = laatsteUpdate.landelijkeCijfers.stats.find((s) => s.nadruk) ?? laatsteUpdate.landelijkeCijfers.stats[0];
+        return (
+          <section className="border-t border-ink/10 bg-parchment">
+            <Container className="py-14">
+              <Link
+                href={`/marktupdates/${laatsteUpdate.slug}`}
+                className="block rounded-2xl bg-white p-6 shadow-sm transition-shadow hover:shadow-lg sm:p-7"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#EEF0FF] text-accent">
+                    <TrendingUpIcon className="h-3.5 w-3.5" />
+                  </span>
+                  <span className="text-[10.5px] font-bold uppercase tracking-wider3 text-accent">
+                    Marktupdate · {laatsteUpdate.periodeLabel}
+                  </span>
+                </div>
+                <p className="mt-2.5 font-display text-lg font-bold text-ink sm:text-xl">{laatsteUpdate.titel}</p>
+                <p className="mt-1.5 max-w-lg text-[13.5px] leading-relaxed text-ink/60">{laatsteUpdate.samenvatting}</p>
+
+                <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {laatsteUpdate.landelijkeCijfers.stats.map((stat) => (
+                    <div
+                      key={stat.label}
+                      className={`rounded-[10px] p-3 text-center ${stat === nadrukStat ? "bg-[#EEF0FF]" : "bg-parchment"}`}
+                    >
+                      <p className={`text-[15px] font-extrabold ${stat === nadrukStat ? "text-accent" : "text-ink"}`}>
+                        {stat.waarde}
+                      </p>
+                      <p className={`mt-0.5 text-[9px] ${stat === nadrukStat ? "text-accent" : "text-ink/50"}`}>
+                        {stat.label}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-4 flex items-center justify-between border-t border-ink/[0.06] pt-3.5">
+                  <span className="text-xs text-ink/45">Elk kwartaal nieuwe cijfers</span>
+                  <span className="inline-flex items-center gap-1 text-sm font-semibold text-accent">
+                    Lees de marktupdate <ArrowRightIcon className="h-3.5 w-3.5" />
+                  </span>
+                </div>
+              </Link>
+            </Container>
+          </section>
+        );
+      })()}
 
       {/* Veelgestelde vragen — als <details>/<summary>: werkt zonder client-
           side state, blijft toegankelijk, en toont meteen meer inhoud zonder
