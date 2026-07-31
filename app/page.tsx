@@ -10,7 +10,6 @@ import { Logo } from "@/components/ui/Logo";
 import SiteNavLink from "@/components/layout/SiteNavLink";
 import VoorbeeldrapportSlider from "@/components/VoorbeeldrapportSlider";
 import type { AddressMeta } from "@/types/report";
-import { MARKTUPDATES } from "@/lib/content/marktupdates";
 import {
   ChevronDownIcon,
   StoreIcon,
@@ -21,7 +20,9 @@ import {
   TrendingUpIcon,
   AlertTriangleIcon,
   BoltIcon,
-  ArrowRightIcon,
+  MapPinIcon,
+  FileCheckIcon,
+  CheckIcon,
 } from "@/components/report/icons";
 
 // Vierde homepage-richting: indigo "SaaS"-uitstraling, gekozen na een reeks
@@ -44,16 +45,29 @@ import {
 // Waarde, Verkopen, Object, Energie, Fundering, Buurt, Samenvatting, zie
 // ReportView.tsx), waarvan hier 3 met naam genoemd worden, dus 5 over.
 const STAPPEN = [
-  { titel: "Vul een adres in", tekst: "Typ een adres, of kies er een uit de suggesties.", kleur: "bg-accent" },
   {
-    titel: "Bekijk de gratis preview",
-    tekst: "Bouwjaar, energielabel, oppervlakte en een eerste inschatting van het funderingsrisico, gratis en zonder account.",
-    kleur: "bg-[#8B85EE]",
+    titel: "Vul een adres in",
+    tekst: "Typ een adres, of kies er een uit de suggesties.",
+    icoon: MapPinIcon,
+    badgeBg: "bg-[#EEF0FF]",
+    badgeKleur: "text-accent",
+    labelKleur: "text-accent",
   },
   {
-    titel: "Ontgrendel het volledige rapport",
-    tekst: "Waarde-indicatie, buurtverkopen, funderingsrisico en nog 5 andere onderdelen, eenmalig en zonder abonnement.",
-    kleur: "bg-ink",
+    titel: "Bekijk de gratis preview",
+    tekst: "Bouwjaar, energielabel, oppervlakte en een indicatie van het funderingsrisico, gratis en zonder account.",
+    icoon: FileCheckIcon,
+    badgeBg: "bg-[#F1EFFD]",
+    badgeKleur: "text-[#8B85EE]",
+    labelKleur: "text-[#8B85EE]",
+  },
+  {
+    titel: "Ontgrendel het rapport",
+    tekst: `Eenmalig ${RAPPORT_PRIJS}, zonder abonnement.`,
+    icoon: CheckIcon,
+    badgeBg: "bg-[#EAF3DE]",
+    badgeKleur: "text-[#3B6D11]",
+    labelKleur: "text-[#3B6D11]",
   },
 ];
 
@@ -517,19 +531,36 @@ export default function HomePage() {
               met 3 stappen), en hoort dus ook semantisch als kop gemarkeerd
               te zijn i.p.v. als gewone tekst. Zelfde reden bij "Veelgestelde
               vragen" verderop. */}
-          <h2 className="text-[11px] font-bold uppercase tracking-wider3 text-ink/45">Zo werkt het</h2>
-          <div className="mt-10 grid gap-10 sm:grid-cols-3 sm:gap-8">
-            {STAPPEN.map((s, i) => (
-              <div key={s.titel}>
-                <span
-                  className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-white ${s.kleur}`}
-                >
-                  {i + 1}
-                </span>
-                <h3 className="mt-4 font-semibold text-ink">{s.titel}</h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-ink/55">{s.tekst}</p>
-              </div>
-            ))}
+          <h2 className="text-center text-[11px] font-bold uppercase tracking-wider3 text-ink/45">Zo werkt het</h2>
+          <div className="relative mx-auto mt-8 max-w-xl">
+            {/* Verbindingslijn achter de drie stap-badges, kleurverloop van
+                indigo (stap 1) naar groen (stap 3, "voltooid/ontgrendeld") --
+                zie de visualize-afstemming hierover. */}
+            <div className="absolute bottom-6 left-6 top-6 w-0.5 bg-gradient-to-b from-accent via-[#8B85EE] to-[#3B6D11] opacity-20" />
+            <div className="flex flex-col gap-4">
+              {STAPPEN.map((s, i) => {
+                const Icon = s.icoon;
+                const laatste = i === STAPPEN.length - 1;
+                return (
+                  <div key={s.titel} className={`relative flex items-start gap-4 ${laatste ? "" : "pb-0"}`}>
+                    <span
+                      className={`relative z-10 flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full ${s.badgeBg} ring-4 ring-white`}
+                    >
+                      <Icon className={`h-5 w-5 ${s.badgeKleur}`} />
+                    </span>
+                    <div className="flex flex-1 items-center justify-between gap-3 rounded-2xl bg-parchment p-4">
+                      <div>
+                        <p className={`text-[10.5px] font-bold uppercase tracking-wider3 ${s.labelKleur}`}>
+                          Stap {i + 1}
+                        </p>
+                        <h3 className="mt-0.5 text-[14.5px] font-extrabold text-ink">{s.titel}</h3>
+                        <p className="mt-0.5 text-xs leading-relaxed text-ink/55">{s.tekst}</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </Container>
       </section>
@@ -551,59 +582,6 @@ export default function HomePage() {
           bronnen
         </Container>
       </section>
-
-      {/* Marktupdate-uitlichting — pakt automatisch de nieuwste update uit
-          MARKTUPDATES (laatste item in de chronologische array), dus na elke
-          nieuwe kwartaalupdate verschijnt hier vanzelf de juiste zonder
-          handmatige aanpassing. Zie de visualize-afstemming hierover. */}
-      {(() => {
-        const laatsteUpdate = MARKTUPDATES[MARKTUPDATES.length - 1];
-        const nadrukStat = laatsteUpdate.landelijkeCijfers.stats.find((s) => s.nadruk) ?? laatsteUpdate.landelijkeCijfers.stats[0];
-        return (
-          <section className="border-t border-ink/10 bg-parchment">
-            <Container className="py-14">
-              <Link
-                href={`/marktupdates/${laatsteUpdate.slug}`}
-                className="block rounded-2xl bg-white p-6 shadow-sm transition-shadow hover:shadow-lg sm:p-7"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#EEF0FF] text-accent">
-                    <TrendingUpIcon className="h-3.5 w-3.5" />
-                  </span>
-                  <span className="text-[10.5px] font-bold uppercase tracking-wider3 text-accent">
-                    Marktupdate · {laatsteUpdate.periodeLabel}
-                  </span>
-                </div>
-                <p className="mt-2.5 font-display text-lg font-bold text-ink sm:text-xl">{laatsteUpdate.titel}</p>
-                <p className="mt-1.5 max-w-lg text-[13.5px] leading-relaxed text-ink/60">{laatsteUpdate.samenvatting}</p>
-
-                <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                  {laatsteUpdate.landelijkeCijfers.stats.map((stat) => (
-                    <div
-                      key={stat.label}
-                      className={`rounded-[10px] p-3 text-center ${stat === nadrukStat ? "bg-[#EEF0FF]" : "bg-parchment"}`}
-                    >
-                      <p className={`text-[15px] font-extrabold ${stat === nadrukStat ? "text-accent" : "text-ink"}`}>
-                        {stat.waarde}
-                      </p>
-                      <p className={`mt-0.5 text-[9px] ${stat === nadrukStat ? "text-accent" : "text-ink/50"}`}>
-                        {stat.label}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-4 flex items-center justify-between border-t border-ink/[0.06] pt-3.5">
-                  <span className="text-xs text-ink/45">Elk kwartaal nieuwe cijfers</span>
-                  <span className="inline-flex items-center gap-1 text-sm font-semibold text-accent">
-                    Lees de marktupdate <ArrowRightIcon className="h-3.5 w-3.5" />
-                  </span>
-                </div>
-              </Link>
-            </Container>
-          </section>
-        );
-      })()}
 
       {/* Veelgestelde vragen — als <details>/<summary>: werkt zonder client-
           side state, blijft toegankelijk, en toont meteen meer inhoud zonder
