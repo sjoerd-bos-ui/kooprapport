@@ -11,9 +11,10 @@ import AbonneerFormulier from "@/components/marktupdates/AbonneerFormulier";
 // -----------------------------------------------------------------------------
 // Marktupdates-hub: overzicht van alle kwartaalupdates, nieuwste eerst.
 // Zelfde opzet als /koopgids (statische pagina, eigen metadata + canonical,
-// opgenomen in app/sitemap.ts). Bewust een simpele lijst i.p.v. een
-// uitgelicht-artikel-plus-grid zoals de Koopgids: hier is er altijd maar één
-// "actuele" update, de rest is archief.
+// opgenomen in app/sitemap.ts). Net als de Koopgids-hub: de nieuwste update
+// krijgt een eigen, uitgelichte kaart (met statjes, zelfde stijl als de
+// uitlichting op de homepage), de rest verschijnt eronder als compacte,
+// duidelijk "archief"-ogende lijst.
 // -----------------------------------------------------------------------------
 
 const CANONICAL_PATH = "/marktupdates";
@@ -53,7 +54,9 @@ const breadcrumbJsonLd = {
 };
 
 export default function MarktupdatesPagina() {
-  const updates = [...MARKTUPDATES].reverse(); // nieuwste eerst
+  const [nieuwste, ...eerdereOplopend] = [...MARKTUPDATES].reverse(); // nieuwste eerst
+  const nadrukStat =
+    nieuwste.landelijkeCijfers.stats.find((s) => s.nadruk) ?? nieuwste.landelijkeCijfers.stats[0];
 
   return (
     <>
@@ -81,29 +84,76 @@ export default function MarktupdatesPagina() {
             <AbonneerFormulier variant="compact" />
           </div>
 
-          <div className="mt-6 flex flex-col gap-4">
-            {updates.map((update) => (
-              <Link
-                key={update.slug}
-                href={`/marktupdates/${update.slug}`}
-                className="flex flex-col gap-4 rounded-2xl border border-ink/10 bg-white p-6 shadow-sm transition-shadow hover:shadow-lg sm:flex-row sm:items-center"
-              >
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#EEF0FF] text-accent">
-                  <TrendingUpIcon className="h-5 w-5" />
-                </span>
-                <div className="flex-1">
-                  <p className="text-[10.5px] font-bold uppercase tracking-wider3 text-accent">
-                    {update.periodeLabel} · {update.gepubliceerd}
+          {/* Uitgelicht: de nieuwste update, met statjes -- zelfde
+              behandeling als de uitlichting op de homepage. */}
+          <Link
+            href={`/marktupdates/${nieuwste.slug}`}
+            className="mt-6 block rounded-2xl bg-white p-6 shadow-sm transition-shadow hover:shadow-lg sm:p-7"
+          >
+            <div className="flex items-center gap-2">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#EEF0FF] text-accent">
+                <TrendingUpIcon className="h-3.5 w-3.5" />
+              </span>
+              <span className="text-[10.5px] font-bold uppercase tracking-wider3 text-accent">
+                Nieuwste update · {nieuwste.periodeLabel}
+              </span>
+            </div>
+            <p className="mt-2.5 font-display text-lg font-bold text-ink sm:text-xl">{nieuwste.titel}</p>
+            <p className="mt-1.5 max-w-lg text-[13.5px] leading-relaxed text-ink/60">{nieuwste.samenvatting}</p>
+
+            <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {nieuwste.landelijkeCijfers.stats.map((stat) => (
+                <div
+                  key={stat.label}
+                  className={`rounded-[10px] p-3 text-center ${stat === nadrukStat ? "bg-[#EEF0FF]" : "bg-parchment"}`}
+                >
+                  <p className={`text-[15px] font-extrabold ${stat === nadrukStat ? "text-accent" : "text-ink"}`}>
+                    {stat.waarde}
                   </p>
-                  <p className="mt-1.5 font-display text-lg font-bold text-ink">{update.titel}</p>
-                  <p className="mt-1.5 max-w-lg text-sm leading-relaxed text-ink/60">{update.samenvatting}</p>
+                  <p className={`mt-0.5 text-[9px] ${stat === nadrukStat ? "text-accent" : "text-ink/50"}`}>
+                    {stat.label}
+                  </p>
                 </div>
-                <span className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-accent">
-                  Lees meer <ArrowRightIcon className="h-3.5 w-3.5" />
-                </span>
-              </Link>
-            ))}
-          </div>
+              ))}
+            </div>
+
+            <div className="mt-4 flex items-center justify-between border-t border-ink/[0.06] pt-3.5">
+              <span className="text-xs text-ink/45">{nieuwste.gepubliceerd}</span>
+              <span className="inline-flex items-center gap-1 text-sm font-semibold text-accent">
+                Lees de marktupdate <ArrowRightIcon className="h-3.5 w-3.5" />
+              </span>
+            </div>
+          </Link>
+
+          {/* Eerdere updates: bewust compacter en zonder statjes, zodat het
+              verschil met de uitgelichte, actuele update duidelijk blijft. */}
+          {eerdereOplopend.length > 0 && (
+            <>
+              <p className="mb-3 mt-8 text-[11px] font-bold uppercase tracking-wider3 text-ink/40">
+                Eerdere updates
+              </p>
+              <div className="flex flex-col gap-3">
+                {eerdereOplopend.map((update) => (
+                  <Link
+                    key={update.slug}
+                    href={`/marktupdates/${update.slug}`}
+                    className="flex items-center gap-4 rounded-2xl border border-ink/10 bg-white p-4 transition-shadow hover:shadow-lg sm:p-5"
+                  >
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-parchment text-ink/50">
+                      <TrendingUpIcon className="h-4 w-4" />
+                    </span>
+                    <div className="flex-1">
+                      <p className="text-[10px] font-bold uppercase tracking-wider3 text-ink/40">
+                        {update.periodeLabel} · {update.gepubliceerd}
+                      </p>
+                      <p className="mt-1 text-sm font-bold text-ink">{update.titel}</p>
+                    </div>
+                    <ArrowRightIcon className="h-3.5 w-3.5 shrink-0 text-ink/30" />
+                  </Link>
+                ))}
+              </div>
+            </>
+          )}
         </Container>
       </main>
       <SiteFooter />
