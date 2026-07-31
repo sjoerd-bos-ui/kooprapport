@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { APP_BASE_URL } from "@/lib/config/payment";
 import { ARTIKELEN } from "@/lib/content/koopgids";
+import { MARKTUPDATES } from "@/lib/content/marktupdates";
 
 // Bewust ALLEEN de homepage. Rapportpagina's (/rapport/[slug]) bestaan pas
 // zodra iemand daadwerkelijk een adres opzoekt — er is geen database met
@@ -70,5 +71,21 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "monthly",
       priority: 0.5,
     },
+    // Marktupdates: zelfde categorie qua SEO-behandeling, maar wel elk
+    // kwartaal een nieuwe URL (zie ARTIKELEN.map hierboven voor het
+    // vergelijkbare patroon bij de Koopgids). changeFrequency hoger dan de
+    // vaste pagina's omdat er elk kwartaal daadwerkelijk iets verandert.
+    {
+      url: `${APP_BASE_URL}/marktupdates`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.6,
+    },
+    ...MARKTUPDATES.map((update) => ({
+      url: `${APP_BASE_URL}/marktupdates/${update.slug}`,
+      lastModified: new Date(),
+      changeFrequency: "yearly" as const,
+      priority: 0.5,
+    })),
   ];
 }

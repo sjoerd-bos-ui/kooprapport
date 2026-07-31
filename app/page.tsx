@@ -227,6 +227,7 @@ export default function HomePage() {
           <div className="flex items-center gap-6">
             <SiteNavLink href="/koopgids" label="Koopgids" />
             <SiteNavLink href="/werkwijze" label="Werkwijze" />
+            <SiteNavLink href="/marktupdates" label="Marktupdates" />
             <a
               href="#zoeken"
               className="rounded-full bg-accent px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-accent-dark"
