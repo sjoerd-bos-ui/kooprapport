@@ -373,6 +373,11 @@ export default function HomePage() {
                 voorbeeldrapport (lib/pdf/voorbeeldRapport.ts, Amsterdam
                 Rijnkanaalkade 1) zodat dit en de daadwerkelijke voorbeeld-PDF
                 elkaar niet tegenspreken.
+                Twee losse, licht gekantelde badges (plaatsnaam + "direct
+                beschikbaar") toegevoegd na feedback dat dit kaartje alleen
+                wat leeg/statisch oogde — bewust een middenweg tussen "geen
+                badges" en de eerdere, drukkere versie met 3 badges + sterkere
+                kanteling, zie de visualize-afstemming hierover.
                 Alleen vanaf lg zichtbaar (zelfde reden als voorheen: op
                 mobiel voegde dit decoratieve blok vooral drukte toe). */}
             <div aria-hidden="true" className="relative mx-auto hidden h-[320px] w-full max-w-[420px] items-center justify-center lg:flex">
@@ -380,7 +385,16 @@ export default function HomePage() {
                 10 pagina&apos;s, écht volledig
               </span>
 
-              <div className="w-[280px] -rotate-2 overflow-hidden rounded-2xl border border-line bg-white shadow-overlay">
+              <span className="absolute left-6 top-14 -rotate-3 rounded-full border border-line bg-white px-2.5 py-1.5 text-[10px] font-bold text-ink shadow-flat">
+                <MapPinIcon className="mr-1 inline h-3 w-3 text-accent-dark" />
+                Amsterdam
+              </span>
+              <span className="absolute bottom-14 right-2 rotate-3 rounded-full bg-[#EAF3DE] px-2.5 py-1.5 text-[10px] font-bold text-[#173404] shadow-flat">
+                <CheckIcon className="mr-1 inline h-3 w-3 text-[#3B6D11]" />
+                Direct beschikbaar
+              </span>
+
+              <div className="w-[280px] -rotate-[1.5deg] overflow-hidden rounded-2xl border border-line bg-white shadow-overlay">
                 <div className="flex h-5 items-center gap-1 border-b border-line bg-parchment px-2.5">
                   <span className="h-1.5 w-1.5 rounded-full bg-line" />
                   <span className="h-1.5 w-1.5 rounded-full bg-line" />
