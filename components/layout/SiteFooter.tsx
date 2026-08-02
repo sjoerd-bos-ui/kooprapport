@@ -1,6 +1,5 @@
 import Link from "next/link";
 import Container from "@/components/ui/Container";
-import { isVolledigLive } from "@/lib/config/launchStatus";
 
 // Exact dezelfde lichte footer als op de homepage — geen donker bookend-paneel
 // meer, zelfde feitelijke disclaimer, alleen in het lichte palet. "Privacy",
@@ -8,12 +7,16 @@ import { isVolledigLive } from "@/lib/config/launchStatus";
 // dode tekst zolang die pagina's niet bestonden) — alleen KvK-nummer blijft
 // bewust platte tekst (staat al wel op /contact en /privacy).
 //
-// De mockdata-disclaimer wordt nu bepaald door isVolledigLive() i.p.v.
-// hardcoded tekst — zie lib/config/launchStatus.ts: die tekst mag na
-// livegang niet blijven staan, want dan zou hij zelf een onjuiste bewering
-// worden.
+// De "Mockdata ter illustratie"-disclaimer (voorheen automatisch bepaald via
+// isVolledigLive(), zie lib/config/launchStatus.ts) is op uitdrukkelijk
+// verzoek verwijderd: alle databronnen zijn inmiddels gekoppeld. Let op: de
+// isVolledigLive()-check zelf keek naar zes Vercel-omgevingsvariabelen
+// (ENERGIELABEL_MODE/ALTUM_MODE/BUURTVERKOPEN_MODE/VERDUURZAMING_MODE/
+// BETAAL_MODE=live + ALTUM_SANDBOX niet "true") — die tekst zou dus vanzelf
+// al verdwenen zijn zodra die zes kloppen. Nu die aanname hier hardcoded is
+// i.p.v. dynamisch gecontroleerd, verschijnt er geen waarschuwing meer als
+// een van die bronnen ooit weer terugvalt op mockdata.
 export default function SiteFooter() {
-  const volledigLive = isVolledigLive();
   return (
     <footer className="mt-20 border-t border-ink/10 bg-white py-10">
       <Container className="flex flex-col justify-between gap-3 text-xs sm:flex-row sm:items-center">
@@ -43,9 +46,6 @@ export default function SiteFooter() {
             Contact
           </Link>
         </div>
-        {!volledigLive && (
-          <span className="text-ink/70">Mockdata ter illustratie. Nog geen live databronnen gekoppeld.</span>
-        )}
       </Container>
     </footer>
   );

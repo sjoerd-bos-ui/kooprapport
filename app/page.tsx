@@ -4,7 +4,6 @@ import Container from "@/components/ui/Container";
 import AddressSearchBar from "@/components/address/AddressSearchBar";
 import { RAPPORT_PRIJS } from "@/lib/utils/prijs";
 import { APP_BASE_URL } from "@/lib/config/payment";
-import { isVolledigLive } from "@/lib/config/launchStatus";
 import { buildReportHref, slugify } from "@/lib/utils/slug";
 import { Logo } from "@/components/ui/Logo";
 import SiteNavLink from "@/components/layout/SiteNavLink";
@@ -184,7 +183,6 @@ const VOORBEELD_ADRES: AddressMeta = {
 };
 
 export default function HomePage() {
-  const volledigLive = isVolledigLive();
 
   // JSON-LD — rechtstreeks uit bestaande, op de pagina zichtbare content
   // opgebouwd (VEELGESTELDE_VRAGEN hierboven, dezelfde RAPPORT_PRIJS als de
@@ -553,12 +551,14 @@ export default function HomePage() {
         </Container>
       </section>
 
-      {/* Lichte homepage-footer i.p.v. de zwarte SiteFooter — zelfde
-          feitelijke disclaimer over mockdata, alleen in het lichte palet.
-          "Privacy", "Voorwaarden" en "Contact" linken nu naar de echte
-          pagina's. KvK-nummer blijft platte tekst (staat al op /contact).
-          De mockdata-disclaimer wordt nu bepaald door isVolledigLive()
-          i.p.v. hardcoded tekst — zie lib/config/launchStatus.ts. */}
+      {/* Lichte homepage-footer i.p.v. de zwarte SiteFooter, alleen in het
+          lichte palet. "Privacy", "Voorwaarden" en "Contact" linken nu naar
+          de echte pagina's. KvK-nummer blijft platte tekst (staat al op
+          /contact).
+          De "Mockdata ter illustratie"-disclaimer (voorheen automatisch via
+          isVolledigLive(), zie lib/config/launchStatus.ts en dezelfde
+          toelichting in SiteFooter.tsx) is op uitdrukkelijk verzoek
+          verwijderd: alle databronnen zijn inmiddels gekoppeld. */}
       <footer className="border-t border-ink/10 bg-white py-10">
         <Container className="flex flex-col items-start gap-4 text-xs sm:flex-row sm:items-center sm:justify-between">
           <span className="font-display font-semibold text-ink">© {new Date().getFullYear()} Kooprapport</span>
@@ -595,9 +595,6 @@ export default function HomePage() {
               KvK-nummer
             </Link>
           </div>
-          {!volledigLive && (
-            <span className="text-ink/70">Mockdata ter illustratie. Nog geen live databronnen gekoppeld.</span>
-          )}
         </Container>
       </footer>
     </main>
