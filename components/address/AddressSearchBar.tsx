@@ -144,7 +144,7 @@ export default function AddressSearchBar() {
             onKeyDown={handleKeyDown}
             onFocus={() => setOpen(true)}
             onBlur={() => setTimeout(() => setOpen(false), 150)}
-            placeholder="Typ een postcode, straat of plaats"
+            placeholder="Typ een adres..."
             // BUGFIX (mobiel): een flex-item met alleen "flex-1" krijgt van
             // de browser standaard nog "min-width: auto" mee, wat voor een
             // <input> neerkomt op een ingebouwde minimumbreedte die niet
