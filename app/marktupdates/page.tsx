@@ -7,6 +7,7 @@ import { ArrowRightIcon, TrendingUpIcon } from "@/components/report/icons";
 import { MARKTUPDATES } from "@/lib/content/marktupdates";
 import { APP_BASE_URL } from "@/lib/config/payment";
 import AbonneerFormulier from "@/components/marktupdates/AbonneerFormulier";
+import AddressSearchBar from "@/components/address/AddressSearchBar";
 
 // -----------------------------------------------------------------------------
 // Marktupdates-hub: overzicht van alle kwartaalupdates, nieuwste eerst.
@@ -154,6 +155,18 @@ export default function MarktupdatesPagina() {
               </div>
             </>
           )}
+
+          {/* CTA -- deze hub had alleen het nieuwsbrief-formulier bovenaan,
+              geen directe manier om het product zelf te proberen. Marktcijfers
+              op landelijk niveau zijn interessant, maar het eigen adres is
+              waar iemand hier waarschijnlijk daarna aan denkt. */}
+          <div className="mt-8 rounded-2xl bg-[#EEF0FF] p-6">
+            <p className="text-sm font-bold text-ink">En hoe zit het met uw eigen adres?</p>
+            <p className="mt-1 text-xs text-ink/55">Typ een adres en bekijk in enkele seconden een gratis preview.</p>
+            <div className="mt-4">
+              <AddressSearchBar />
+            </div>
+          </div>
         </Container>
       </main>
       <SiteFooter />

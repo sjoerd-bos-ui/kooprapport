@@ -3,6 +3,7 @@ import Link from "next/link";
 import SiteHeader from "@/components/layout/SiteHeader";
 import SiteFooter from "@/components/layout/SiteFooter";
 import Container from "@/components/ui/Container";
+import AddressSearchBar from "@/components/address/AddressSearchBar";
 import { ArrowRightIcon } from "@/components/report/icons";
 import { WERKWIJZE_ONDERDELEN } from "@/lib/content/werkwijze";
 import { KLEUR_STIJL } from "@/lib/content/koopgids";
@@ -39,8 +40,21 @@ export default function WerkwijzePagina() {
   return (
     <>
       <SiteHeader />
-      <main>
-        <Container width="narrow" className="py-12 sm:py-16">
+      {/* Zelfde parchment-canvas + zachte kleurvlekken als de homepage
+          (na de "hele site voelt te wit"-ronde) i.p.v. het eerdere vlakke
+          wit -- deze pagina was de enige die nog niet meegenomen was. */}
+      <main className="relative overflow-hidden bg-parchment">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -left-16 -top-10 h-64 w-64 rounded-full"
+          style={{ background: "radial-gradient(circle, #4F46E524 0%, rgba(79,70,229,0) 70%)" }}
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-20 top-[380px] h-72 w-72 rounded-full"
+          style={{ background: "radial-gradient(circle, #8B85EE20 0%, rgba(139,133,238,0) 70%)" }}
+        />
+        <Container width="narrow" className="relative py-12 sm:py-16">
           <span className="inline-flex items-center rounded-full bg-[#EEF0FF] px-3.5 py-1.5 text-xs font-bold text-accent">
             Werkwijze
           </span>
@@ -89,6 +103,18 @@ export default function WerkwijzePagina() {
               En weten we iets niet zeker over uw adres? Dan zeggen we gewoon eerlijk &ldquo;niet beschikbaar&rdquo;.
               We verzinnen nooit een getal om een rapport voller te laten lijken.
             </p>
+          </div>
+
+          {/* CTA -- deze pagina eindigde eerder gewoon, zonder vervolgstap.
+              Precies op het moment dat iemand net overtuigd is hoe alles tot
+              stand komt, hoort er een directe manier te zijn om het te
+              proberen, i.p.v. terug naar de header of de homepage. */}
+          <div className="mt-5 rounded-2xl bg-[#EEF0FF] p-6">
+            <p className="text-sm font-bold text-ink">Benieuwd wat dit voor uw eigen adres oplevert?</p>
+            <p className="mt-1 text-xs text-ink/55">Typ een adres en bekijk in enkele seconden een gratis preview.</p>
+            <div className="mt-4">
+              <AddressSearchBar />
+            </div>
           </div>
         </Container>
       </main>

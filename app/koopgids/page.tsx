@@ -3,6 +3,7 @@ import Link from "next/link";
 import SiteHeader from "@/components/layout/SiteHeader";
 import SiteFooter from "@/components/layout/SiteFooter";
 import Container from "@/components/ui/Container";
+import AddressSearchBar from "@/components/address/AddressSearchBar";
 import { ArrowRightIcon } from "@/components/report/icons";
 import { ARTIKELEN, KLEUR_STIJL } from "@/lib/content/koopgids";
 import { APP_BASE_URL } from "@/lib/config/payment";
@@ -155,6 +156,19 @@ export default function KoopgidsPage() {
                 </Link>
               );
             })}
+          </div>
+
+          {/* CTA -- ontbrak hier eerder helemaal: iemand die via een
+              Koopgids-artikel of zoekmachine op deze hub landde, moest terug
+              naar de header of de homepage om daadwerkelijk iets te
+              proberen. Zelfde echte, werkende AddressSearchBar en
+              kaartstijl als onderaan elk los Koopgids-artikel. */}
+          <div className="mt-10 rounded-2xl bg-[#EEF0FF] p-6">
+            <p className="text-sm font-bold text-ink">Liever meteen zelf kijken?</p>
+            <p className="mt-1 text-xs text-ink/55">Typ een adres en bekijk in enkele seconden een gratis preview.</p>
+            <div className="mt-4">
+              <AddressSearchBar />
+            </div>
           </div>
         </Container>
       </main>
