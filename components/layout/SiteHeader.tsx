@@ -2,6 +2,7 @@ import Link from "next/link";
 import Container from "@/components/ui/Container";
 import { Logo } from "@/components/ui/Logo";
 import SiteNavLink from "@/components/layout/SiteNavLink";
+import MobileNavMenu from "@/components/layout/MobileNavMenu";
 
 // Exact dezelfde lichte masthead als de lokale header op de homepage
 // (zelfde bg-white, border-b border-ink/10, wordmark-formaat en CTA-stijl)
@@ -15,13 +16,16 @@ import SiteNavLink from "@/components/layout/SiteNavLink";
 //
 // BUGFIX: op smalle schermen (mobiel) verdrongen de drie tekstlinks + de
 // CTA-knop elkaar, met "Marktupdates" dat half buiten beeld viel. De links
-// zijn daarom vanaf nu verborgen onder de sm-breakpoint (`hidden sm:flex`) —
-// op mobiel blijven alleen het wordmark en de CTA-knop over, precies zoals
-// de rest van deze site al mobiel-minimalistisch is opgezet (zie ook de
-// eerdere "mobiele check"-ronde in dit project). Geen hamburgermenu: de
-// koopgids/werkwijze/marktupdates-secties zijn allemaal ook vanaf de
-// homepage/footer bereikbaar, dus een volwaardig mobiel menu voegt hier
-// weinig toe tegenover de complexiteit ervan.
+// zijn daarom verborgen onder de sm-breakpoint (`hidden sm:flex`).
+//
+// CORRECTIE op de eerdere aanname hieronder: er werd destijds vanuit gegaan
+// dat de koopgids/werkwijze/marktupdates-secties op mobiel via de footer
+// bereikbaar zouden blijven, en dat een hamburgermenu daarom overbodig was.
+// Die footer linkte in werkelijkheid nooit naar die pagina's (alleen naar
+// Privacy/Voorwaarden/Contact) -- op mobiel waren deze secties dus nergens
+// vandaan bereikbaar. MobileNavMenu (hieronder) lost dat op met een
+// standaard hamburgermenu, alleen zichtbaar onder sm. De footer-links zijn
+// via SiteFooter.tsx alsnog toegevoegd als extra pad.
 export default function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-ink/10 bg-white">
@@ -35,6 +39,7 @@ export default function SiteHeader() {
             <SiteNavLink href="/werkwijze" label="Werkwijze" />
             <SiteNavLink href="/marktupdates" label="Marktupdates" />
           </div>
+          <MobileNavMenu />
           <Link
             href="/"
             className="rounded-full bg-accent px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-accent-dark"

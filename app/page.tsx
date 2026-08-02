@@ -8,6 +8,7 @@ import { isVolledigLive } from "@/lib/config/launchStatus";
 import { buildReportHref, slugify } from "@/lib/utils/slug";
 import { Logo } from "@/components/ui/Logo";
 import SiteNavLink from "@/components/layout/SiteNavLink";
+import MobileNavMenu from "@/components/layout/MobileNavMenu";
 import VoorbeeldrapportSlider from "@/components/VoorbeeldrapportSlider";
 import type { AddressMeta } from "@/types/report";
 import {
@@ -269,12 +270,16 @@ export default function HomePage() {
           <div className="flex items-center gap-6">
             {/* Zelfde mobiele fix als SiteHeader.tsx: op smalle schermen
                 verdrongen deze drie links + de CTA elkaar, met
-                "Marktupdates" half buiten beeld. */}
+                "Marktupdates" half buiten beeld. MobileNavMenu (het
+                hamburgermenu) vangt dat onder sm nu op -- zie de toelichting
+                in dat bestand voor waarom dat nodig is (de footer linkte
+                niet naar deze pagina's). */}
             <div className="hidden items-center gap-6 sm:flex">
               <SiteNavLink href="/koopgids" label="Koopgids" />
               <SiteNavLink href="/werkwijze" label="Werkwijze" />
               <SiteNavLink href="/marktupdates" label="Marktupdates" />
             </div>
+            <MobileNavMenu />
             <a
               href="#zoeken"
               className="rounded-full bg-accent px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-accent-dark"
@@ -546,6 +551,19 @@ export default function HomePage() {
           <div className="flex flex-wrap gap-4 text-ink/70">
             <Link href={buildReportHref(VOORBEELD_ADRES)} className="underline underline-offset-2 hover:text-ink">
               Voorbeeldrapport
+            </Link>
+            {/* Koopgids/Werkwijze/Marktupdates toegevoegd -- zelfde reden
+                als bij SiteFooter.tsx: dit zijn de eerste échte footer-links
+                naar deze pagina's, nodig als extra pad naast het nieuwe
+                mobiele hamburgermenu (MobileNavMenu). */}
+            <Link href="/koopgids" className="underline underline-offset-2 hover:text-ink">
+              Koopgids
+            </Link>
+            <Link href="/werkwijze" className="underline underline-offset-2 hover:text-ink">
+              Werkwijze
+            </Link>
+            <Link href="/marktupdates" className="underline underline-offset-2 hover:text-ink">
+              Marktupdates
             </Link>
             <Link href="/privacy" className="underline underline-offset-2 hover:text-ink">
               Privacy

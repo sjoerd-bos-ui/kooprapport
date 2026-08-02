@@ -18,7 +18,21 @@ export default function SiteFooter() {
     <footer className="mt-20 border-t border-ink/10 bg-white py-10">
       <Container className="flex flex-col justify-between gap-3 text-xs sm:flex-row sm:items-center">
         <span className="font-display font-semibold text-ink">© {new Date().getFullYear()} Kooprapport</span>
-        <div className="flex gap-4">
+        <div className="flex flex-wrap gap-4">
+          {/* Koopgids/Werkwijze/Marktupdates toegevoegd -- ontbraken hier
+              eerder, terwijl het mobiele hamburgermenu (MobileNavMenu) er
+              destijds juist bewust NIET kwam met als reden dat deze
+              secties "ook via de footer" bereikbaar zouden zijn. Dat klopte
+              niet: dit zijn de eerste échte links ernaartoe hier. */}
+          <Link href="/koopgids" className="text-ink/70 underline underline-offset-2 hover:text-ink">
+            Koopgids
+          </Link>
+          <Link href="/werkwijze" className="text-ink/70 underline underline-offset-2 hover:text-ink">
+            Werkwijze
+          </Link>
+          <Link href="/marktupdates" className="text-ink/70 underline underline-offset-2 hover:text-ink">
+            Marktupdates
+          </Link>
           <Link href="/privacy" className="text-ink/70 underline underline-offset-2 hover:text-ink">
             Privacy
           </Link>
