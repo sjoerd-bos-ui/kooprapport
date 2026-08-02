@@ -44,7 +44,7 @@ import {
 const STAPPEN = [
   {
     titel: "Vul een adres in",
-    tekst: "Typ een adres, of kies er een uit de suggesties.",
+    tekst: "Typ een adres of kies er een uit de suggesties.",
     icoon: MapPinIcon,
     badgeBg: "bg-[#EEF0FF]",
     badgeKleur: "text-accent",
@@ -96,7 +96,7 @@ const VEELGESTELDE_VRAGEN = [
   {
     vraag: "Voor wie is dit rapport bedoeld?",
     antwoord:
-      "Voor kopers die een bod voorbereiden, verkopers die hun vraagprijs willen onderbouwen, en huiseigenaren die gewoon willen weten waar ze wonen, zonder daar meteen een makelaar of taxateur bij te halen.",
+      "Voor kopers die een bod voorbereiden, verkopers die hun vraagprijs willen onderbouwen en huiseigenaren die gewoon willen weten waar ze wonen, zonder daar meteen een makelaar of taxateur bij te halen.",
   },
   {
     vraag: "Wat is het verschil tussen de gratis preview en het volledige rapport?",
@@ -104,7 +104,7 @@ const VEELGESTELDE_VRAGEN = [
       "Gratis ziet u al bouwjaar, energielabel, oppervlakte en een eerste indicatie van het funderingsrisico. Na het ontgrendelen krijgt u de exacte waarde-indicatie met bandbreedte, alle vergelijkbare verkopen met adressen en prijzen, de volledige funderingsduiding met advies, het complete buurtprofiel én de samenvatting, plus het geheel als PDF, direct beschikbaar om te downloaden of naar uw mail te sturen.",
   },
   {
-    vraag: "Is dit onafhankelijk, of zit er een makelaar achter?",
+    vraag: "Is dit onafhankelijk of zit er een makelaar achter?",
     antwoord:
       "Geen makelaar in zicht. Kooprapport gebruikt uitsluitend officiële, erkende bronnen: Kadaster (BAG), RVO/EP-Online (energielabel), CBS (buurtcijfers), KCAF (funderingsrisico) en Altum AI (waardebepaling en verkoopdata). Wij hebben geen belang bij een hoge of lage uitkomst. Alleen bij een kloppende.",
   },
@@ -510,12 +510,12 @@ export default function HomePage() {
           motivatie daarachter). Op uitdrukkelijk verzoek noemen we bronnen nu
           over de hele site minder vaak/minder gedetailleerd — dat volledige,
           verifieerbare rijtje (met links) staat al canoniek in de FAQ
-          ("Is dit onafhankelijk, of zit er een makelaar achter?"), dus hier
+          ("Is dit onafhankelijk of zit er een makelaar achter?"), dus hier
           volstaat de korte, generieke formulering. */}
       <section className="relative border-y border-ink/[0.06]">
         <Container className="py-6 text-center text-[11px] text-ink/70">
           <span className="font-bold text-ink">1.240+</span> rapporten gegenereerd ·{" "}
-          <span className="font-bold text-ink">8</span> pagina&apos;s per rapport · gebaseerd op officiële, erkende
+          <span className="font-bold text-ink">10</span> pagina&apos;s per rapport · gebaseerd op officiële, erkende
           bronnen
         </Container>
       </section>

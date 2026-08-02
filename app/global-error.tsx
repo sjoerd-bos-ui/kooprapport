@@ -26,7 +26,7 @@ export default function GlobalError({ error }: { error: Error & { digest?: strin
         </p>
         <h1 style={{ fontSize: "22px", fontWeight: 700, marginTop: "8px" }}>Er ging iets mis</h1>
         <p style={{ marginTop: "12px", color: "#6B6B7A", fontSize: "14px" }}>
-          Deze pagina kon niet worden geladen. Probeer het opnieuw, of ga terug naar de homepage.
+          Deze pagina kon niet worden geladen. Probeer het opnieuw of ga terug naar de homepage.
         </p>
         <a
           href="/"

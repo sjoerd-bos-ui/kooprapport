@@ -96,7 +96,7 @@ export const ARTIKELEN: KoopgidsArtikel[] = [
       {
         kop: "Hoe een vraagprijs eigenlijk tot stand komt",
         paragrafen: [
-          "Een vraagprijs valt niet zomaar uit de lucht. Een makelaar begint met referentiewoningen: recent verkochte huizen in dezelfde buurt met vergelijkbare kenmerken zoals bouwjaar, grootte en staat van onderhoud. Daarnaast speelt de actuele marktsituatie mee, en tijdens de bezichtiging wordt gekeken naar dingen die op papier lastig te vangen zijn: lichtinval, indeling, en wat er recent verbouwd is.",
+          "Een vraagprijs valt niet zomaar uit de lucht. Een makelaar begint met referentiewoningen: recent verkochte huizen in dezelfde buurt met vergelijkbare kenmerken zoals bouwjaar, grootte en staat van onderhoud. Daarnaast speelt de actuele marktsituatie mee, en tijdens de bezichtiging wordt gekeken naar dingen die op papier lastig te vangen zijn: lichtinval, indeling en wat er recent verbouwd is.",
           "Een vraagprijs is daarnaast ook een strategische keuze, niet alleen een objectieve uitkomst. Een woning bewust scherp in de markt zetten trekt meer bezichtigingen en kan tot een biedingsstrijd leiden, terwijl een hogere vraagprijs meer ademruimte geeft om te onderhandelen. Twee vergelijkbare huizen kunnen dus met een andere vraagprijs de markt op gaan, puur door een andere verkoopstrategie.",
         ],
         illustratie: DriePrijzenIllustratie,
@@ -112,7 +112,7 @@ export const ARTIKELEN: KoopgidsArtikel[] = [
       {
         kop: "De factoren die de waarde van een huis echt bepalen",
         paragrafen: [
-          "Onder de streep komt de waarde van een woning neer op vijf dingen: de locatie, de staat van onderhoud, de kenmerken van de woning zelf (oppervlakte, kaveloppervlak, bouwjaar), de actuele marktomstandigheden, en vergelijkbare verkopen in de buurt.",
+          "Onder de streep komt de waarde van een woning neer op vijf dingen: de locatie, de staat van onderhoud, de kenmerken van de woning zelf (oppervlakte, kaveloppervlak, bouwjaar), de actuele marktomstandigheden en vergelijkbare verkopen in de buurt.",
           "Locatie weegt doorgaans het zwaarst, gevolgd door onderhoudsstaat en grootte. Het energielabel speelt daarbij een steeds grotere rol: onderzoek van taxatiedata-specialist Calcasa laat zien dat woningen met een beter energielabel gemiddeld zo'n 4,1% meer opbrengen dan vergelijkbare woningen met een slechter label. Een nieuwe cv-ketel verkoopt dus niet alleen lekkerder warm water, maar telt ook mee bij de uiteindelijke prijs.",
         ],
       },
@@ -126,9 +126,9 @@ export const ARTIKELEN: KoopgidsArtikel[] = [
         illustratie: BandbreedteIllustratie,
       },
       {
-        kop: "Wat u met deze schatting kunt, en wat niet",
+        kop: "Wat u met deze schatting kunt en wat niet",
         paragrafen: [
-          "Voor de duidelijkheid: een waarde-indicatie is geen taxatie (daar komt een mens fysiek voor langs), geen WOZ-waarde, en geen garantie voor de uiteindelijke verkoopprijs. Het is een stevig onderbouwd startpunt, dat u het beste combineert met de daadwerkelijke verkopen in uw buurt van de afgelopen twaalf maanden.",
+          "Voor de duidelijkheid: een waarde-indicatie is geen taxatie (daar komt een mens fysiek voor langs), geen WOZ-waarde en geen garantie voor de uiteindelijke verkoopprijs. Het is een stevig onderbouwd startpunt, dat u het beste combineert met de daadwerkelijke verkopen in uw buurt van de afgelopen twaalf maanden.",
           "Concreet kunt u deze schatting op een paar manieren gebruiken. Staat u op het punt te bieden op een woning, dan geeft de bandbreedte u een steviger onderbouwd verhaal om mee te onderhandelen, of weet u in elk geval waar u qua bod ongeveer aan toe bent. Overweegt u zelf te verkopen, dan is de indicatie een handig ijkpunt voordat u met een makelaar om tafel gaat. En bij het aanvragen van een hypotheek geeft een reële inschatting alvast een idee van de verhouding tussen de vraagprijs en wat de bank waarschijnlijk als onderpandwaarde zal hanteren.",
         ],
         illustratie: GebruiksscenariosIllustratie,
@@ -273,7 +273,7 @@ export const ARTIKELEN: KoopgidsArtikel[] = [
         kop: "Het label in cijfers",
         paragrafen: [
           "Eind 2024 had ruim 5,1 miljoen woningen een geldig energielabel, ongeveer 61% van alle 8,3 miljoen woningen in Nederland, met zo'n 35% label A of hoger, 16% label B, 25% label C en minder dan 14% nog label E, F of G. Die verhouding is flink verbeterd: in 2010 had nog maar 16% van de gelabelde woningen label A of B, nu is dat ruim 51%. Let wel op een belangrijk detail: 3,2 miljoen woningen hebben helemaal geen geldig label, dus staat u op het punt een huis te bezichtigen zonder recent label, vraag er dan actief naar.",
-          "Belangrijk om te weten: elke woning kreeg automatisch een gratis voorlopig label, een schatting op basis van bouwjaar, woningtype en oppervlakte, maar dat is niet geldig bij verkoop of verhuur. Voor een definitief label komt een erkende energieadviseur langs, meestal een uur of twee, en checkt isolatie, installatie en het gebruik van hernieuwbare energie, voor doorgaans €190 tot €300. Ziet u een woning te koop staan, dan hoort daar een definitief label bij, geen voorlopige schatting.",
+          "Belangrijk om te weten: elke woning kreeg automatisch een gratis voorlopig label, een schatting op basis van bouwjaar, woningtype en oppervlakte, maar dat is niet geldig bij verkoop of verhuur. Voor een definitief label komt een erkende energieadviseur langs, meestal een uur of twee en checkt isolatie, installatie en het gebruik van hernieuwbare energie, voor doorgaans €190 tot €300. Ziet u een woning te koop staan, dan hoort daar een definitief label bij, geen voorlopige schatting.",
         ],
       },
       {
@@ -288,7 +288,7 @@ export const ARTIKELEN: KoopgidsArtikel[] = [
         kop: "Verduurzamen en wat u kunt doen",
         paragrafen: [
           "Een laag label is dus geen reden om een huis links te laten liggen, wel een reden om te weten wat het kost om te verbeteren. In ons [artikel over verduurzamen](verduurzamen-wat-loont) leggen we uit welke maatregelen het meeste opleveren en in welke volgorde: isoleren komt eerst, want een warmtepomp werkt pas echt efficiënt in een goed geïsoleerde woning, en pas daarna volgen een nieuwe installatie en zonnepanelen.",
-          "Vraag bij een bezichtiging dus altijd naar het actuele definitieve energielabel en niet alleen naar het bouwjaar, want twee vergelijkbare huizen kunnen daarin flink verschillen. Reken bij een laag label niet alleen de energierekening mee, maar ook het effect op uw leenruimte en rente, en bekijk voordat u een bod uitbrengt wat er nodig is om naar een beter label te komen.",
+          "Vraag bij een bezichtiging dus altijd naar het actuele definitieve energielabel en niet alleen naar het bouwjaar, want twee vergelijkbare huizen kunnen daarin flink verschillen. Reken bij een laag label niet alleen de energierekening mee, maar ook het effect op uw leenruimte en rente en bekijk voordat u een bod uitbrengt wat er nodig is om naar een beter label te komen.",
         ],
       },
     ],
@@ -319,7 +319,7 @@ export const ARTIKELEN: KoopgidsArtikel[] = [
         kop: "Waarom dit zoveel geld kost",
         paragrafen: [
           "Dit is geen klein ongemak. Funderingsherstel kost gemiddeld tussen de €60.000 en €120.000 voor een rijtjeswoning, ofwel grofweg €800 tot €1.500 per strekkende meter gevel. Naar schatting kampen bijna een half miljoen Nederlandse woningen met een verhoogd funderingsrisico. Dat is precies waarom dit geen detail is om te negeren bij het kopen van een oudere woning: het kan de grootste onvoorziene kostenpost van de hele aankoop worden.",
-          "Gelukkig bestaat er inmiddels ook steun. Sinds juli 2025 is het landelijke Fonds Duurzaam Funderingsherstel in heel Nederland beschikbaar, met NHG-gegarandeerde leningen voor urgent funderingsherstel, een looptijd tot 30 jaar en de eerste drie jaar geen aflossingsverplichting. Diverse gemeenten met bekende problematiek geven daarnaast eigen subsidies: Zaanstad tot 25% van de herstelkosten met een maximum van €30.000, Schiedam vergoedt 100% van de adviseurskosten plus een revolverende lening tot €120.000, en Dordrecht geeft 20% subsidie plus een gratis funderingsonderzoek voor inkomens onder modaal.",
+          "Gelukkig bestaat er inmiddels ook steun. Sinds juli 2025 is het landelijke Fonds Duurzaam Funderingsherstel in heel Nederland beschikbaar, met NHG-gegarandeerde leningen voor urgent funderingsherstel, een looptijd tot 30 jaar en de eerste drie jaar geen aflossingsverplichting. Diverse gemeenten met bekende problematiek geven daarnaast eigen subsidies: Zaanstad tot 25% van de herstelkosten met een maximum van €30.000, Schiedam vergoedt 100% van de adviseurskosten plus een revolverende lening tot €120.000 en Dordrecht geeft 20% subsidie plus een gratis funderingsonderzoek voor inkomens onder modaal.",
         ],
       },
       {

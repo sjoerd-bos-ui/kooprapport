@@ -108,12 +108,12 @@ export default function AddressSearchBar() {
     } else if (suggestions.length === 0) {
       hint = {
         title: "Geen suggesties gevonden",
-        body: "Controleer de spelling, of typ een postcode (bv. 1015CJ) of plaatsnaam.",
+        body: "Controleer de spelling of typ een postcode (bv. 1015CJ) of plaatsnaam.",
       };
     } else {
       hint = {
         title: "Kies eerst een adres uit de suggesties",
-        body: "Er wordt geen adres geraden op basis van vrije tekst. Klik een suggestie hierboven aan, of gebruik de pijltjestoetsen + Enter.",
+        body: "Er wordt geen adres geraden op basis van vrije tekst. Klik een suggestie hierboven aan of gebruik de pijltjestoetsen + Enter.",
       };
     }
   }

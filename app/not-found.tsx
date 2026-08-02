@@ -27,7 +27,7 @@ export default function NotFound() {
         <p className="text-[11px] font-bold uppercase tracking-wider3 text-accent">404</p>
         <h1 className="mt-3 font-display text-3xl font-extrabold text-ink sm:text-4xl">Pagina niet gevonden</h1>
         <p className="mt-4 text-[14px] leading-relaxed text-ink/65">
-          Deze pagina bestaat niet (meer), of het adres in de link klopt niet. Zoek hieronder opnieuw, of ga terug
+          Deze pagina bestaat niet (meer), of het adres in de link klopt niet. Zoek hieronder opnieuw of ga terug
           naar de homepage.
         </p>
         <Link

@@ -105,7 +105,7 @@ export default function AddressLookupFeedback({
       </StatusChip>
       <p className="mt-3 font-display text-xl font-bold text-ink">Vul het adres verder aan</p>
       <p className="mt-2 text-sm text-ink/55">
-        Vul een postcode met huisnummer in (bv. 1015CJ 123), of een straat, huisnummer en plaats (bv. Keizersgracht
+        Vul een postcode met huisnummer in (bv. 1015CJ 123) of een straat, huisnummer en plaats (bv. Keizersgracht
         123, Amsterdam).
       </p>
       {backLink}

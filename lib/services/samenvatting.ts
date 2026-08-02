@@ -462,13 +462,13 @@ export function buildSamenvatting(report: Report): Samenvatting {
   let eindconclusie: string;
   if (harderRisicoAanwezig) {
     eindconclusie =
-      "Deze woning heeft duidelijke pluspunten, maar er zijn ook een paar dingen die om extra aandacht vragen. Neem de aandachtspunten hierboven serieus: vraag ernaar, en bel bij twijfel gerust een specialist, bijvoorbeeld voor de fundering. Dit rapport is een eerlijk startpunt, geen vervanging voor eigen onderzoek of professioneel advies. Met de juiste vragen in je achterzak sta je straks gewoon een stuk sterker in je schoenen.";
+      "Deze woning heeft duidelijke pluspunten, maar er zijn ook een paar dingen die om extra aandacht vragen. Neem de aandachtspunten hierboven serieus: vraag ernaar en bel bij twijfel gerust een specialist, bijvoorbeeld voor de fundering. Dit rapport is een eerlijk startpunt, geen vervanging voor eigen onderzoek of professioneel advies. Met de juiste vragen in je achterzak sta je straks gewoon een stuk sterker in je schoenen.";
   } else if (kernstats.length >= 2) {
     eindconclusie =
-      "Deze woning scoort op de meeste onderdelen goed, en we zien geen grote rode vlaggen. Toch niet blind instappen: gebruik dit rapport als stevig startpunt, en vul 'm aan met een kijkje ter plekke, een goed gesprek en eventueel een bouwkundige keuring. Kortom: een kanshebber om verder te verkennen. Succes!";
+      "Deze woning scoort op de meeste onderdelen goed, en we zien geen grote rode vlaggen. Toch niet blind instappen: gebruik dit rapport als stevig startpunt en vul 'm aan met een kijkje ter plekke, een goed gesprek en eventueel een bouwkundige keuring. Kortom: een kanshebber om verder te verkennen. Succes!";
   } else {
     eindconclusie =
-      "Voor dit adres hebben we nog niet genoeg data voor een compleet beeld. Gebruik wat we wel gevonden hebben als startpunt, en vul het zelf aan: kijk goed rond, stel de juiste vragen, en schakel waar nodig een expert in. Kom je er niet helemaal uit? We kijken graag met je mee. Hoe meer je uitzoekt, hoe zekerder je straks staat.";
+      "Voor dit adres hebben we nog niet genoeg data voor een compleet beeld. Gebruik wat we wel gevonden hebben als startpunt en vul het zelf aan: kijk goed rond, stel de juiste vragen en schakel waar nodig een expert in. Kom je er niet helemaal uit? We kijken graag met je mee. Hoe meer je uitzoekt, hoe zekerder je straks staat.";
   }
 
   return {

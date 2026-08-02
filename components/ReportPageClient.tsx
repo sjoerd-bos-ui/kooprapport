@@ -259,7 +259,7 @@ export default function ReportPageClient({
       )}
       {betalingTerugkeer === "mislukt" && (
         <div className="fixed inset-x-0 top-0 z-40 bg-rust px-4 py-2 text-center text-xs font-semibold text-white">
-          We konden de betaling nog niet bevestigen. Vernieuw de pagina, of neem contact op als dit blijft gebeuren.
+          We konden de betaling nog niet bevestigen. Vernieuw de pagina of neem contact op als dit blijft gebeuren.
         </div>
       )}
       <ReportView

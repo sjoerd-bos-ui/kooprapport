@@ -27,7 +27,7 @@ export default function ErrorBoundary({ error, reset }: { error: Error & { diges
         <p className="text-[11px] font-bold uppercase tracking-wider3 text-accent">Foutmelding</p>
         <h1 className="mt-3 font-display text-3xl font-extrabold text-ink sm:text-4xl">Er ging iets mis</h1>
         <p className="mt-4 text-[14px] leading-relaxed text-ink/65">
-          Deze pagina kon niet worden geladen. Probeer het opnieuw, of ga terug naar de homepage. Blijft dit
+          Deze pagina kon niet worden geladen. Probeer het opnieuw of ga terug naar de homepage. Blijft dit
           gebeuren, neem dan contact op — we zien deze melding nu automatisch binnenkomen.
         </p>
         <div className="mt-8 flex justify-center gap-3">

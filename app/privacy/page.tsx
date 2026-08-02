@@ -35,7 +35,7 @@ const LAATST_BIJGEWERKT = "22 juli 2026";
 export const metadata: Metadata = {
   title: "Privacyverklaring",
   description:
-    "Lees hoe Kooprapport omgaat met uw gegevens: welke gegevens we verwerken, met welke partijen we adresgegevens delen, en welke rechten u heeft onder de AVG.",
+    "Lees hoe Kooprapport omgaat met uw gegevens: welke gegevens we verwerken, met welke partijen we adresgegevens delen en welke rechten u heeft onder de AVG.",
   alternates: { canonical: CANONICAL_PATH },
   robots: { index: true, follow: true },
 };
@@ -79,7 +79,7 @@ export default function PrivacyPage() {
               </p>
             </Sectie>
 
-            <Sectie id="welke-gegevens" titel="2. Welke gegevens we verwerken, en waarvoor">
+            <Sectie id="welke-gegevens" titel="2. Welke gegevens we verwerken en waarvoor">
               <p>
                 <strong className="font-semibold text-ink">Het adres dat u opzoekt.</strong> Wanneer u begint te
                 typen in de zoekbalk, stuurt uw browser die zoektekst rechtstreeks naar de adressuggesties-service
@@ -87,7 +87,7 @@ export default function PrivacyPage() {
                 rapport op, dan wordt dat adres vervolgens server-side gebruikt om de rapportgegevens op te halen bij
                 de bronnen genoemd in sectie 4. Een geregistreerd adres kan, afhankelijk van de context, een
                 persoonsgegeven zijn (het kan herleiden tot de bewoner); we gebruiken het uitsluitend om het door u
-                gevraagde rapport samen te stellen, nooit voor een ander doel, en verkopen het niet door.
+                gevraagde rapport samen te stellen, nooit voor een ander doel en verkopen het niet door.
               </p>
               <p>
                 <strong className="font-semibold text-ink">Technische gegevens.</strong> Zoals elke website
@@ -108,7 +108,7 @@ export default function PrivacyPage() {
                 <strong className="font-semibold text-ink">E-mailadres (alleen als u dat zelf invult).</strong> Er is
                 geen account, geen registratie en geen inlog nodig om een rapport te bekijken of te kopen. Op twee
                 specifieke momenten kunt u er wél zelf voor kiezen uw e-mailadres achter te laten: (1) om een gratis
-                preview van een rapport toegestuurd te krijgen, en (2) om, als u dat rapport nog niet heeft
+                preview van een rapport toegestuurd te krijgen en (2) om, als u dat rapport nog niet heeft
                 afgerond, eenmalig een herinnering met eventuele tijdelijke korting te ontvangen. Dit gebeurt nooit
                 automatisch — alleen na uw eigen invoer. Zie sectie 5 voor hoe lang we dit bewaren.
               </p>
@@ -127,7 +127,7 @@ export default function PrivacyPage() {
                 <strong className="font-semibold text-ink">Vercel Analytics (altijd actief, geen cookies).</strong>{" "}
                 Voor algemene, geaggregeerde bezoekstatistieken (bv. hoeveel bezoekers, welke pagina's) gebruikt
                 Kooprapport Vercel Analytics. Dit plaatst geen cookies en houdt u niet individueel bij tussen
-                bezoeken, en vereist daarom geen toestemming.
+                bezoeken en vereist daarom geen toestemming.
               </p>
               <p>
                 <strong className="font-semibold text-ink">Google Analytics (alleen na uw toestemming).</strong>{" "}
@@ -223,7 +223,7 @@ export default function PrivacyPage() {
                         Marktupdates-nieuwsbrief, zolang u niet bent afgemeld)
                       </td>
                       <td className="px-4 py-2.5 text-ink/65">
-                        Tijdelijke wachtrij voor de eenmalige herinnering, en de abonneelijst voor de
+                        Tijdelijke wachtrij voor de eenmalige herinnering en de abonneelijst voor de
                         Marktupdates-nieuwsbrief
                       </td>
                     </tr>
@@ -241,7 +241,7 @@ export default function PrivacyPage() {
                       <td className="px-4 py-2.5 font-medium text-ink">Vercel</td>
                       <td className="px-4 py-2.5 text-ink/65">Technische verkeersgegevens (o.a. IP-adres)</td>
                       <td className="px-4 py-2.5 text-ink/65">
-                        Hosten en beschikbaar houden van de website, en geaggregeerde bezoekstatistieken (Vercel
+                        Hosten en beschikbaar houden van de website en geaggregeerde bezoekstatistieken (Vercel
                         Analytics, zie sectie 3)
                       </td>
                     </tr>
@@ -265,7 +265,7 @@ export default function PrivacyPage() {
               </p>
               <p>
                 Vraagt u een preview of een herinnering per e-mail aan, dan staat uw e-mailadres uitsluitend tijdelijk
-                in een wachtrij totdat die ene e-mail is verstuurd (maximaal 48 uur), en wordt daarna verwijderd. Meldt
+                in een wachtrij totdat die ene e-mail is verstuurd (maximaal 48 uur) en wordt daarna verwijderd. Meldt
                 u zich af voor de herinnering, dan bewaren we geen e-mailadres, maar uitsluitend een onomkeerbare hash
                 daarvan — genoeg om te herkennen dat u zich afmeldde, niet om uw adres zelf uit af te leiden. Deze
                 afmelding bewaren we voor onbepaalde tijd, uitsluitend om uw keuze te kunnen blijven respecteren (zie

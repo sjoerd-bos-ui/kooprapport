@@ -1632,7 +1632,7 @@ export default function ReportView({
                 </span>
                 <div>
                   <p className="font-display text-lg font-bold text-ink">Rapport gereed</p>
-                  <p className="mt-0.5 text-sm text-ink/50">Download de PDF, ontvang 'm per e-mail, of bewaar uw aankoopbewijs.</p>
+                  <p className="mt-0.5 text-sm text-ink/50">Download de PDF, ontvang 'm per e-mail of bewaar uw aankoopbewijs.</p>
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
