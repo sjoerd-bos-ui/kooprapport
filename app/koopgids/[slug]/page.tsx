@@ -118,7 +118,7 @@ export default async function KoopgidsArtikelPagina({ params }: { params: Promis
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(artikelJsonLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
       <SiteHeader />
-      <main>
+      <main id="main-content">
         <Container width="narrow" className="py-12 sm:py-16">
           <Link href="/koopgids" className="text-xs font-semibold text-ink/45 hover:text-ink">
             ← Koopgids

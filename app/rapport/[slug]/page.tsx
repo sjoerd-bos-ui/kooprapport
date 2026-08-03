@@ -144,7 +144,7 @@ export default async function RapportPage({
   // hier gegarandeerd een Report is.
   if (result.status !== "match" || !result.address || !report) {
     return (
-      <main className="min-h-screen bg-parchment">
+      <main id="main-content" className="min-h-screen bg-parchment">
         <SiteHeader />
         <Container width="narrow">
           <AddressLookupFeedback result={result} variant="page" />

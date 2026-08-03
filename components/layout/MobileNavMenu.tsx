@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { CompassIcon, FileCheckIcon, TrendingUpIcon } from "@/components/report/icons";
 
@@ -27,9 +27,35 @@ const LINKS = [
 // server-rendered, alleen dit stukje interactiviteit wordt geïsoleerd.
 export default function MobileNavMenu() {
   const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // BUGFIX: het menu ging voorheen alleen dicht via een klik op een link erin
+  // of nogmaals op het hamburgericoon -- Escape-toets en klikken/tikken
+  // buiten het menu deden niets, waardoor het open kon blijven staan over de
+  // rest van de pagina heen. Beide toegevoegd, zoals bij elk standaard
+  // dropdown-/menupatroon verwacht.
+  useEffect(() => {
+    if (!open) return;
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    function handleClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [open]);
 
   return (
-    <div className="relative sm:hidden">
+    <div ref={containerRef} className="relative sm:hidden">
       <button
         type="button"
         aria-label={open ? "Menu sluiten" : "Menu openen"}

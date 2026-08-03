@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { maakKortingscode } from "@/lib/utils/kortingscode";
+import { checkRateLimit } from "@/lib/services/rateLimit";
 
 // -----------------------------------------------------------------------------
 // Eigen "adminpaneel" -- bewust geen UI, gewoon een beveiligde route die je
@@ -8,9 +9,23 @@ import { maakKortingscode } from "@/lib/utils/kortingscode";
 // CRON_SECRET of KORTING_SECRET) -- zonder die var weigert deze route alles,
 // want zonder wachtwoord zou dit een publiek endpoint zijn waarmee IEDEREEN
 // gratis kortingscodes voor zichzelf kan aanmaken.
+//
+// BEVEILIGING: in tegenstelling tot de meeste andere routes had deze geen
+// rate limiting -- de ADMIN_SECRET-check zelf was dus in theorie onbeperkt
+// te brute-forcen. 5 pogingen per 5 minuten per IP is ruim genoeg voor
+// normaal gebruik (jijzelf, af en toe via curl) maar remt geautomatiseerd
+// gokken van het secret hard af.
 // -----------------------------------------------------------------------------
 
 export async function POST(req: NextRequest) {
+  const limiet = await checkRateLimit(req, "admin-kortingscode", 5, 5 * 60);
+  if (!limiet.toegestaan) {
+    return NextResponse.json(
+      { error: "Te veel pogingen. Probeer het over een paar minuten opnieuw." },
+      { status: 429 }
+    );
+  }
+
   const adminSecret = process.env.ADMIN_SECRET;
   if (!adminSecret) {
     return NextResponse.json({ error: "ADMIN_SECRET is niet geconfigureerd." }, { status: 503 });

@@ -71,8 +71,20 @@ export default function MarktupdatesPagina() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionJsonLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
       <SiteHeader />
-      <main>
-        <Container width="narrow" className="py-12 sm:py-16">
+      {/* Zelfde parchment-canvas + zachte kleurvlekken als /werkwijze en de
+          homepage -- deze hub miste die kleurwas-behandeling nog. */}
+      <main id="main-content" className="relative overflow-hidden bg-parchment">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -left-16 -top-10 h-64 w-64 rounded-full"
+          style={{ background: "radial-gradient(circle, #4F46E524 0%, rgba(79,70,229,0) 70%)" }}
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-20 top-[380px] h-72 w-72 rounded-full"
+          style={{ background: "radial-gradient(circle, #8B85EE20 0%, rgba(139,133,238,0) 70%)" }}
+        />
+        <Container width="narrow" className="relative py-12 sm:py-16">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EEF0FF] px-3.5 py-1.5 text-xs font-bold text-accent">
             Marktupdates
           </span>

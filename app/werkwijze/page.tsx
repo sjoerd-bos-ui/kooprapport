@@ -43,7 +43,7 @@ export default function WerkwijzePagina() {
       {/* Zelfde parchment-canvas + zachte kleurvlekken als de homepage
           (na de "hele site voelt te wit"-ronde) i.p.v. het eerdere vlakke
           wit -- deze pagina was de enige die nog niet meegenomen was. */}
-      <main className="relative overflow-hidden bg-parchment">
+      <main id="main-content" className="relative overflow-hidden bg-parchment">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute -left-16 -top-10 h-64 w-64 rounded-full"

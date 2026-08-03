@@ -224,7 +224,7 @@ export default function HomePage() {
     // sectiegrenzen heen lopen — zie de visualize-afstemming hierover. De
     // vlekken zijn direct hier, als kinderen van <main>, gepositioneerd i.p.v.
     // per sectie, zodat ze doorlopen i.p.v. per sectie opnieuw beginnen.
-    <main className="relative overflow-hidden bg-parchment">
+    <main id="main-content" className="relative overflow-hidden bg-parchment">
       <div
         aria-hidden="true"
         className="pointer-events-none absolute -left-20 -top-10 h-[280px] w-[280px] rounded-full"
@@ -555,10 +555,10 @@ export default function HomePage() {
           lichte palet. "Privacy", "Voorwaarden" en "Contact" linken nu naar
           de echte pagina's. KvK-nummer blijft platte tekst (staat al op
           /contact).
-          De "Mockdata ter illustratie"-disclaimer (voorheen automatisch via
-          isVolledigLive(), zie lib/config/launchStatus.ts en dezelfde
-          toelichting in SiteFooter.tsx) is op uitdrukkelijk verzoek
-          verwijderd: alle databronnen zijn inmiddels gekoppeld. */}
+          De "Mockdata ter illustratie"-disclaimer (voorheen automatisch
+          bepaald, zie dezelfde toelichting in SiteFooter.tsx) is op
+          uitdrukkelijk verzoek verwijderd: alle databronnen zijn inmiddels
+          gekoppeld. */}
       <footer className="border-t border-ink/10 bg-white py-10">
         <Container className="flex flex-col items-start gap-4 text-xs sm:flex-row sm:items-center sm:justify-between">
           <span className="font-display font-semibold text-ink">© {new Date().getFullYear()} Kooprapport</span>

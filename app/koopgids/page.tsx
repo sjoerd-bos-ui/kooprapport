@@ -73,7 +73,7 @@ export default function KoopgidsPage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionJsonLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
       <SiteHeader />
-      <main>
+      <main id="main-content">
         {/* Hero — zelfde dot-pattern als de rest van de site, plus twee
             zachte kleurvlekken (indigo/amber) voor wat diepte, zoals in de
             laatste visualize-ronde afgestemd. */}

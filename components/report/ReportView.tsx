@@ -1560,7 +1560,7 @@ export default function ReportView({
   );
 
   return (
-    <main className="bg-parchment">
+    <main id="main-content" className="bg-parchment">
       <SiteHeader />
       <Container width="narrow">
         {/* Eén doorlopend paneel i.p.v. losse gestapelde kaarten: indigo hero

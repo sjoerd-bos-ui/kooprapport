@@ -7,15 +7,13 @@ import Container from "@/components/ui/Container";
 // dode tekst zolang die pagina's niet bestonden) — alleen KvK-nummer blijft
 // bewust platte tekst (staat al wel op /contact en /privacy).
 //
-// De "Mockdata ter illustratie"-disclaimer (voorheen automatisch bepaald via
-// isVolledigLive(), zie lib/config/launchStatus.ts) is op uitdrukkelijk
-// verzoek verwijderd: alle databronnen zijn inmiddels gekoppeld. Let op: de
-// isVolledigLive()-check zelf keek naar zes Vercel-omgevingsvariabelen
-// (ENERGIELABEL_MODE/ALTUM_MODE/BUURTVERKOPEN_MODE/VERDUURZAMING_MODE/
-// BETAAL_MODE=live + ALTUM_SANDBOX niet "true") — die tekst zou dus vanzelf
-// al verdwenen zijn zodra die zes kloppen. Nu die aanname hier hardcoded is
-// i.p.v. dynamisch gecontroleerd, verschijnt er geen waarschuwing meer als
-// een van die bronnen ooit weer terugvalt op mockdata.
+// De "Mockdata ter illustratie"-disclaimer (voorheen automatisch bepaald op
+// basis van zes Vercel-omgevingsvariabelen: ENERGIELABEL_MODE/ALTUM_MODE/
+// BUURTVERKOPEN_MODE/VERDUURZAMING_MODE/BETAAL_MODE=live + ALTUM_SANDBOX
+// niet "true") is op uitdrukkelijk verzoek verwijderd: alle databronnen zijn
+// inmiddels gekoppeld. Let op: die aanname staat nu hardcoded vast i.p.v.
+// dynamisch gecontroleerd, dus er verschijnt geen waarschuwing meer als een
+// van die bronnen ooit weer terugvalt op mockdata.
 export default function SiteFooter() {
   return (
     <footer className="mt-20 border-t border-ink/10 bg-white py-10">
