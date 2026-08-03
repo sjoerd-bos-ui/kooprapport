@@ -38,6 +38,7 @@ const KOOPGIDS_HUB_BIJGEWERKT = new Date("2026-08-03");
 const WERKWIJZE_BIJGEWERKT = new Date("2026-08-03");
 const MARKTUPDATES_HUB_BIJGEWERKT = new Date("2026-08-03");
 const WONINGMARKT_HUB_BIJGEWERKT = new Date("2026-08-03");
+const WAAROM_KOOPRAPPORT_BIJGEWERKT = new Date("2026-08-03");
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
@@ -67,6 +68,15 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: CONTACT_BIJGEWERKT,
       changeFrequency: "yearly",
       priority: 0.3,
+    },
+    // Waarom Kooprapport: zelfde categorie als Werkwijze (statisch, voor
+    // iedereen identiek, gericht op vertrouwen/conversie), hogere prioriteit
+    // omdat dit de kernpositionering van het product uitlegt.
+    {
+      url: `${APP_BASE_URL}/waarom-kooprapport`,
+      lastModified: WAAROM_KOOPRAPPORT_BIJGEWERKT,
+      changeFrequency: "monthly",
+      priority: 0.6,
     },
     // Koopgids: net als privacy/voorwaarden/contact statisch en voor
     // iedereen identiek, dus hoort hier wel in, in tegenstelling tot de

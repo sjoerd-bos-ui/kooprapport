@@ -35,6 +35,7 @@ export default function SiteHeader() {
         </Link>
         <div className="flex items-center gap-6">
           <div className="hidden items-center gap-6 sm:flex">
+            <SiteNavLink href="/waarom-kooprapport" label="Waarom Kooprapport" />
             <SiteNavLink href="/koopgids" label="Koopgids" />
             <SiteNavLink href="/werkwijze" label="Werkwijze" />
             <SiteNavLink href="/marktupdates" label="Marktupdates" />

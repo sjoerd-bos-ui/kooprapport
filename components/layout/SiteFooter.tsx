@@ -25,6 +25,9 @@ export default function SiteFooter() {
               destijds juist bewust NIET kwam met als reden dat deze
               secties "ook via de footer" bereikbaar zouden zijn. Dat klopte
               niet: dit zijn de eerste échte links ernaartoe hier. */}
+          <Link href="/waarom-kooprapport" className="text-ink/70 underline underline-offset-2 hover:text-ink">
+            Waarom Kooprapport
+          </Link>
           <Link href="/koopgids" className="text-ink/70 underline underline-offset-2 hover:text-ink">
             Koopgids
           </Link>
