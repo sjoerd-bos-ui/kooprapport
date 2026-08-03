@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { bouwWhatsAppLink, heeftWhatsAppSupport } from "@/lib/config/whatsapp";
+import { CONSENT_KEY } from "@/components/analytics/CookieConsent";
 
 // -----------------------------------------------------------------------------
 // Zwevende WhatsApp-contactknop, site-breed gemonteerd in app/layout.tsx —
@@ -16,7 +18,29 @@ import { bouwWhatsAppLink, heeftWhatsAppSupport } from "@/lib/config/whatsapp";
 //
 // z-40: onder de betaalmodal (z-50, zie PaywallModal.tsx) zodat de knop
 // nooit over een open modal heen blijft zweven.
+//
+// BUGFIX: bij een eerste bezoek (nog geen cookiekeuze gemaakt) lag de
+// cookiebanner (CookieConsent.tsx, fixed/inset-x-0/bottom-0/z-50, dus over
+// de volle breedte) precies over deze knop heen -- het "vanaf het begin
+// gerust stellen"-doel hierboven werd daardoor bij elk eerste bezoek
+// tenietgedaan. Deze knop schuift nu omhoog zolang er nog geen keuze
+// gemaakt is (zelfde localStorage-sleutel als de banner), en zakt terug
+// zodra de bezoeker "Accepteren"/"Weigeren" heeft gekozen.
 export default function WhatsAppFloatingButton() {
+  const [bannerZichtbaar, setBannerZichtbaar] = useState(false);
+
+  useEffect(() => {
+    function controleer() {
+      const opgeslagen = window.localStorage.getItem(CONSENT_KEY);
+      setBannerZichtbaar(opgeslagen !== "granted" && opgeslagen !== "denied");
+    }
+    controleer();
+    // Reageert meteen op een keuze in CookieConsent.tsx binnen dezelfde
+    // paginaweergave (zie het custom event daar), zonder herlaad nodig.
+    window.addEventListener("kooprapport-cookie-consent-gewijzigd", controleer);
+    return () => window.removeEventListener("kooprapport-cookie-consent-gewijzigd", controleer);
+  }, []);
+
   if (!heeftWhatsAppSupport()) return null;
 
   return (
@@ -25,7 +49,9 @@ export default function WhatsAppFloatingButton() {
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Stuur ons een WhatsApp-bericht"
-      className="fixed bottom-4 right-4 z-40 flex items-center gap-2 sm:bottom-6 sm:right-6"
+      className={`fixed right-4 z-40 flex items-center gap-2 transition-[bottom] sm:right-6 ${
+        bannerZichtbaar ? "bottom-24 sm:bottom-28" : "bottom-4 sm:bottom-6"
+      }`}
     >
       <span className="hidden rounded-full bg-ink px-3 py-1.5 text-xs font-medium text-white shadow-overlay sm:inline-block">
         Vragen? App ons direct

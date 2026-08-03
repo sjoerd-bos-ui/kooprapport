@@ -118,8 +118,21 @@ export default async function KoopgidsArtikelPagina({ params }: { params: Promis
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(artikelJsonLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
       <SiteHeader />
-      <main id="main-content">
-        <Container width="narrow" className="py-12 sm:py-16">
+      {/* Zelfde parchment-canvas + zachte kleurvlekken als Werkwijze/
+          Marktupdates -- deze artikelpagina's stonden nog op kaal wit,
+          terwijl de rest van de site al op de nieuwe stijl over is. */}
+      <main id="main-content" className="relative overflow-hidden bg-parchment">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -left-16 -top-10 h-64 w-64 rounded-full"
+          style={{ background: "radial-gradient(circle, #4F46E524 0%, rgba(79,70,229,0) 70%)" }}
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-20 top-[380px] h-72 w-72 rounded-full"
+          style={{ background: "radial-gradient(circle, #8B85EE20 0%, rgba(139,133,238,0) 70%)" }}
+        />
+        <Container width="narrow" className="relative py-12 sm:py-16">
           <Link href="/koopgids" className="text-xs font-semibold text-ink/45 hover:text-ink">
             ← Koopgids
           </Link>

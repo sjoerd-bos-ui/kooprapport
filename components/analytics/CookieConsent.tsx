@@ -23,7 +23,10 @@ import { Button } from "@/components/ui/Button";
 // stil terugvallen op "nog niet gekoppeld" i.p.v. kapot te gaan.
 // -----------------------------------------------------------------------------
 
-const CONSENT_KEY = "kooprapport-cookie-consent";
+// Geëxporteerd (i.p.v. lokaal gehouden) zodat WhatsAppFloatingButton.tsx
+// dezelfde sleutel kan uitlezen -- die knop moet omhoog schuiven zolang deze
+// banner nog in beeld is, zie de toelichting daar.
+export const CONSENT_KEY = "kooprapport-cookie-consent";
 type Consent = "onbekend" | "granted" | "denied";
 const GA_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 // Optioneel: pas ingevuld zodra er een Google Ads-account is (zie
@@ -59,6 +62,12 @@ export default function CookieConsent() {
   function kies(waarde: Exclude<Consent, "onbekend">) {
     window.localStorage.setItem(CONSENT_KEY, waarde);
     setConsent(waarde);
+    // Los custom event i.p.v. het standaard "storage"-event -- dat vuurt
+    // alleen in ANDERE tabbladen, niet in hetzelfde tabblad waarin
+    // localStorage.setItem() net is aangeroepen. WhatsAppFloatingButton.tsx
+    // luistert hierop om meteen (zonder paginaherlaad) terug te zakken zodra
+    // de bezoeker hier een keuze maakt.
+    window.dispatchEvent(new Event("kooprapport-cookie-consent-gewijzigd"));
   }
 
   // BUGFIX: deze guard stond eerst op "!GA_ID" — zonder een gekoppelde GA4-

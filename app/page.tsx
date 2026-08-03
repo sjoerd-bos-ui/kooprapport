@@ -141,9 +141,32 @@ const VEELGESTELDE_VRAGEN = [
 // of og:url meta tag. RAPPORT_PRIJS_CENTEN/APP_BASE_URL blijven de enige bron
 // voor de daadwerkelijke prijs/domein, hier alleen gebruikt om de metadata
 // consistent te houden met wat er al op de pagina staat.
+// BUGFIX: deze pagina overschreef eerder alleen alternates/openGraph.url --
+// description werd dus stilzwijgend geërfd van de generieke root-metadata
+// (app/layout.tsx), die maar 4 van de 9 rapportonderdelen noemt (BAG,
+// energielabel, woningwaarde, buurtverkopen). Precies de belangrijkste
+// pagina van de site verkocht zichzelf daardoor het minst volledig, zowel
+// in Google-resultaten als bij het delen op social. Nu een eigen, volledige
+// description. LET OP: title blijft bewust ONGEMOEID -- de root-metadata
+// zet daar al de juiste, merk-vooraan titel ("Kooprapport · ...") als
+// title.default; zelf een title-string zetten zou hier juist FOUT gaan,
+// want elke title-string die een pagina zelf teruggeeft loopt automatisch
+// door het title.template in layout.tsx heen ("%s · Kooprapport"), wat een
+// dubbele/omgekeerde merknaam zou opleveren.
+const HOMEPAGE_OMSCHRIJVING =
+  "Vul een adres in en bekijk een gratis preview. Ontgrendel het volledige rapport met woningwaarde, energielabel, funderingsrisico, verduurzamingsadvies en buurtverkopen.";
+
 export const metadata: Metadata = {
+  description: HOMEPAGE_OMSCHRIJVING,
   alternates: { canonical: "/" },
-  openGraph: { url: APP_BASE_URL },
+  openGraph: {
+    description: HOMEPAGE_OMSCHRIJVING,
+    url: APP_BASE_URL,
+    type: "website",
+  },
+  twitter: {
+    description: HOMEPAGE_OMSCHRIJVING,
+  },
 };
 
 // Eén REËEL, bestaand adres (hetzelfde grachtenpand als het losse PDF-
@@ -587,12 +610,6 @@ export default function HomePage() {
             </Link>
             <Link href="/contact" className="underline underline-offset-2 hover:text-ink">
               Contact
-            </Link>
-            {/* SEO-fix: was platte tekst -- linkt nu naar /contact (waar het
-                KvK-nummer + adres al echt staan), één extra, genuine interne
-                link i.p.v. kunstmatig links toevoegen die nergens op slaan. */}
-            <Link href="/contact" className="underline underline-offset-2 hover:text-ink">
-              KvK-nummer
             </Link>
           </div>
         </Container>

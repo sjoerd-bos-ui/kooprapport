@@ -73,52 +73,49 @@ export default function KoopgidsPage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionJsonLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
       <SiteHeader />
-      <main id="main-content">
-        {/* Hero — zelfde dot-pattern als de rest van de site, plus twee
-            zachte kleurvlekken (indigo/amber) voor wat diepte, zoals in de
-            laatste visualize-ronde afgestemd. */}
-        <div className="relative overflow-hidden bg-parchment py-14 sm:py-20">
-          <div
-            className="pointer-events-none absolute inset-0"
-            style={{ backgroundImage: "radial-gradient(#4F46E51F 1px, transparent 1px)", backgroundSize: "18px 18px" }}
-          />
-          <div
-            className="pointer-events-none absolute -right-16 -top-20 h-72 w-72 rounded-full"
-            style={{ background: "radial-gradient(circle, rgba(79,70,229,0.14) 0%, rgba(79,70,229,0) 70%)" }}
-          />
-          <div
-            className="pointer-events-none absolute -left-10 bottom-[-100px] h-64 w-64 rounded-full"
-            style={{ background: "radial-gradient(circle, rgba(217,119,6,0.10) 0%, rgba(217,119,6,0) 70%)" }}
-          />
-          <Container className="relative">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EEF0FF] px-3.5 py-1.5 text-xs font-bold text-accent">
-              Koopgids
+      {/* Zelfde parchment-canvas + zachte kleurvlekken als Werkwijze/
+          Marktupdates/Koopgids-artikelen -- deze hub had nog de oudere
+          stippenpatroon-hero die destijds bewust van de homepage is
+          weggehaald, en week daardoor visueel af van de rest van de site. */}
+      <main id="main-content" className="relative overflow-hidden bg-parchment">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -left-16 -top-10 h-64 w-64 rounded-full"
+          style={{ background: "radial-gradient(circle, #4F46E524 0%, rgba(79,70,229,0) 70%)" }}
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-20 top-[380px] h-72 w-72 rounded-full"
+          style={{ background: "radial-gradient(circle, #8B85EE20 0%, rgba(139,133,238,0) 70%)" }}
+        />
+        <Container className="relative py-14 sm:py-20">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EEF0FF] px-3.5 py-1.5 text-xs font-bold text-accent">
+            Koopgids
+          </span>
+          <h1 className="mt-4 max-w-xl font-display text-3xl font-extrabold leading-tight text-ink sm:text-4xl">
+            Alles wat u moet weten voordat u koopt.
+          </h1>
+          <p className="mt-4 max-w-lg text-[15px] leading-relaxed text-ink/60">
+            Elk onderdeel van uw rapport haarfijn uitgelegd, gebaseerd op dezelfde officiële bronnen als het rapport
+            zelf.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-ink/10 bg-white px-3.5 py-1.5 text-xs font-semibold text-ink">
+              <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+              {ARTIKELEN.length} onderwerpen
             </span>
-            <h1 className="mt-4 max-w-xl font-display text-3xl font-extrabold leading-tight text-ink sm:text-4xl">
-              Alles wat u moet weten voordat u koopt.
-            </h1>
-            <p className="mt-4 max-w-lg text-[15px] leading-relaxed text-ink/60">
-              Elk onderdeel van uw rapport haarfijn uitgelegd, gebaseerd op dezelfde officiële bronnen als het rapport
-              zelf.
-            </p>
-            <div className="mt-6 flex flex-wrap gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-ink/10 bg-white px-3.5 py-1.5 text-xs font-semibold text-ink">
-                <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-                {ARTIKELEN.length} onderwerpen
-              </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-ink/10 bg-white px-3.5 py-1.5 text-xs font-semibold text-ink">
-                <span className="h-1.5 w-1.5 rounded-full bg-sun" />
-                Bijgewerkt bij elk nieuw rapportonderdeel
-              </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-ink/10 bg-white px-3.5 py-1.5 text-xs font-semibold text-ink">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#3B6D11]" />
-                Bronnen: RVO, Kadaster, PDOK
-              </span>
-            </div>
-          </Container>
-        </div>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-ink/10 bg-white px-3.5 py-1.5 text-xs font-semibold text-ink">
+              <span className="h-1.5 w-1.5 rounded-full bg-sun" />
+              Bijgewerkt bij elk nieuw rapportonderdeel
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-ink/10 bg-white px-3.5 py-1.5 text-xs font-semibold text-ink">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#3B6D11]" />
+              Bronnen: RVO, Kadaster, PDOK
+            </span>
+          </div>
+        </Container>
 
-        <Container className="py-10 sm:py-14">
+        <Container className="relative py-10 sm:py-14">
           {/* Uitgelicht artikel */}
           <Link
             href={`/koopgids/${uitgelicht.slug}`}

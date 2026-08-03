@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
-import { TrendingUpIcon, BoltIcon, HistoryIcon, AlertTriangleIcon, BuildingIcon, ShieldCheckIcon, FileCheckIcon, FlagIcon } from "./icons";
+import { TrendingUpIcon, BoltIcon, HistoryIcon, AlertTriangleIcon, BuildingIcon, ShieldCheckIcon, FileCheckIcon, FlagIcon, LeafIcon } from "./icons";
 import { RAPPORT_PRIJS } from "@/lib/utils/prijs";
 import { bouwWhatsAppLink, heeftWhatsAppSupport } from "@/lib/config/whatsapp";
 import type { AddressMeta } from "@/types/report";
@@ -18,6 +18,7 @@ const ONDERDELEN = [
   { icon: HistoryIcon, titel: "Verkopen in de buurt", tekst: "Laatste 12 maanden" },
   { icon: BuildingIcon, titel: "Objectgegevens", tekst: "Volledig" },
   { icon: BoltIcon, titel: "Energieprestatie en label", tekst: "Met duiding voor dit pand" },
+  { icon: LeafIcon, titel: "Verduurzamingsadvies", tekst: "Concrete maatregelen + terugverdientijd" },
   { icon: AlertTriangleIcon, titel: "Funderingsrisico", tekst: "Met lokale context" },
   { icon: ShieldCheckIcon, titel: "Buurtprofiel", tekst: "Volledig" },
   { icon: FlagIcon, titel: "Samenvatting", tekst: "Pluspunten, aandachtspunten en eindconclusie" },
@@ -277,7 +278,7 @@ export default function PaywallModal({
         </div>
 
         <div className="relative mt-6 border-t border-ink/10 pt-6">
-          <p className="mb-2.5 text-[11px] font-semibold text-ink/45">Alle 7 onderdelen, volledig</p>
+          <p className="mb-2.5 text-[11px] font-semibold text-ink/45">Alle 8 onderdelen, volledig</p>
           <div className="grid grid-cols-2 gap-2">
             {ONDERDELEN.map(({ icon: Icon, titel, tekst }) => (
               <div key={titel} className="flex items-start gap-2 rounded-xl bg-parchment p-2.5">
