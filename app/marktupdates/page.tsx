@@ -73,7 +73,7 @@ export default function MarktupdatesPagina() {
       <SiteHeader />
       {/* Zelfde parchment-canvas + zachte kleurvlekken als /werkwijze en de
           homepage -- deze hub miste die kleurwas-behandeling nog. */}
-      <main id="main-content" className="relative overflow-hidden bg-parchment">
+      <main className="relative overflow-hidden bg-parchment">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute -left-16 -top-10 h-64 w-64 rounded-full"

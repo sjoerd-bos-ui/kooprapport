@@ -247,7 +247,7 @@ export default function HomePage() {
     // sectiegrenzen heen lopen — zie de visualize-afstemming hierover. De
     // vlekken zijn direct hier, als kinderen van <main>, gepositioneerd i.p.v.
     // per sectie, zodat ze doorlopen i.p.v. per sectie opnieuw beginnen.
-    <main id="main-content" className="relative overflow-hidden bg-parchment">
+    <main className="relative overflow-hidden bg-parchment">
       <div
         aria-hidden="true"
         className="pointer-events-none absolute -left-20 -top-10 h-[280px] w-[280px] rounded-full"

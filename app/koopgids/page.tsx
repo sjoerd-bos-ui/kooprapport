@@ -77,7 +77,7 @@ export default function KoopgidsPage() {
           Marktupdates/Koopgids-artikelen -- deze hub had nog de oudere
           stippenpatroon-hero die destijds bewust van de homepage is
           weggehaald, en week daardoor visueel af van de rest van de site. */}
-      <main id="main-content" className="relative overflow-hidden bg-parchment">
+      <main className="relative overflow-hidden bg-parchment">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute -left-16 -top-10 h-64 w-64 rounded-full"

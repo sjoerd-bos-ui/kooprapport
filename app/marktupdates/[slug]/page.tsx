@@ -114,7 +114,7 @@ export default async function MarktupdatePagina({ params }: { params: Promise<{ 
       {/* Zelfde parchment-canvas + zachte kleurvlekken als Werkwijze/
           Koopgids-artikelen -- deze paginas stonden nog op kaal wit, terwijl
           de rest van de site al op de nieuwe stijl over is. */}
-      <main id="main-content" className="relative overflow-hidden bg-parchment">
+      <main className="relative overflow-hidden bg-parchment">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute -left-16 -top-10 h-64 w-64 rounded-full"

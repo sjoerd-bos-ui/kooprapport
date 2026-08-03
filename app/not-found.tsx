@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 
 export default function NotFound() {
   return (
-    <main id="main-content" className="min-h-screen bg-parchment">
+    <main className="min-h-screen bg-parchment">
       <SiteHeader />
       <Container width="narrow" className="py-24 text-center">
         <p className="text-[11px] font-bold uppercase tracking-wider3 text-accent">404</p>

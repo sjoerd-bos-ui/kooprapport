@@ -28,39 +28,26 @@ import MobileNavMenu from "@/components/layout/MobileNavMenu";
 // via SiteFooter.tsx alsnog toegevoegd als extra pad.
 export default function SiteHeader() {
   return (
-    <>
-      {/* Skip-to-content-link -- onzichtbaar totdat een toetsenbordgebruiker
-          erop tabt (sr-only, focus:not-sr-only), zodat die niet eerst door
-          het volledige menu (logo, Koopgids/Werkwijze/Marktupdates, CTA)
-          hoeft te tabben om bij de daadwerkelijke inhoud te komen. Springt
-          naar id="main-content" op de <main> van elke pagina. */}
-      <a
-        href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-accent focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white"
-      >
-        Ga naar de inhoud
-      </a>
-      <header className="sticky top-0 z-40 border-b border-ink/10 bg-white">
-        <Container className="flex items-center justify-between py-4">
-          <Link href="/">
-            <Logo />
-          </Link>
-          <div className="flex items-center gap-6">
-            <div className="hidden items-center gap-6 sm:flex">
-              <SiteNavLink href="/koopgids" label="Koopgids" />
-              <SiteNavLink href="/werkwijze" label="Werkwijze" />
-              <SiteNavLink href="/marktupdates" label="Marktupdates" />
-            </div>
-            <MobileNavMenu />
-            <Link
-              href="/"
-              className="rounded-full bg-accent px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-accent-dark"
-            >
-              Nieuw adres opzoeken
-            </Link>
+    <header className="sticky top-0 z-40 border-b border-ink/10 bg-white">
+      <Container className="flex items-center justify-between py-4">
+        <Link href="/">
+          <Logo />
+        </Link>
+        <div className="flex items-center gap-6">
+          <div className="hidden items-center gap-6 sm:flex">
+            <SiteNavLink href="/koopgids" label="Koopgids" />
+            <SiteNavLink href="/werkwijze" label="Werkwijze" />
+            <SiteNavLink href="/marktupdates" label="Marktupdates" />
           </div>
-        </Container>
-      </header>
-    </>
+          <MobileNavMenu />
+          <Link
+            href="/"
+            className="rounded-full bg-accent px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-accent-dark"
+          >
+            Nieuw adres opzoeken
+          </Link>
+        </div>
+      </Container>
+    </header>
   );
 }

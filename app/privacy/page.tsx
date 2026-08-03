@@ -61,7 +61,7 @@ export default function PrivacyPage() {
   return (
     <>
       <SiteHeader />
-      <main id="main-content">
+      <main>
         <Container width="narrow" className="py-14 sm:py-20">
           <p className="text-[11px] font-bold uppercase tracking-wider3 text-accent">Privacy</p>
           <h1 className="mt-3 font-display text-3xl font-extrabold text-ink sm:text-4xl">Privacyverklaring</h1>
