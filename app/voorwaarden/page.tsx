@@ -3,6 +3,7 @@ import SiteHeader from "@/components/layout/SiteHeader";
 import SiteFooter from "@/components/layout/SiteFooter";
 import Container from "@/components/ui/Container";
 import { RAPPORT_PRIJS } from "@/lib/utils/prijs";
+import { APP_BASE_URL } from "@/lib/config/payment";
 
 // -----------------------------------------------------------------------------
 // Algemene voorwaarden — zelfde opzet/SEO-behandeling als app/privacy/page.tsx
@@ -33,6 +34,13 @@ export const metadata: Metadata = {
     "De algemene voorwaarden van Kooprapport: hoe een bestelling tot stand komt, wat u krijgt, het herroepingsrecht bij digitale rapporten en onze aansprakelijkheid.",
   alternates: { canonical: CANONICAL_PATH },
   robots: { index: true, follow: true },
+  openGraph: {
+    title: "Algemene voorwaarden · Kooprapport",
+    description:
+      "De algemene voorwaarden van Kooprapport: hoe een bestelling tot stand komt, wat u krijgt, het herroepingsrecht bij digitale rapporten en onze aansprakelijkheid.",
+    url: `${APP_BASE_URL}${CANONICAL_PATH}`,
+    type: "website",
+  },
 };
 
 function Artikel({ id, titel, children }: { id: string; titel: string; children: React.ReactNode }) {

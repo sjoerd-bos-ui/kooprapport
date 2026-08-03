@@ -26,6 +26,13 @@ export const metadata: Metadata = {
     "Elk kwartaal de belangrijkste cijfers over de Nederlandse woningmarkt: verkoopprijzen, overbieden en verschillen per regio.",
   alternates: { canonical: CANONICAL_PATH },
   robots: { index: true, follow: true },
+  openGraph: {
+    title: "Marktupdates · Kooprapport",
+    description:
+      "Elk kwartaal de belangrijkste cijfers over de Nederlandse woningmarkt: verkoopprijzen, overbieden en verschillen per regio.",
+    url: `${APP_BASE_URL}${CANONICAL_PATH}`,
+    type: "website",
+  },
 };
 
 const collectionJsonLd = {

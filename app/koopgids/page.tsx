@@ -26,6 +26,13 @@ export const metadata: Metadata = {
     "Alles wat u moet weten voordat u een woning koopt: woningwaarde, energielabel, funderingsrisico en meer, per onderdeel uitgelegd.",
   alternates: { canonical: CANONICAL_PATH },
   robots: { index: true, follow: true },
+  openGraph: {
+    title: "Koopgids · Kooprapport",
+    description:
+      "Alles wat u moet weten voordat u een woning koopt: woningwaarde, energielabel, funderingsrisico en meer, per onderdeel uitgelegd.",
+    url: `${APP_BASE_URL}${CANONICAL_PATH}`,
+    type: "website",
+  },
 };
 
 // JSON-LD voor de hub: CollectionPage met alle artikelen als ItemList, plus

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import SiteHeader from "@/components/layout/SiteHeader";
 import SiteFooter from "@/components/layout/SiteFooter";
 import Container from "@/components/ui/Container";
+import { APP_BASE_URL } from "@/lib/config/payment";
 
 // -----------------------------------------------------------------------------
 // Privacyverklaring — statische pagina, bestaat altijd identiek voor iedereen
@@ -38,6 +39,13 @@ export const metadata: Metadata = {
     "Lees hoe Kooprapport omgaat met uw gegevens: welke gegevens we verwerken, met welke partijen we adresgegevens delen en welke rechten u heeft onder de AVG.",
   alternates: { canonical: CANONICAL_PATH },
   robots: { index: true, follow: true },
+  openGraph: {
+    title: "Privacyverklaring · Kooprapport",
+    description:
+      "Lees hoe Kooprapport omgaat met uw gegevens: welke gegevens we verwerken, met welke partijen we adresgegevens delen en welke rechten u heeft onder de AVG.",
+    url: `${APP_BASE_URL}${CANONICAL_PATH}`,
+    type: "website",
+  },
 };
 
 function Sectie({ id, titel, children }: { id: string; titel: string; children: React.ReactNode }) {

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import SiteHeader from "@/components/layout/SiteHeader";
 import SiteFooter from "@/components/layout/SiteFooter";
 import Container from "@/components/ui/Container";
+import { APP_BASE_URL } from "@/lib/config/payment";
 
 // -----------------------------------------------------------------------------
 // Contactpagina — zelfde opzet/SEO-behandeling als app/privacy/page.tsx en
@@ -26,6 +27,12 @@ export const metadata: Metadata = {
   description: "Vraag over uw rapport, een klacht of iets anders? Neem contact op met Kooprapport.",
   alternates: { canonical: CANONICAL_PATH },
   robots: { index: true, follow: true },
+  openGraph: {
+    title: "Contact · Kooprapport",
+    description: "Vraag over uw rapport, een klacht of iets anders? Neem contact op met Kooprapport.",
+    url: `${APP_BASE_URL}${CANONICAL_PATH}`,
+    type: "website",
+  },
 };
 
 export default function ContactPage() {
