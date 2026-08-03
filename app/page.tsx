@@ -213,6 +213,13 @@ export default function HomePage() {
   // wat Google nodig heeft voor FAQ-rich-results en om de site als
   // organisatie te herkennen — puur beschrijvend, geen impact op de
   // gerenderde pagina zelf.
+  // BUGFIX (SEO-audit): miste eerder logo/address/identifier -- zonder logo
+  // kan Google er sowieso geen Kennisvenster-kandidaat van maken, en zonder
+  // adres/KvK-nummer is dit een "kale" Organization met alleen naam/url.
+  // Bewust GEEN sameAs (LinkedIn/Instagram/etc.) toegevoegd: die profielen
+  // zijn niet geverifieerd, en een geraden/verzonnen sameAs-URL zou tegen
+  // het "nooit iets verzinnen"-principe van deze app ingaan. Adres en
+  // KvK-nummer hieronder staan al, ongewijzigd, op /contact.
   const organizationJsonLd = {
     "@context": "https://schema.org",
     "@type": "Organization",
@@ -220,6 +227,19 @@ export default function HomePage() {
     url: APP_BASE_URL,
     description:
       "Onafhankelijk woningrapport per adres: waarde-indicatie, buurtverkopen, energielabel, funderingsrisico en buurtprofiel, gebaseerd op officiële, erkende bronnen.",
+    logo: `${APP_BASE_URL}/logo-email.png`,
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: "Pleinweg 66D",
+      postalCode: "3083 EH",
+      addressLocality: "Rotterdam",
+      addressCountry: "NL",
+    },
+    identifier: {
+      "@type": "PropertyValue",
+      name: "KvK-nummer",
+      value: "87451387",
+    },
   };
   const websiteJsonLd = {
     "@context": "https://schema.org",
@@ -601,6 +621,9 @@ export default function HomePage() {
             </Link>
             <Link href="/marktupdates" className="underline underline-offset-2 hover:text-ink">
               Marktupdates
+            </Link>
+            <Link href="/woningmarkt" className="underline underline-offset-2 hover:text-ink">
+              Woningmarkt per stad
             </Link>
             <Link href="/privacy" className="underline underline-offset-2 hover:text-ink">
               Privacy

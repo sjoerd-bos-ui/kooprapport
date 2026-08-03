@@ -55,13 +55,18 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const artikel = getArtikelBySlug(slug);
   if (!artikel) return {};
   const canonicalPath = `/koopgids/${artikel.slug}`;
+  // metaTitel (indien gezet) i.p.v. de volledige titel -- zie de toelichting
+  // bij het veld in lib/content/koopgids.ts: een aantal artikeltitels wordt
+  // samen met de " · Kooprapport"-suffix te lang voor Google's zoekresultaat.
+  // De H1 op de pagina zelf (artikel.titel, hieronder verderop) blijft gelijk.
+  const seoTitel = artikel.metaTitel ?? artikel.titel;
   return {
-    title: artikel.titel,
+    title: seoTitel,
     description: artikel.metaBeschrijving,
     alternates: { canonical: canonicalPath },
     robots: { index: true, follow: true },
     openGraph: {
-      title: artikel.titel,
+      title: seoTitel,
       description: artikel.metaBeschrijving,
       url: `${APP_BASE_URL}${canonicalPath}`,
       type: "article",

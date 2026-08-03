@@ -24,7 +24,12 @@ export const metadata: Metadata = {
   title: "Marktupdates",
   description:
     "Elk kwartaal de belangrijkste cijfers over de Nederlandse woningmarkt: verkoopprijzen, overbieden en verschillen per regio.",
-  alternates: { canonical: CANONICAL_PATH },
+  alternates: {
+    canonical: CANONICAL_PATH,
+    // RSS-feed (zie app/marktupdates/feed.xml/route.ts) -- laat feedlezers
+    // en browsers 'm automatisch vinden via <link rel="alternate">.
+    types: { "application/rss+xml": `${APP_BASE_URL}/marktupdates/feed.xml` },
+  },
   robots: { index: true, follow: true },
   openGraph: {
     title: "Marktupdates · Kooprapport",
@@ -95,6 +100,12 @@ export default function MarktupdatesPagina() {
             Verkoopprijzen, overbieden en de verschillen per regio: elk kwartaal zetten we de belangrijkste cijfers
             op een rijtje, gebaseerd op de nieuwste cijfers van NVM, Kadaster en CBS.
           </p>
+          <a
+            href="/marktupdates/feed.xml"
+            className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-ink/45 hover:text-ink"
+          >
+            RSS-feed
+          </a>
 
           <div className="mt-8 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-ink/10 bg-white p-5 shadow-sm">
             <div>

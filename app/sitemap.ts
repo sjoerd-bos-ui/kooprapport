@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { APP_BASE_URL } from "@/lib/config/payment";
 import { ARTIKELEN } from "@/lib/content/koopgids";
 import { MARKTUPDATES } from "@/lib/content/marktupdates";
+import { STEDEN } from "@/lib/content/steden";
 
 // Bewust ALLEEN de homepage. Rapportpagina's (/rapport/[slug]) bestaan pas
 // zodra iemand daadwerkelijk een adres opzoekt — er is geen database met
@@ -17,11 +18,32 @@ import { MARKTUPDATES } from "@/lib/content/marktupdates";
 // eens opgevraagd" bij (bv. een tabel/KV-store) waar deze functie uit kan
 // lezen — dat is een bewuste, aparte uitbreiding, geen onderdeel van deze
 // SEO-fix.
+//
+// BUGFIX (lastModified): stond hier eerder overal op new Date() -- dat geeft
+// niet de laatste keer dat de INHOUD veranderde, maar simpelweg het moment
+// waarop de sitemap gegenereerd wordt (elke build/request). Elke pagina leek
+// daardoor bij elke deploy "zojuist gewijzigd", ook /privacy (changeFrequency
+// "yearly") die al maanden ongewijzigd kan zijn -- een dooddoener van een
+// signaal dat Google juist gebruikt om te bepalen hoe vaak een pagina
+// hercrawld moet worden. Koopgids-artikelen en Marktupdates hebben nu een
+// echt bijgewerkt/gepubliceerdISO-veld in hun eigen content-bestand (zie
+// lib/content/koopgids.ts / marktupdates.ts) dat hier wordt uitgelezen; de
+// vaste pagina's hieronder hebben een losse constante die je zelf bijwerkt
+// zodra je de inhoud van die pagina daadwerkelijk aanpast.
+const HOMEPAGE_BIJGEWERKT = new Date("2026-08-03");
+const PRIVACY_BIJGEWERKT = new Date("2026-08-03");
+const VOORWAARDEN_BIJGEWERKT = new Date("2026-08-03");
+const CONTACT_BIJGEWERKT = new Date("2026-08-03");
+const KOOPGIDS_HUB_BIJGEWERKT = new Date("2026-08-03");
+const WERKWIJZE_BIJGEWERKT = new Date("2026-08-03");
+const MARKTUPDATES_HUB_BIJGEWERKT = new Date("2026-08-03");
+const WONINGMARKT_HUB_BIJGEWERKT = new Date("2026-08-03");
+
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
     {
       url: APP_BASE_URL,
-      lastModified: new Date(),
+      lastModified: HOMEPAGE_BIJGEWERKT,
       changeFrequency: "weekly",
       priority: 1,
     },
@@ -30,19 +52,19 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // tegenstelling tot rapportpagina's hierboven.
     {
       url: `${APP_BASE_URL}/privacy`,
-      lastModified: new Date(),
+      lastModified: PRIVACY_BIJGEWERKT,
       changeFrequency: "yearly",
       priority: 0.3,
     },
     {
       url: `${APP_BASE_URL}/voorwaarden`,
-      lastModified: new Date(),
+      lastModified: VOORWAARDEN_BIJGEWERKT,
       changeFrequency: "yearly",
       priority: 0.3,
     },
     {
       url: `${APP_BASE_URL}/contact`,
-      lastModified: new Date(),
+      lastModified: CONTACT_BIJGEWERKT,
       changeFrequency: "yearly",
       priority: 0.3,
     },
@@ -53,13 +75,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // trekken (zie het gesprek in Cowork over deze SEO-contentsectie).
     {
       url: `${APP_BASE_URL}/koopgids`,
-      lastModified: new Date(),
+      lastModified: KOOPGIDS_HUB_BIJGEWERKT,
       changeFrequency: "monthly",
       priority: 0.6,
     },
     ...ARTIKELEN.map((artikel) => ({
       url: `${APP_BASE_URL}/koopgids/${artikel.slug}`,
-      lastModified: new Date(),
+      lastModified: new Date(artikel.bijgewerkt),
       changeFrequency: "monthly" as const,
       priority: 0.5,
     })),
@@ -67,7 +89,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // identiek, gericht op vertrouwen/SEO), dus ook hier in de sitemap.
     {
       url: `${APP_BASE_URL}/werkwijze`,
-      lastModified: new Date(),
+      lastModified: WERKWIJZE_BIJGEWERKT,
       changeFrequency: "monthly",
       priority: 0.5,
     },
@@ -77,15 +99,30 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // vaste pagina's omdat er elk kwartaal daadwerkelijk iets verandert.
     {
       url: `${APP_BASE_URL}/marktupdates`,
-      lastModified: new Date(),
+      lastModified: MARKTUPDATES_HUB_BIJGEWERKT,
       changeFrequency: "monthly",
       priority: 0.6,
     },
     ...MARKTUPDATES.map((update) => ({
       url: `${APP_BASE_URL}/marktupdates/${update.slug}`,
-      lastModified: new Date(),
+      lastModified: new Date(update.gepubliceerdISO),
       changeFrequency: "yearly" as const,
       priority: 0.5,
+    })),
+    // Woningmarkt per stad: programmatic-SEO pagina's (zie de audit), leest
+    // dezelfde MARKTUPDATES-array uit als hierboven -- verandert dus mee
+    // zodra er een nieuw kwartaal bijkomt.
+    {
+      url: `${APP_BASE_URL}/woningmarkt`,
+      lastModified: WONINGMARKT_HUB_BIJGEWERKT,
+      changeFrequency: "monthly",
+      priority: 0.5,
+    },
+    ...STEDEN.map((stad) => ({
+      url: `${APP_BASE_URL}/woningmarkt/${stad.slug}`,
+      lastModified: MARKTUPDATES.length > 0 ? new Date(MARKTUPDATES[MARKTUPDATES.length - 1].gepubliceerdISO) : WONINGMARKT_HUB_BIJGEWERKT,
+      changeFrequency: "monthly" as const,
+      priority: 0.4,
     })),
   ];
 }

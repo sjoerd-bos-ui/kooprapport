@@ -34,6 +34,13 @@ export interface MarktupdateArtikel {
   metaBeschrijving: string;
   samenvatting: string; // kort excerpt voor de hub-kaart
   gepubliceerd: string; // weergavedatum, bv. "18 juli 2026"
+  // Zelfde datum als gepubliceerd, maar als ISO-string -- nodig omdat
+  // "18 juli 2026" geen betrouwbaar door new Date() te parsen formaat is
+  // (Dutch-locale maandnamen). Gebruikt door app/sitemap.ts voor een ECHTE
+  // lastModified i.p.v. new Date() op het moment van sitemap-genereren (zie
+  // de SEO-audit: dat liet elke pagina bij elke build "net gewijzigd" lijken,
+  // ook pagina's die al maanden niet meer zijn aangepast).
+  gepubliceerdISO: string; // bv. "2026-07-18"
   leestijdMinuten: number;
   intro: string;
 
@@ -79,6 +86,7 @@ export const MARKTUPDATES: MarktupdateArtikel[] = [
     samenvatting:
       "Meer aanbod, iets minder overbieden en een gemiddelde prijs die weer onder de €500.000 duikt. De cijfers van het eerste kwartaal op een rijtje.",
     gepubliceerd: "16 april 2026",
+    gepubliceerdISO: "2026-04-16",
     leestijdMinuten: 6,
     intro:
       "Na een laatste kwartaal van 2025 waarin de gemiddelde verkoopprijs voor het eerst boven een half miljoen euro uitkwam, deed de woningmarkt in het eerste kwartaal van 2026 iets ongebruikelijks: ze temperde zichzelf. Meer aanbod, iets minder overbieden en voor het eerst in lange tijd een gemiddelde prijs die weer onder de €500.000 dook. Geen ineenstorting, eerder een verkeerslicht dat van knalrood naar oranje sprong, al verschilt dat nogal per regio.",
@@ -141,6 +149,7 @@ export const MARKTUPDATES: MarktupdateArtikel[] = [
     samenvatting:
       "Recordveel woningen te koop, meer verkopen dan ooit en toch een hoger overbiedingspercentage. Landelijk en per regio op een rijtje.",
     gepubliceerd: "18 juli 2026",
+    gepubliceerdISO: "2026-07-18",
     leestijdMinuten: 6,
     intro:
       "Meer aanbod betekent toch minder stress voor kopers? Het tweede kwartaal van 2026 bewijst dat het net iets ingewikkelder ligt. Er kwamen recordveel huizen te koop, er werd meer verkocht dan ooit, en toch werd er gemiddeld harder overboden dan een kwartaal eerder. Welkom bij de Nederlandse woningmarkt, waar logica soms even pauze neemt.",

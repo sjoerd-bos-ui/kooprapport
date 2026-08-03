@@ -64,7 +64,19 @@ export interface KoopgidsSectie {
 
 export interface KoopgidsArtikel {
   slug: string;
+  // ISO-datum van de laatste inhoudelijke bewerking -- gebruikt door
+  // app/sitemap.ts voor een ECHTE lastModified i.p.v. new Date() op het
+  // moment van sitemap-genereren (zie de SEO-audit: dat liet elke pagina bij
+  // elke build "net gewijzigd" lijken). Bij een volgende inhoudelijke edit
+  // van een artikel: deze datum meebijwerken.
+  bijgewerkt: string; // bv. "2026-08-03"
   titel: string;
+  // Optioneel, korter alternatief voor <title>/og:title -- alleen gezet bij
+  // artikelen waar de volledige titel (samen met de " · Kooprapport"-suffix
+  // uit het title.template in app/layout.tsx) boven de ±60 tekens komt die
+  // Google doorgaans ongeknipt toont. De H1 op de pagina zelf (artikel.titel)
+  // blijft ONGEWIJZIGD -- dit raakt alleen de metadata, geen zichtbare content.
+  metaTitel?: string;
   metaBeschrijving: string;
   categorie: string; // exact dezelfde naam als het rapportonderdeel, bv. "Funderingsrisico"
   samenvatting: string; // kort excerpt voor de hub-kaart
@@ -81,6 +93,7 @@ export interface KoopgidsArtikel {
 export const ARTIKELEN: KoopgidsArtikel[] = [
   {
     slug: "woningwaarde-bepalen",
+    bijgewerkt: "2026-08-03",
     titel: "Hoe bepaalt u de waarde van een woning?",
     metaBeschrijving:
       "Hoe een vraagprijs tot stand komt, waarom overbieden de norm is en hoe een modelmatige schatting (AVM) dit samenbrengt in een betrouwbare bandbreedte.",
@@ -113,14 +126,14 @@ export const ARTIKELEN: KoopgidsArtikel[] = [
         kop: "De factoren die de waarde van een huis echt bepalen",
         paragrafen: [
           "Onder de streep komt de waarde van een woning neer op vijf dingen: de locatie, de staat van onderhoud, de kenmerken van de woning zelf (oppervlakte, kaveloppervlak, bouwjaar), de actuele marktomstandigheden en vergelijkbare verkopen in de buurt.",
-          "Locatie weegt doorgaans het zwaarst, gevolgd door onderhoudsstaat en grootte. Het energielabel speelt daarbij een steeds grotere rol: onderzoek van taxatiedata-specialist Calcasa laat zien dat woningen met een beter energielabel gemiddeld zo'n 4,1% meer opbrengen dan vergelijkbare woningen met een slechter label. Een nieuwe cv-ketel verkoopt dus niet alleen lekkerder warm water, maar telt ook mee bij de uiteindelijke prijs.",
+          "Locatie weegt doorgaans het zwaarst, gevolgd door onderhoudsstaat en grootte. Het [energielabel](energielabel-uitgelegd) speelt daarbij een steeds grotere rol: onderzoek van taxatiedata-specialist Calcasa laat zien dat woningen met een beter energielabel gemiddeld zo'n 4,1% meer opbrengen dan vergelijkbare woningen met een slechter label. Een nieuwe cv-ketel verkoopt dus niet alleen lekkerder warm water, maar telt ook mee bij de uiteindelijke prijs.",
         ],
       },
       {
         kop: "Dus hoe vertaalt zich dat naar één schatting?",
         paragrafen: [
           "Hier komt het model om de hoek kijken. Een Automated Valuation Model, met de nogal stoere afkorting AVM, legt de kenmerken van uw woning naast recente verkopen van vergelijkbare woningen in de buurt en trekt daar een schatting uit. Zie het als een buurman die verstand heeft van huizenprijzen en alle recente verkopen in de straat kent, maar nooit bij u binnen is geweest.",
-          "In het rapport van Kooprapport heet dit onderdeel Waarde-indicatie, en dat werkt precies zo: een modelmatige schatting op basis van uw eigen adres en de verkopen in de buurt.",
+          "In het rapport van Kooprapport heet dit onderdeel Waarde-indicatie, en dat werkt precies zo: een modelmatige schatting op basis van uw eigen adres en de [verkopen in de buurt](verkopen-in-de-buurt).",
           "Zo'n model geeft trouwens bewust geen los getal, maar een boven- en ondergrens. Eén stellig bedrag klinkt lekker duidelijk, maar een huis is geen blikje cola met een prijssticker erop. Bij een standaard rijtjeswoning met veel vergelijkbare verkopen in de buurt is die bandbreedte vaak smal. Bij een afwijkende woning, met een ongebruikelijke plattegrond of weinig vergelijkingsmateriaal in de buurt, wordt de bandbreedte eerlijk gezegd wat breder. Dat is geen fout in het model, dat is precies hoe zeker het model daadwerkelijk is.",
         ],
         illustratie: BandbreedteIllustratie,
@@ -137,7 +150,9 @@ export const ARTIKELEN: KoopgidsArtikel[] = [
   },
   {
     slug: "verkopen-in-de-buurt",
+    bijgewerkt: "2026-08-03",
     titel: "Wat verkopen in uw buurt zeggen over de prijs",
+    metaTitel: "Wat verkopen in uw buurt zeggen",
     metaBeschrijving:
       "Actuele NVM-cijfers over verkochte woningen, gemiddelde prijzen en doorlooptijd, wanneer een verkoop echt vergelijkbaar is en waar u verder op moet letten.",
     categorie: "Verkopen in de buurt",
@@ -185,14 +200,16 @@ export const ARTIKELEN: KoopgidsArtikel[] = [
       {
         kop: "Hoe u dit praktisch gebruikt",
         paragrafen: [
-          "Let bij het bepalen van uw eigen bod of vraagprijs altijd op de prijs per vierkante meter binnen hetzelfde woningtype en let ook op de transactiedatum: een verkoop van anderhalf jaar geleden zegt minder over de huidige markt dan een verkoop van vorige maand, zeker in een markt die per kwartaal merkbaar beweegt zoals nu. Combineer dit vervolgens met de waarde-indicatie van uw eigen woning: de buurtverkopen laten zien wat de markt doet terwijl de waarde-indicatie dat vertaalt naar uw specifieke adres.",
+          "Let bij het bepalen van uw eigen bod of vraagprijs altijd op de prijs per vierkante meter binnen hetzelfde woningtype en let ook op de transactiedatum: een verkoop van anderhalf jaar geleden zegt minder over de huidige markt dan een verkoop van vorige maand, zeker in een markt die per kwartaal merkbaar beweegt zoals nu. Combineer dit vervolgens met de [waarde-indicatie](woningwaarde-bepalen) van uw eigen woning: de buurtverkopen laten zien wat de markt doet terwijl de waarde-indicatie dat vertaalt naar uw specifieke adres.",
         ],
       },
     ],
   },
   {
     slug: "bouwjaar-en-gebruiksdoel",
+    bijgewerkt: "2026-08-03",
     titel: "Wat bouwjaar, oppervlakte en gebruiksdoel u eigenlijk vertellen",
+    metaTitel: "Bouwjaar, oppervlakte en gebruiksdoel uitgelegd",
     metaBeschrijving:
       "Wat de BAG precies registreert, waarom gebruiksdoel niet hetzelfde is als het feitelijke gebruik en wat bouwjaar en oppervlakte over een huis zeggen.",
     categorie: "Objectgegevens",
@@ -242,14 +259,16 @@ export const ARTIKELEN: KoopgidsArtikel[] = [
       {
         kop: "Wat u hier praktisch mee kunt",
         paragrafen: [
-          "Vergelijk huizen altijd op basis van deze officiële oppervlakte, niet op een los genoemd getal in een advertentie. Koopt u een bijzonder pand? Check dan eerst het gebruiksdoel voordat u een hypotheek aanvraagt. En gebruik het bouwjaar als eerste seintje: bij een huis van vóór 1975 zijn zowel het energielabel als het funderingsrisico al snel de moeite van het bekijken waard.",
+          "Vergelijk huizen altijd op basis van deze officiële oppervlakte, niet op een los genoemd getal in een advertentie. Koopt u een bijzonder pand? Check dan eerst het gebruiksdoel voordat u een hypotheek aanvraagt. En gebruik het bouwjaar als eerste seintje: bij een huis van vóór 1975 zijn zowel het [energielabel](energielabel-uitgelegd) als het funderingsrisico al snel de moeite van het bekijken waard.",
         ],
       },
     ],
   },
   {
     slug: "energielabel-uitgelegd",
+    bijgewerkt: "2026-08-03",
     titel: "Energielabel uitgelegd: wat de letters betekenen",
+    metaTitel: "Energielabel uitgelegd",
     metaBeschrijving:
       "Hoe het energielabel wordt berekend, welke deadlines er al gelden voor huurwoningen en wat een goed label voor uw hypotheek betekent.",
     categorie: "Energieprestatie en label",
@@ -288,14 +307,16 @@ export const ARTIKELEN: KoopgidsArtikel[] = [
         kop: "Verduurzamen en wat u kunt doen",
         paragrafen: [
           "Een laag label is dus geen reden om een huis links te laten liggen, wel een reden om te weten wat het kost om te verbeteren. In ons [artikel over verduurzamen](verduurzamen-wat-loont) leggen we uit welke maatregelen het meeste opleveren en in welke volgorde: isoleren komt eerst, want een warmtepomp werkt pas echt efficiënt in een goed geïsoleerde woning, en pas daarna volgen een nieuwe installatie en zonnepanelen.",
-          "Vraag bij een bezichtiging dus altijd naar het actuele definitieve energielabel en niet alleen naar het bouwjaar, want twee vergelijkbare huizen kunnen daarin flink verschillen. Reken bij een laag label niet alleen de energierekening mee, maar ook het effect op uw leenruimte en rente en bekijk voordat u een bod uitbrengt wat er nodig is om naar een beter label te komen.",
+          "Vraag bij een bezichtiging dus altijd naar het actuele definitieve energielabel en niet alleen naar het [bouwjaar](bouwjaar-en-gebruiksdoel), want twee vergelijkbare huizen kunnen daarin flink verschillen. Reken bij een laag label niet alleen de energierekening mee, maar ook het effect op uw leenruimte en rente en bekijk voordat u een bod uitbrengt wat er nodig is om naar een beter label te komen.",
         ],
       },
     ],
   },
   {
     slug: "funderingsrisico-herkennen",
+    bijgewerkt: "2026-08-03",
     titel: "Funderingsrisico herkennen: waar moet u op letten?",
+    metaTitel: "Funderingsrisico herkennen: waarop letten?",
     metaBeschrijving:
       "Wat funderingsrisico precies is, waarom taxatierapporten sinds 2026 verplicht een A-E score bevatten en wat u er zelf al vóór het bieden aan kunt zien.",
     categorie: "Funderingsrisico",
@@ -311,7 +332,7 @@ export const ARTIKELEN: KoopgidsArtikel[] = [
         kop: "Wat funderingsrisico precies is",
         paragrafen: [
           "Tot ongeveer 1970 werden huizen in Nederland vaak op houten palen gefundeerd, vooral in gebieden met een slappe bodem zoals veen of rivierklei. Zolang die palen permanent onder het grondwater staan blijven ze gezond: hout rot simpelweg niet in een zuurstofarme verzadigde omgeving. Het probleem ontstaat als de grondwaterstand daalt, bijvoorbeeld door langdurige droogte, waardoor de paalkoppen droog komen te staan en binnen enkele jaren kunnen wegrotten. Een beetje alsof u een houten steiger jarenlang droog laat staan in plaats van in het water: vroeg of laat gaat dat knagen.",
-          "Vanaf ongeveer 1970 werd funderen op betonpalen de standaard, wat dit specifieke risico grotendeels wegneemt. Funderingsrisico is dus vooral een zaak van oudere woningen gecombineerd met de bodemgesteldheid van de buurt.",
+          "Vanaf ongeveer 1970 werd funderen op betonpalen de standaard, wat dit specifieke risico grotendeels wegneemt. Funderingsrisico is dus vooral een zaak van het [bouwjaar](bouwjaar-en-gebruiksdoel) van de woning, gecombineerd met de bodemgesteldheid van de buurt.",
         ],
         illustratie: VoorNa1970Illustratie,
       },
@@ -356,7 +377,9 @@ export const ARTIKELEN: KoopgidsArtikel[] = [
   },
   {
     slug: "buurt-en-voorzieningen",
+    bijgewerkt: "2026-08-03",
     titel: "Buurt en voorzieningen: wat zit er echt om de hoek?",
+    metaTitel: "Buurt en voorzieningen uitgelegd",
     metaBeschrijving:
       "Wat het CBS precies meet aan afstand tot voorzieningen, waarom dichtbij niet altijd beter is en wat het buurtprofiel van Kooprapport per adres laat zien.",
     categorie: "Buurtprofiel",
@@ -392,7 +415,7 @@ export const ARTIKELEN: KoopgidsArtikel[] = [
       {
         kop: "Wat ons rapport hierin laat zien",
         paragrafen: [
-          "In het buurtprofiel van Kooprapport rekenen we dit uit voor uw eigen adres, niet voor de gemeente of postcode als geheel. U ziet de afstand tot de dichtstbijzijnde apotheek, kinderopvang, treinstation, oprit of parkeergelegenheid en park of ander groen. Precies de voorzieningen waarvan onderzoek laat zien dat ze er voor de meeste mensen echt toe doen, berekend voor dit specifieke huis in plaats van een gemiddelde die voor de hele wijk geldt.",
+          "In het buurtprofiel van Kooprapport rekenen we dit uit voor uw eigen adres, niet voor de gemeente of postcode als geheel. U ziet de afstand tot de dichtstbijzijnde apotheek, kinderopvang, treinstation, oprit of parkeergelegenheid en park of ander groen. Precies de voorzieningen waarvan onderzoek laat zien dat ze er voor de meeste mensen echt toe doen, berekend voor dit specifieke huis in plaats van een gemiddelde die voor de hele wijk geldt. Combineer dit met de [verkopen in de buurt](verkopen-in-de-buurt): die laten zien wat de markt doet, het buurtprofiel laat zien of u er zelf ook prettig zou wonen.",
         ],
       },
       {
@@ -406,7 +429,9 @@ export const ARTIKELEN: KoopgidsArtikel[] = [
   },
   {
     slug: "verduurzamen-wat-loont",
+    bijgewerkt: "2026-08-03",
     titel: "Verduurzamen: welke maatregelen leveren het meeste op?",
+    metaTitel: "Welke verduurzaming loont het meest?",
     metaBeschrijving:
       "Waarom de volgorde van verduurzamingsmaatregelen ertoe doet, wat ze qua terugverdientijd opleveren en wanneer een maatregel wel of niet zinvol is.",
     categorie: "Verduurzamingsadvies",
@@ -440,7 +465,7 @@ export const ARTIKELEN: KoopgidsArtikel[] = [
       {
         kop: "Terugverdientijd is niet het hele verhaal",
         paragrafen: [
-          "Een beter energielabel doet ook iets met de waarde van uw huis, los van wat u maandelijks bespaart. Onderzoek laat zien dat een woning met een beter energielabel gemiddeld ruim 7% meer waard is dan een vergelijkbaar huis met een slechter label en bij een sprong van label D naar A kan dat oplopen tot zo'n 10%. Bij een huis van vier ton scheelt dat al snel €40.000. Blijft u nog jarenlang wonen, dan telt vooral de energierekening. Verkoopt u binnenkort, dan mag die waardestijging net zo zwaar meewegen.",
+          "Een beter [energielabel](energielabel-uitgelegd) doet ook iets met de waarde van uw huis, los van wat u maandelijks bespaart. Onderzoek laat zien dat een woning met een beter energielabel gemiddeld ruim 7% meer waard is dan een vergelijkbaar huis met een slechter label en bij een sprong van label D naar A kan dat oplopen tot zo'n 10%. Bij een huis van vier ton scheelt dat al snel €40.000. Blijft u nog jarenlang wonen, dan telt vooral de energierekening. Verkoopt u binnenkort, dan mag die waardestijging net zo zwaar meewegen.",
         ],
       },
       {
