@@ -44,7 +44,7 @@ import { ArrowRightIcon, FileCheckIcon } from "@/components/report/icons";
 // inhoudelijke wijziging aan de voorbeeld-PDF forceert een verse, ongecachete
 // URL, zonder de caching zelf (die de laadtijd echt verbetert) te hoeven
 // opgeven.
-const VOORBEELD_INHOUD_VERSIE = "3";
+const VOORBEELD_INHOUD_VERSIE = "4";
 const PDF_URL = `/api/rapport/voorbeeld-pdf?v=${VOORBEELD_INHOUD_VERSIE}`;
 const PDFJS_MANIFEST_URL = "/pdfjs/manifest.json";
 
