@@ -183,6 +183,14 @@ export function berekenBiedscenarios(
   };
 }
 
+// Gedeelde weergave van een overbiedpercentage ("+8,1%", "-1,0%") -- gebruikt
+// door de publieke tool (BiedadviesTool.tsx), het premium waarde-tabblad
+// (ReportView.tsx) en de PDF (ReportDocument.tsx), zodat een percentage
+// overal exact hetzelfde wordt geschreven.
+export function formatOverbiedPercentage(n: number): string {
+  return (n >= 0 ? "+" : "") + n.toFixed(1).replace(".", ",") + "%";
+}
+
 export interface NhgCheck {
   onderGrens: boolean;
   grens: number;

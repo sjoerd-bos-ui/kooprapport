@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { AddressMeta, Report } from "@/types/report";
 import { fetchLiveAddressSuggestions, searchAddressSuggestions } from "@/lib/services/addressLookup";
 import { resolveFundaUrl, type FundaLinkParseResult } from "@/lib/services/fundaLink";
-import { berekenBiedscenarios, type Biedscenarios } from "@/lib/services/biedadvies";
+import { berekenBiedscenarios, formatOverbiedPercentage, type Biedscenarios } from "@/lib/services/biedadvies";
 import { buildReportHref } from "@/lib/utils/slug";
 import { RAPPORT_PRIJS } from "@/lib/utils/prijs";
 import {
@@ -72,9 +72,7 @@ interface Feiten {
 function euro(n: number): string {
   return "€ " + Math.round(n).toLocaleString("nl-NL");
 }
-function pct(n: number): string {
-  return (n >= 0 ? "+" : "") + n.toFixed(1).replace(".", ",") + "%";
-}
+const pct = formatOverbiedPercentage;
 
 export default function BiedadviesTool() {
   const [mode, setMode] = useState<"link" | "manual">("link");

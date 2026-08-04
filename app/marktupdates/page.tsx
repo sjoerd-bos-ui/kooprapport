@@ -197,6 +197,20 @@ export default function MarktupdatesPagina() {
               <AddressSearchBar />
             </div>
           </div>
+
+          {/* De overbiedcijfers op deze pagina zijn precies de databron achter
+              /biedadvies -- wie hier de landelijke cijfers leest, wil vaak
+              daarna weten wat dat voor het eigen bod betekent. */}
+          <Link
+            href="/biedadvies"
+            className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-ink/10 bg-white p-4 transition-shadow hover:shadow-lg"
+          >
+            <div>
+              <p className="text-sm font-bold text-ink">Wat is in uw regio een goed bod?</p>
+              <p className="mt-0.5 text-xs text-ink/55">Zie in drie scenario&apos;s wat hier realistisch is, van veilig tot scherp.</p>
+            </div>
+            <ArrowRightIcon className="h-3.5 w-3.5 shrink-0 text-ink/30" />
+          </Link>
         </Container>
       </main>
       <SiteFooter />

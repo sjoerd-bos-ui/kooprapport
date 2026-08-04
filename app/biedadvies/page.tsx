@@ -94,10 +94,13 @@ export default function BiedadviesPagina() {
                 ))}
               </div>
 
-              <p className="mt-7 max-w-md text-[13px] leading-relaxed text-ink/50">
-                Dit is de teaser. Het volledige rapport heeft de complete biedstrategie, gebaseerd op onze
-                eigen waardebepaling van dít huis. Geen giswerk.
-              </p>
+              <div className="mt-7 max-w-md border-t border-ink/10 pt-4">
+                <p className="text-[14px] font-extrabold text-ink">Meer zekerheid nodig?</p>
+                <p className="mt-1 text-[13px] leading-relaxed text-ink/60">
+                  Het volledige rapport heeft de complete biedstrategie, op basis van onze eigen berekening
+                  voor dit huis.
+                </p>
+              </div>
             </div>
 
             <div className="lg:sticky lg:top-24">

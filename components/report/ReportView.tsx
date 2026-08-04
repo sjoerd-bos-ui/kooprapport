@@ -51,10 +51,13 @@ import {
   MailIcon,
   LeafIcon,
   SunIcon,
+  ScaleIcon,
+  TrendingDownIcon,
 } from "@/components/report/icons";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
 import { duidEnergielabel, ENERGIELABEL_SCHAAL, ENERGIELABEL_KLEUREN } from "@/lib/utils/energielabel";
 import { buildSamenvatting, type SamenvattingKernstat } from "@/lib/services/samenvatting";
+import { berekenBiedscenarios, formatOverbiedPercentage, type BiedScenario } from "@/lib/services/biedadvies";
 import { VOORZIENING_THEMA_VOLGORDE, VOORZIENING_THEMA_LABEL, VOORZIENING_KLEUR } from "@/lib/utils/voorzieningenStijl";
 
 // Herbruikbare uitleg bij de geschatte woningwaarde — expliciet vereist:
@@ -75,6 +78,20 @@ function WoningwaardeUitleg() {
 // React 19: het globale "JSX"-namespace bestaat niet meer automatisch (zie
 // de Next.js 16-migratie) — ReactElement uit "react" zelf i.p.v. JSX.Element.
 type IconComp = (props: { className?: string }) => ReactElement;
+
+// Icoon/kleur per biedscenario (lib/services/biedadvies.ts::berekenBiedscenarios)
+// -- zelfde indeling als de publieke tool (components/biedadvies/BiedadviesTool.tsx),
+// hier hergebruikt op het premium Waarde-indicatie-tabblad.
+const BIEDSCENARIO_ICOON: Record<BiedScenario["key"], IconComp> = {
+  laag: ShieldCheckIcon,
+  gemiddeld: ScaleIcon,
+  hoog: TrendingDownIcon,
+};
+const BIEDSCENARIO_KLEUR: Record<BiedScenario["key"], { tekst: string; bg: string }> = {
+  laag: { tekst: "text-[#3B6D11]", bg: "bg-[#EAF3DE]" },
+  gemiddeld: { tekst: "text-sun", bg: "bg-sun/10" },
+  hoog: { tekst: "text-rust", bg: "bg-rust/10" },
+};
 
 // Doorklikbare rij voor een buurtverkoop op het "Verkopen in de buurt"-
 // tabblad — vervangt de vorige kale tabelrij. vergelijkbaar/deltaPct komen
@@ -465,7 +482,16 @@ export default function ReportView({
   const [emailInput, setEmailInput] = useState("");
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailStatus, setEmailStatus] = useState<{ kind: "success" | "error"; message: string } | null>(null);
+  // "Verken je eigen bod" op het Biedadvies-blok (Waarde-indicatie-tabblad) --
+  // null zolang niemand aan de schuif heeft gezeten, dan valt de weergave
+  // terug op het "gemiddeld risico"-scenario als startpunt.
+  const [bodOverride, setBodOverride] = useState<number | null>(null);
   const { core, building, energy, market, nearbySales, verduurzaming, buurtprofiel, fundering, kavel, bestemming } = report;
+  // Biedadvies: hergebruikt de al aanwezige (en bij ontgrendelen al betaalde)
+  // AVM-schatting -- in tegenstelling tot de publieke /biedadvies-tool wordt
+  // hier NOOIT om een handmatige waarde gevraagd, want die schatting is er al.
+  // Zie lib/services/biedadvies.ts voor de regio/landelijk-fallback.
+  const biedscenarios = berekenBiedscenarios(market.data?.geschatteWaarde, core.address.plaats);
   // Compacte, feitelijke eindsamenvatting (Samenvatting-tabblad + laatste
   // stuk van de PDF) — bouwt uitsluitend voort op velden die al hierboven in
   // `report` staan, zie lib/services/samenvatting.ts voor de regels.
@@ -843,11 +869,81 @@ export default function ReportView({
               )}
             </div>
 
+            {biedscenarios && (
+              <div className="rounded-xl bg-parchment p-4">
+                <div className="flex items-baseline justify-between gap-2">
+                  <h3 className="font-display text-[13px] font-bold text-ink">Biedadvies voor dit adres</h3>
+                  <span className="shrink-0 text-[11px] text-ink/45">
+                    {biedscenarios.regioNaam ? `regio ${biedscenarios.regioNaam}` : "landelijk"}
+                  </span>
+                </div>
+                <p className="mt-1 text-[12px] leading-relaxed text-ink/55">
+                  Dezelfde schatting, nu vertaald naar een bod. Koper: dit is realistisch om te bieden.
+                  Verkoper: dit mag je boven de vraagprijs verwachten.
+                </p>
+
+                <div className="mt-3.5 flex flex-col gap-2">
+                  {biedscenarios.scenarios.map((s) => {
+                    const Icon = BIEDSCENARIO_ICOON[s.key];
+                    const kleur = BIEDSCENARIO_KLEUR[s.key];
+                    return (
+                      <div key={s.key} className={`flex items-center gap-3 rounded-xl px-3.5 py-3 ${kleur.bg}`}>
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-white">
+                          <Icon className={`h-4 w-4 ${kleur.tekst}`} />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className={`text-[12px] font-bold ${kleur.tekst}`}>{s.titel}</p>
+                          <p className="text-[11px] text-ink/55">{s.toelichting}</p>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <p className="text-[13.5px] font-extrabold text-ink">{formatCurrency(s.bod)}</p>
+                          <p className={`text-[10px] font-bold ${kleur.tekst}`}>{formatOverbiedPercentage(s.overbiedPercentage)}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {(() => {
+                  const gemiddeld = biedscenarios.scenarios.find((s) => s.key === "gemiddeld")!;
+                  const bod = bodOverride ?? gemiddeld.overbiedPercentage;
+                  const diff = bod - gemiddeld.overbiedPercentage;
+                  const kleur = diff >= 1.5 ? "text-[#3B6D11]" : diff >= -1.5 ? "text-sun" : "text-rust";
+                  const tekst = diff >= 1.5 ? "ruim boven regiogemiddelde" : diff >= -1.5 ? "rond regiogemiddelde" : "onder regiogemiddelde";
+                  return (
+                    <div className="mt-4 rounded-xl bg-white p-3.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[12px] font-semibold text-ink">Verken je eigen bod</span>
+                        <span className="text-[13px] font-bold text-accent-dark">{formatOverbiedPercentage(bod)}</span>
+                      </div>
+                      <input
+                        type="range"
+                        min={-2}
+                        max={15}
+                        step={0.5}
+                        value={bod}
+                        onChange={(e) => setBodOverride(Number(e.target.value))}
+                        className="mt-2 w-full accent-accent"
+                        aria-label="Jouw bod, als percentage boven de geschatte waarde"
+                      />
+                      <p className={`mt-1.5 text-[11px] font-semibold ${kleur}`}>
+                        {formatCurrency(biedscenarios.waarde * (1 + bod / 100))} · {tekst}
+                      </p>
+                    </div>
+                  );
+                })()}
+
+                <p className="mt-2.5 text-[10.5px] text-ink/35">
+                  Bron overbiedcijfer: NVM Marktoverzicht per regio, {biedscenarios.periodeLabel}. Indicatief,
+                  geen garantie voor deze specifieke woning.
+                </p>
+              </div>
+            )}
+
             <div>
               <h3 className="font-display text-[13px] font-bold text-ink">Wat kun je met deze schatting?</h3>
               <div className="mt-2.5 grid gap-2 sm:grid-cols-2">
                 {[
-                  "Onderhandelingsbasis bij aan-/verkoop",
                   "Oriëntatie bij hypotheek of herfinanciering",
                   "Richtlijn voor de verzekerde waarde",
                   "Startpunt voor vermogensplanning",

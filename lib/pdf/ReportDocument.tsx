@@ -6,6 +6,7 @@ import { TOON_HEX, type ChipToon } from "@/lib/utils/toonKleuren";
 import { duidEnergielabel, ENERGIELABEL_SCHAAL, ENERGIELABEL_KLEUREN } from "@/lib/utils/energielabel";
 import { berekenVeiligheidsscore, bepaalVeiligheidsBand, VEILIGHEID_BAND } from "@/lib/utils/veiligheidsscore";
 import { buildSamenvatting, type SamenvattingKernstat } from "@/lib/services/samenvatting";
+import { berekenBiedscenarios, formatOverbiedPercentage } from "@/lib/services/biedadvies";
 import { VOORZIENING_THEMA_VOLGORDE, VOORZIENING_THEMA_LABEL, VOORZIENING_KLEUR } from "@/lib/utils/voorzieningenStijl";
 import { buildCanonicalReportPath } from "@/lib/utils/slug";
 
@@ -1206,6 +1207,10 @@ export default function ReportDocument({
     market.data.bandbreedteMax > market.data.bandbreedteMin
       ? Math.max(0, Math.min(100, ((market.data.geschatteWaarde - market.data.bandbreedteMin) / (market.data.bandbreedteMax - market.data.bandbreedteMin)) * 100))
       : 50;
+  // Biedadvies: hergebruikt de al aanwezige (en bij aankoop al betaalde) AVM-
+  // schatting -- zelfde functie en dus zelfde uitkomst als op het premium
+  // Waarde-indicatie-tabblad in de app (components/report/ReportView.tsx).
+  const biedscenarios = berekenBiedscenarios(market.data?.geschatteWaarde, address.plaats);
 
   // --- Verkopen in de buurt ---------------------------------------------------
   const alleVerkopen = nearbySales.data?.verkopen ?? [];
@@ -1556,12 +1561,55 @@ export default function ReportDocument({
                 )}
               </View>
 
+              {/* Biedadvies: dezelfde schatting, vertaald naar drie biedscenario's --
+                  zelfde berekening (lib/services/biedadvies.ts) en zelfde indeling
+                  als het premium Waarde-indicatie-tabblad in de app. */}
+              {biedscenarios && (
+                <View style={[styles.kaart, { gap: 7 }]}>
+                  <View style={[styles.row, { alignItems: "baseline", justifyContent: "space-between" }]}>
+                    <Text style={{ fontSize: 8.5, fontFamily: "Helvetica-Bold", color: KLEUR.ink }}>Biedadvies voor dit adres</Text>
+                    <Text style={{ fontSize: 6.5, color: KLEUR.inkFaint }}>
+                      {biedscenarios.regioNaam ? `regio ${biedscenarios.regioNaam}` : "landelijk"}
+                    </Text>
+                  </View>
+                  <Text style={{ fontSize: 7.3, color: KLEUR.inkMuted, lineHeight: 1.5 }}>
+                    Dezelfde schatting, nu vertaald naar een bod. Koper: dit is realistisch om te bieden.
+                    Verkoper: dit mag je boven de vraagprijs verwachten.
+                  </Text>
+
+                  <View style={{ gap: 4 }}>
+                    {biedscenarios.scenarios.map((s) => {
+                      const toon = s.key === "laag" ? TOON_HEX.gunstig : s.key === "gemiddeld" ? TOON_HEX.aandacht : TOON_HEX.risico;
+                      const Icoon = s.key === "laag" ? IcoonSchild : s.key === "gemiddeld" ? IcoonEuro : IcoonTrend;
+                      return (
+                        <View key={s.key} style={[styles.row, { alignItems: "center", gap: 8, backgroundColor: toon.bg, borderRadius: 8, padding: 8 }]}>
+                          <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: KLEUR.paper, alignItems: "center", justifyContent: "center" }}>
+                            <Icoon kleur={toon.tekst} size={9} />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: toon.tekst }}>{s.titel}</Text>
+                            <Text style={{ fontSize: 6.5, color: KLEUR.inkMuted, marginTop: 0.5 }}>{s.toelichting}</Text>
+                          </View>
+                          <View style={{ alignItems: "flex-end" }}>
+                            <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: KLEUR.ink }}>{formatCurrency(s.bod)}</Text>
+                            <Text style={{ fontSize: 6.5, fontFamily: "Helvetica-Bold", color: toon.tekst }}>{formatOverbiedPercentage(s.overbiedPercentage)}</Text>
+                          </View>
+                        </View>
+                      );
+                    })}
+                  </View>
+
+                  <Text style={{ fontSize: 6, color: KLEUR.inkFaint, lineHeight: 1.4 }}>
+                    Bron overbiedcijfer: NVM Marktoverzicht per regio, {biedscenarios.periodeLabel}. Indicatief, geen garantie voor deze specifieke woning.
+                  </Text>
+                </View>
+              )}
+
               {/* Tips: wat kun je met deze schatting */}
               <TipsGrid
                 titel="Wat kun je met deze schatting?"
                 sublabel="algemene toepassingen"
                 items={[
-                  "Onderhandelingsbasis bij aan-/verkoop",
                   "Oriëntatie bij hypotheek of herfinanciering",
                   "Richtlijn voor de verzekerde waarde",
                   "Startpunt voor vermogensplanning",

@@ -275,6 +275,14 @@ export default async function MarktupdatePagina({ params }: { params: Promise<{ 
           <div className="mt-10 border-t border-ink/10 pt-8">
             <p className="text-[11px] font-bold uppercase tracking-wider3 text-ink/40">Meer weten</p>
             <div className="mt-3 flex flex-wrap gap-2">
+              {/* De overbiedcijfers hierboven zijn precies de databron achter /biedadvies
+                  -- de meest voor de hand liggende vervolgstap vanaf deze pagina. */}
+              <Link
+                href="/biedadvies"
+                className="inline-flex items-center gap-1 rounded-full border border-accent/30 bg-mist px-3.5 py-1.5 text-xs font-semibold text-accent-dark hover:border-accent"
+              >
+                Wat is een goed bod in uw regio? <ArrowRightIcon className="h-3 w-3" />
+              </Link>
               <Link
                 href="/koopgids/woningwaarde-bepalen"
                 className="inline-flex items-center gap-1 rounded-full border border-ink/10 px-3.5 py-1.5 text-xs font-semibold text-ink/70 hover:border-accent hover:text-accent"
