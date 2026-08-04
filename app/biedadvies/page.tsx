@@ -36,18 +36,18 @@ export const metadata: Metadata = {
 const PUNTEN = [
   {
     icon: MapPinIcon,
-    titel: "Adres via PDOK",
-    tekst: "Plak een link of zoek zelf. Geen giswerk, hetzelfde adresregister als de rest van de site.",
+    titel: "Adres, in één keer goed",
+    tekst: "Plak een link of typ het adres. Geen giswerk, geen verdwaald huisnummer.",
   },
   {
     icon: HistoryIcon,
-    titel: "Echte regiocijfers",
-    tekst: "Overbiedpercentage per COROP-regio, uit het NVM Marktoverzicht van dit kwartaal.",
+    titel: "Cijfers in plaats van buikgevoel",
+    tekst: "Hoeveel wordt er in jouw regio gemiddeld overboden? Wij weten het, jij hoeft het niet te raden.",
   },
   {
     icon: ShieldCheckIcon,
-    titel: "Jouw waarde, geen giswerk van ons",
-    tekst: "Wij rekenen op wat jij intikt: vraagprijs of eigen inschatting. Geen kostenverhogende schattingen zonder dat je ervoor kiest.",
+    titel: "Wij gokken niet met jouw geld",
+    tekst: "Jij vult zelf een waarde in: vraagprijs of eigen inschatting. Kost ons (en jou) niks extra.",
   },
 ];
 
@@ -73,12 +73,11 @@ export default function BiedadviesPagina() {
                 Biedadvies
               </span>
               <h1 className="mt-4 font-display text-3xl font-extrabold leading-tight text-ink sm:text-4xl">
-                Wat is in deze regio een goed bod?
+                Wat is hier een slim bod?
               </h1>
               <p className="mt-4 max-w-md text-[15px] leading-relaxed text-ink/65">
-                Plak de link naar een woning (bijvoorbeeld Funda) of zoek zelf een adres. Op basis van het echte
-                overbiedpercentage in die regio laten we drie scenario&apos;s zien: van een veilig bod tot een
-                scherpe gok.
+                Plak de link van een huis (Funda mag) of typ een adres. Wij zoeken uit wat er in die regio
+                écht wordt geboden: van veilig bod tot &quot;ik doe een gok&quot;.
               </p>
 
               <div className="mt-9 flex flex-col gap-5">
@@ -94,6 +93,11 @@ export default function BiedadviesPagina() {
                   </div>
                 ))}
               </div>
+
+              <p className="mt-7 max-w-md text-[13px] leading-relaxed text-ink/50">
+                Dit is de teaser. Het volledige rapport heeft de complete biedstrategie, gebaseerd op onze
+                eigen waardebepaling van dít huis. Geen giswerk.
+              </p>
             </div>
 
             <div className="lg:sticky lg:top-24">
