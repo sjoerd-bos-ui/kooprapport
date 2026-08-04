@@ -37,7 +37,7 @@ const PUNTEN = [
   {
     icon: MapPinIcon,
     titel: "Adres via PDOK",
-    tekst: "Plak een link of zoek zelf — geen giswerk, hetzelfde adresregister als de rest van de site.",
+    tekst: "Plak een link of zoek zelf. Geen giswerk, hetzelfde adresregister als de rest van de site.",
   },
   {
     icon: HistoryIcon,
@@ -47,7 +47,7 @@ const PUNTEN = [
   {
     icon: ShieldCheckIcon,
     titel: "Jouw waarde, geen giswerk van ons",
-    tekst: "Wij rekenen op wat jij intikt — vraagprijs of eigen inschatting. Geen kostenverhogende schattingen zonder dat je ervoor kiest.",
+    tekst: "Wij rekenen op wat jij intikt: vraagprijs of eigen inschatting. Geen kostenverhogende schattingen zonder dat je ervoor kiest.",
   },
 ];
 
@@ -77,7 +77,7 @@ export default function BiedadviesPagina() {
               </h1>
               <p className="mt-4 max-w-md text-[15px] leading-relaxed text-ink/65">
                 Plak de link naar een woning (bijvoorbeeld Funda) of zoek zelf een adres. Op basis van het echte
-                overbiedpercentage in die regio laten we drie scenario&apos;s zien — van een veilig bod tot een
+                overbiedpercentage in die regio laten we drie scenario&apos;s zien: van een veilig bod tot een
                 scherpe gok.
               </p>
 

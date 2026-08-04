@@ -267,7 +267,7 @@ export default function BiedadviesTool() {
           {linkStatus === "multiple" && linkCandidates.length > 0 && (
             <div className="mt-2 overflow-hidden rounded-xl border border-line">
               <p className="bg-sun/10 px-3.5 py-2 text-[10.5px] font-bold text-sun">
-                Dit adres is niet eenduidig — welke bedoel je?
+                Dit adres is niet eenduidig. Welke bedoel je?
               </p>
               {linkCandidates.map((c) => (
                 <button
@@ -400,7 +400,7 @@ export default function BiedadviesTool() {
               </div>
               <p className="mt-2 text-[10px] text-ink/35">
                 Scenario&apos;s o.b.v. {scenarios.niveau === "regio" ? "regiogemiddelde" : "landelijk gemiddelde"}{" "}
-                overbod ± indicatieve marge — geen garantie voor deze specifieke woning.
+                overbod ± indicatieve marge. Geen garantie voor deze specifieke woning.
               </p>
 
               <div className="relative mt-5 flex items-center gap-3 overflow-hidden rounded-2xl bg-gradient-to-br from-accent to-accent-dark px-[18px] py-4">
