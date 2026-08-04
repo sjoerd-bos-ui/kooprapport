@@ -14,7 +14,12 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/api/"],
+        // /zakelijk/ is het besloten B2B-dashboard (inloggen vereist, geen
+        // zelfregistratie) -- geen publieke content, hoort dus niet
+        // geïndexeerd te worden. Elke pagina daaronder zet ook zelf al
+        // robots: {index:false} (zie de metadata-exports in app/zakelijk/),
+        // dit is de extra, crawler-brede laag daarbovenop.
+        disallow: ["/api/", "/zakelijk/"],
       },
     ],
     sitemap: `${APP_BASE_URL}/sitemap.xml`,
