@@ -210,7 +210,7 @@ export const ARTIKELEN: KoopgidsArtikel[] = [
     slug: "bouwjaar-en-gebruiksdoel",
     bijgewerkt: "2026-08-03",
     titel: "Wat bouwjaar, oppervlakte en gebruiksdoel u eigenlijk vertellen",
-    metaTitel: "Bouwjaar, oppervlakte en gebruiksdoel uitgelegd",
+    metaTitel: "Bouwjaar, oppervlakte en gebruiksdoel",
     metaBeschrijving:
       "Wat de BAG precies registreert, waarom gebruiksdoel niet hetzelfde is als het feitelijke gebruik en wat bouwjaar en oppervlakte over een huis zeggen.",
     categorie: "Objectgegevens",
