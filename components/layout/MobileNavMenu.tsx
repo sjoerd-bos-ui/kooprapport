@@ -2,13 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { CompassIcon, FileCheckIcon, TrendingUpIcon, ShieldCheckIcon } from "@/components/report/icons";
+import { CompassIcon, FileCheckIcon, TrendingUpIcon, ShieldCheckIcon, ScaleIcon } from "@/components/report/icons";
 
 const LINKS = [
   { href: "/waarom-kooprapport", label: "Waarom Kooprapport", icoon: ShieldCheckIcon },
   { href: "/koopgids", label: "Koopgids", icoon: FileCheckIcon },
   { href: "/werkwijze", label: "Werkwijze", icoon: CompassIcon },
   { href: "/marktupdates", label: "Marktupdates", icoon: TrendingUpIcon },
+  { href: "/biedadvies", label: "Biedadvies", icoon: ScaleIcon },
 ];
 
 // Mobiel hamburgermenu.

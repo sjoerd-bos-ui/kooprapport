@@ -301,8 +301,13 @@ export default function HomePage() {
           zoekbalk) al af, dus die extra balk voegde alleen visueel gewicht
           toe zonder iets nieuws te doen. */}
       {/* Eigen, lichte header voor de homepage — geen zwarte masthead, geen
-          crosshair-motief; alleen het wordmark, de Koopgids-link en één
-          heldere CTA die naar de zoekbalk springt. */}
+          crosshair-motief; wordmark, dezelfde navlinks als SiteHeader.tsx
+          (BUGFIX: deze losse homepage-header was tot nu toe niet
+          meegenomen toen "Waarom Kooprapport" aan SiteHeader.tsx werd
+          toegevoegd, en ook niet toen /biedadvies erbij kwam — die links
+          waren daardoor alleen bereikbaar via een doorkliknaar een
+          subpagina, nooit vanaf de homepage zelf) en één heldere CTA die
+          naar de zoekbalk springt. */}
       <header className="border-b border-ink/10 bg-white">
         <Container className="flex items-center justify-between py-4">
           <Link href="/">
@@ -316,9 +321,11 @@ export default function HomePage() {
                 in dat bestand voor waarom dat nodig is (de footer linkte
                 niet naar deze pagina's). */}
             <div className="hidden items-center gap-6 sm:flex">
+              <SiteNavLink href="/waarom-kooprapport" label="Waarom Kooprapport" />
               <SiteNavLink href="/koopgids" label="Koopgids" />
               <SiteNavLink href="/werkwijze" label="Werkwijze" />
               <SiteNavLink href="/marktupdates" label="Marktupdates" />
+              <SiteNavLink href="/biedadvies" label="Biedadvies" />
             </div>
             <MobileNavMenu />
             <a

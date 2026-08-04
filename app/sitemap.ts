@@ -39,6 +39,7 @@ const WERKWIJZE_BIJGEWERKT = new Date("2026-08-03");
 const MARKTUPDATES_HUB_BIJGEWERKT = new Date("2026-08-03");
 const WONINGMARKT_HUB_BIJGEWERKT = new Date("2026-08-03");
 const WAAROM_KOOPRAPPORT_BIJGEWERKT = new Date("2026-08-03");
+const BIEDADVIES_BIJGEWERKT = new Date("2026-08-04");
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
@@ -75,6 +76,15 @@ export default function sitemap(): MetadataRoute.Sitemap {
     {
       url: `${APP_BASE_URL}/waarom-kooprapport`,
       lastModified: WAAROM_KOOPRAPPORT_BIJGEWERKT,
+      changeFrequency: "monthly",
+      priority: 0.6,
+    },
+    // Biedadvies: interactieve marketingtool (net als de AddressSearchBar-
+    // CTA's bedoeld om bezoekers naar het volledige rapport te leiden),
+    // vergelijkbare prioriteit als Waarom Kooprapport.
+    {
+      url: `${APP_BASE_URL}/biedadvies`,
+      lastModified: BIEDADVIES_BIJGEWERKT,
       changeFrequency: "monthly",
       priority: 0.6,
     },

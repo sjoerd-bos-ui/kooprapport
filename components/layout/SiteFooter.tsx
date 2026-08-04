@@ -37,6 +37,9 @@ export default function SiteFooter() {
           <Link href="/marktupdates" className="text-ink/70 underline underline-offset-2 hover:text-ink">
             Marktupdates
           </Link>
+          <Link href="/biedadvies" className="text-ink/70 underline underline-offset-2 hover:text-ink">
+            Biedadvies
+          </Link>
           <Link href="/woningmarkt" className="text-ink/70 underline underline-offset-2 hover:text-ink">
             Woningmarkt per stad
           </Link>

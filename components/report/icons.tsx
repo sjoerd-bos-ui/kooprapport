@@ -349,6 +349,41 @@ export function LeafIcon({ className }: { className?: string }) {
   );
 }
 
+// Tegenhanger van TrendingUpIcon — hoort bij het "hoog risico"-biedscenario
+// (lib/services/biedadvies.ts::berekenBiedscenarios), waar een lager bod een
+// grotere kans geeft om de woning mis te lopen.
+export function TrendingDownIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} className={className}>
+      <path d="M4 8 10 14l4-4 6 7" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M15 17h5v-5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+// Balans/weegschaal — hoort bij het "gemiddeld risico"-biedscenario, in lijn
+// met de meeste biedingen in de regio.
+export function ScaleIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} className={className}>
+      <path d="M12 3.5v17M8 20.5h8" strokeLinecap="round" />
+      <path d="M12 6 5 8l3.5 6.5L12 12 5 8" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12 6l7 2-3.5 6.5L12 12l7-4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+// Voor het link-invoerveld van de biedadvies-tool (plak een listing-URL).
+export function LinkIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} className={className}>
+      <path d="M9.5 14.5 14.5 9.5" strokeLinecap="round" />
+      <path d="M11 6.5 12.5 5a3.5 3.5 0 0 1 5 5L16 11.5" strokeLinecap="round" />
+      <path d="M13 17.5 11.5 19a3.5 3.5 0 0 1-5-5L8 12.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 // Zonnepanelen — hoort bij een specifieke maatregel op het
 // Verduurzamingsadvies-tabblad.
 export function SunIcon({ className }: { className?: string }) {
