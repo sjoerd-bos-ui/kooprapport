@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { getB2bSessieUitCookies } from "@/lib/services/b2bAuth";
 import { getRapportAanvraag, getKlantdossier } from "@/lib/services/b2bStore";
 import B2bRapportSamenvatting from "@/components/zakelijk/B2bRapportSamenvatting";
+import { HomeIcon } from "@/components/report/icons";
 
 export const metadata = { title: "Rapport · Kooprapport Zakelijk", robots: { index: false, follow: false } };
 
@@ -21,7 +22,10 @@ export default async function ZakelijkRapportDetailPagina({ params }: { params: 
       <Link href="/zakelijk/rapporten" className="text-[11px] font-semibold text-ink/50 hover:text-ink">
         ← Terug naar rapporten
       </Link>
-      <div className="mt-2 flex items-start justify-between">
+      <div className="mt-2 flex items-start gap-3">
+        <span className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-accent to-accent-dark shadow-sm">
+          <HomeIcon className="h-5 w-5 text-white" />
+        </span>
         <div>
           <p className="font-display text-xl font-extrabold text-ink">{aanvraag.adres.label}</p>
           <p className="mt-1 text-[12px] text-ink/50">

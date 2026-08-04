@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getB2bSessieUitCookies } from "@/lib/services/b2bAuth";
 import { listKlantdossiersVoorOrg } from "@/lib/services/b2bStore";
 import NieuwKlantForm from "@/components/zakelijk/NieuwKlantForm";
+import { UsersIcon } from "@/components/report/icons";
 
 export const metadata = { title: "Klanten · Kooprapport Zakelijk", robots: { index: false, follow: false } };
 
@@ -15,11 +16,18 @@ export default async function ZakelijkKlantenPagina() {
   return (
     <div>
       <p className="font-display text-xl font-extrabold text-ink">Klanten</p>
+      <p className="mt-1 text-[12px] text-ink/50">{dossiers.length} dossiers, {dossiers.filter((d) => d.status === "lopend").length} lopend</p>
 
       <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-[1.4fr_0.6fr]">
         <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
           {dossiers.length === 0 ? (
-            <p className="px-5 py-6 text-[12.5px] text-ink/50">Nog geen klantdossiers.</p>
+            <div className="flex flex-col items-center gap-3 px-5 py-10 text-center">
+              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#EEF0FF] text-accent">
+                <UsersIcon className="h-5 w-5" />
+              </span>
+              <p className="text-[13px] font-bold text-ink">Nog geen klantdossiers</p>
+              <p className="text-[11.5px] text-ink/50">Maak er hiernaast één aan om rapporten aan te koppelen.</p>
+            </div>
           ) : (
             <table className="w-full text-left text-[12px]">
               <thead>

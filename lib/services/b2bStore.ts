@@ -147,6 +147,14 @@ export async function getKlantdossier(id: string): Promise<B2bKlantdossier | nul
   return raw ? (JSON.parse(raw) as B2bKlantdossier) : null;
 }
 
+export async function zetKlantdossierStatus(id: string, status: B2bKlantdossier["status"]): Promise<B2bKlantdossier | null> {
+  const dossier = await getKlantdossier(id);
+  if (!dossier) return null;
+  const bijgewerkt: B2bKlantdossier = { ...dossier, status };
+  await kvSet(klantKey(id), JSON.stringify(bijgewerkt));
+  return bijgewerkt;
+}
+
 export async function listKlantdossiersVoorOrg(orgId: string): Promise<B2bKlantdossier[]> {
   const ids = await kvZRangeByScore(orgKlantenIndexKey(orgId), VER_IN_DE_TOEKOMST);
   const dossiers = await Promise.all(ids.map((id) => getKlantdossier(id)));
