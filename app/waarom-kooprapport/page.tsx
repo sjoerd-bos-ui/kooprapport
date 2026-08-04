@@ -33,7 +33,7 @@ import { APP_BASE_URL } from "@/lib/config/payment";
 const CANONICAL_PATH = "/waarom-kooprapport";
 
 const PAGINA_OMSCHRIJVING =
-  "Kooprapport bundelt openbare en officiële gegevens per adres in één onafhankelijk en samenhangend model, zorgvuldig zelf ontwikkeld en los van alle partijen rond de aankoop of verkoop.";
+  "Kooprapport bundelt openbare en officiële gegevens per adres in één onafhankelijk model, zelf ontwikkeld en los van alle partijen rond de aankoop of verkoop.";
 
 export const metadata: Metadata = {
   title: "Waarom Kooprapport",
@@ -60,7 +60,7 @@ const SITUATIES: Situatie[] = [
   {
     titel: "Te veel overbieden op gevoel",
     tekst: "U biedt zonder onderbouwing en zit achteraf fors boven vergelijkbare verkopen in de straat.",
-    tag: "Waarde-indicatie + verkopen in de buurt",
+    tag: "Waarde-indicatie + biedadvies",
     icoon: TrendingUpIcon,
     kleur: "indigo",
   },

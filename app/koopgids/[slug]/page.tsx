@@ -31,16 +31,21 @@ export function generateStaticParams() {
 // — puur om de bestaande kruisverwijzingen tussen artikelen (bv. "zie het
 // artikel over funderingsrisico") ook daadwerkelijk als interne link te
 // laten meetellen voor SEO, in plaats van als dode tekst.
+// UITBREIDING: begint de haakjes-inhoud met "/", dan is het een absoluut pad
+// (bv. "[biedadvies](/biedadvies)") i.p.v. een koopgids-slug -- nodig om ook
+// naar andere onderdelen van de site te kunnen verwijzen, niet alleen naar
+// andere artikelen.
 function renderParagraaf(tekst: string) {
-  const patroon = /\[([^\]]+)\]\(([a-z0-9-]+)\)/g;
+  const patroon = /\[([^\]]+)\]\((\/?[a-z0-9-]+)\)/g;
   const delen: (string | ReactNode)[] = [];
   let laatsteIndex = 0;
   let match: RegExpExecArray | null;
   let sleutel = 0;
   while ((match = patroon.exec(tekst)) !== null) {
     if (match.index > laatsteIndex) delen.push(tekst.slice(laatsteIndex, match.index));
+    const doel = match[2].startsWith("/") ? match[2] : `/koopgids/${match[2]}`;
     delen.push(
-      <Link key={sleutel++} href={`/koopgids/${match[2]}`} className="font-semibold text-accent underline underline-offset-2 hover:text-accent-dark">
+      <Link key={sleutel++} href={doel} className="font-semibold text-accent underline underline-offset-2 hover:text-accent-dark">
         {match[1]}
       </Link>
     );

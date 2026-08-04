@@ -84,13 +84,13 @@ const VEELGESTELDE_VRAGEN = [
   {
     vraag: "Waarom niet gewoon een gratis waardecheck?",
     antwoord:
-      "Die geven meestal één getal en daarna stilte. Kooprapport zet waarde-indicatie, vergelijkbare verkopen, funderingsrisico, energielabel, verduurzamingsadvies en buurtprofiel naast elkaar in één rapport van 10 pagina's, zodat u niet alleen een cijfer heeft, maar ook weet wat dat cijfer eigenlijk betekent.",
+      "Die geven meestal één getal en daarna stilte. Kooprapport zet waarde-indicatie met biedadvies, vergelijkbare verkopen, funderingsrisico, energielabel, verduurzamingsadvies en buurtprofiel naast elkaar in één rapport van 10 pagina's, zodat u niet alleen een cijfer heeft, maar ook weet wat dat cijfer eigenlijk betekent en wat u daarmee moet bieden.",
     open: true,
   },
   {
     vraag: "Wat zit er precies in het volledige rapport?",
     antwoord:
-      "Negen onderdelen, geen opvulling: rapportoverzicht, waarde-indicatie met bandbreedte, vergelijkbare verkopen met adressen en prijzen, objectgegevens, energieprestatie en label, een verduurzamingsadvies met concrete maatregelen en terugverdientijd, funderingsrisico met volledige duiding en advies, een buurtprofiel (veiligheid, voorzieningen, samenstelling) en een compacte samenvatting met eindconclusie. Ook gewoon te downloaden als PDF, of direct naar uw e-mail te sturen, voor als u het liever rustig doorleest, met koffie erbij.",
+      "Negen onderdelen, geen opvulling: rapportoverzicht, waarde-indicatie met bandbreedte en concreet biedadvies per scenario, vergelijkbare verkopen met adressen en prijzen, objectgegevens, energieprestatie en label, een verduurzamingsadvies met concrete maatregelen en terugverdientijd, funderingsrisico met volledige duiding en advies, een buurtprofiel (veiligheid, voorzieningen, samenstelling) en een compacte samenvatting met eindconclusie. Ook gewoon te downloaden als PDF, of direct naar uw e-mail te sturen, voor als u het liever rustig doorleest, met koffie erbij.",
   },
   {
     vraag: "Voor wie is dit rapport bedoeld?",
@@ -154,7 +154,7 @@ const VEELGESTELDE_VRAGEN = [
 // door het title.template in layout.tsx heen ("%s · Kooprapport"), wat een
 // dubbele/omgekeerde merknaam zou opleveren.
 const HOMEPAGE_OMSCHRIJVING =
-  "Vul een adres in en bekijk een gratis preview. Ontgrendel het volledige rapport met woningwaarde, energielabel, funderingsrisico, verduurzamingsadvies en buurtverkopen.";
+  "Vul een adres in en bekijk een gratis preview. Ontgrendel het volledige rapport met woningwaarde, biedadvies, energielabel, funderingsrisico en buurtverkopen.";
 
 export const metadata: Metadata = {
   description: HOMEPAGE_OMSCHRIJVING,

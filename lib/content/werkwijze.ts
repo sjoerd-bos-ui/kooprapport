@@ -36,7 +36,7 @@ export const WERKWIJZE_ONDERDELEN: WerkwijzeOnderdeel[] = [
   {
     titel: "Waarde-indicatie",
     tekst:
-      "Denk aan een slimme buurman die alle recente verkopen in de straat kent, maar nooit bij u binnen is geweest. Ons rekenmodel doet precies dat: het legt de kenmerken van uw huis naast wat vergelijkbare woningen om de hoek recent hebben opgebracht en trekt daar een eerlijke bandbreedte uit. Geen los, stellig bedrag alsof we uit een glazen bol lezen, maar een boven- en ondergrens die precies zo scherp is als het vergelijkingsmateriaal toelaat.",
+      "Denk aan een slimme buurman die alle recente verkopen in de straat kent, maar nooit bij u binnen is geweest. Ons rekenmodel doet precies dat: het legt de kenmerken van uw huis naast wat vergelijkbare woningen om de hoek recent hebben opgebracht en trekt daar een eerlijke bandbreedte uit. Geen los, stellig bedrag alsof we uit een glazen bol lezen, maar een boven- en ondergrens die precies zo scherp is als het vergelijkingsmateriaal toelaat. Inclusief biedadvies: drie scenario's die deze bandbreedte vertalen naar een concreet bod, van veilig tot scherp.",
     bijgewerkt: "Bijgewerkt: doorlopend, bij elke opvraging",
     icoon: TrendingUpIcon,
     kleur: "indigo",

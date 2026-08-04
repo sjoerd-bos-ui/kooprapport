@@ -14,7 +14,7 @@ import type { AddressMeta } from "@/types/report";
 // pand vaak niet apart geregistreerd (zie Energieprestatie-tab), dus dat als
 // vaste belofte noemen zou niet feitelijk zijn.
 const ONDERDELEN = [
-  { icon: TrendingUpIcon, titel: "Waarde-indicatie", tekst: "Met bandbreedte" },
+  { icon: TrendingUpIcon, titel: "Waarde-indicatie", tekst: "Met bandbreedte + biedadvies" },
   { icon: HistoryIcon, titel: "Verkopen in de buurt", tekst: "Laatste 12 maanden" },
   { icon: BuildingIcon, titel: "Objectgegevens", tekst: "Volledig" },
   { icon: BoltIcon, titel: "Energieprestatie en label", tekst: "Met duiding voor dit pand" },

@@ -143,6 +143,7 @@ export const ARTIKELEN: KoopgidsArtikel[] = [
         paragrafen: [
           "Voor de duidelijkheid: een waarde-indicatie is geen taxatie (daar komt een mens fysiek voor langs), geen WOZ-waarde en geen garantie voor de uiteindelijke verkoopprijs. Het is een stevig onderbouwd startpunt, dat u het beste combineert met de daadwerkelijke verkopen in uw buurt van de afgelopen twaalf maanden.",
           "Concreet kunt u deze schatting op een paar manieren gebruiken. Staat u op het punt te bieden op een woning, dan geeft de bandbreedte u een steviger onderbouwd verhaal om mee te onderhandelen, of weet u in elk geval waar u qua bod ongeveer aan toe bent. Overweegt u zelf te verkopen, dan is de indicatie een handig ijkpunt voordat u met een makelaar om tafel gaat. En bij het aanvragen van een hypotheek geeft een reële inschatting alvast een idee van de verhouding tussen de vraagprijs en wat de bank waarschijnlijk als onderpandwaarde zal hanteren.",
+          "Wilt u die bandbreedte meteen omzetten in een concreet bod? Onze gratis [biedadvies-tool](/biedadvies) laat per regio zien wat een veilig, gemiddeld en scherp bod is, op basis van het actuele overbiedpercentage.",
         ],
         illustratie: GebruiksscenariosIllustratie,
       },

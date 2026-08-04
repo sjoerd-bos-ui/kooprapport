@@ -181,7 +181,7 @@ export default function PreviewSummary({
           <div className="grid flex-1 grid-cols-1 gap-x-4 gap-y-1.5 sm:min-w-[220px] sm:grid-cols-2">
             {[
               "Rapportoverzicht",
-              "Waarde-indicatie",
+              "Waarde-indicatie + biedadvies",
               "Verkopen in de buurt",
               "Objectgegevens",
               "Energieprestatie en label",
