@@ -30,16 +30,16 @@ import { STEDEN } from "@/lib/content/steden";
 // lib/content/koopgids.ts / marktupdates.ts) dat hier wordt uitgelezen; de
 // vaste pagina's hieronder hebben een losse constante die je zelf bijwerkt
 // zodra je de inhoud van die pagina daadwerkelijk aanpast.
-const HOMEPAGE_BIJGEWERKT = new Date("2026-08-03");
+const HOMEPAGE_BIJGEWERKT = new Date("2026-08-05");
 const PRIVACY_BIJGEWERKT = new Date("2026-08-03");
 const VOORWAARDEN_BIJGEWERKT = new Date("2026-08-03");
 const CONTACT_BIJGEWERKT = new Date("2026-08-03");
 const KOOPGIDS_HUB_BIJGEWERKT = new Date("2026-08-03");
-const WERKWIJZE_BIJGEWERKT = new Date("2026-08-03");
-const MARKTUPDATES_HUB_BIJGEWERKT = new Date("2026-08-03");
+const WERKWIJZE_BIJGEWERKT = new Date("2026-08-05");
+const MARKTUPDATES_HUB_BIJGEWERKT = new Date("2026-08-05");
 const WONINGMARKT_HUB_BIJGEWERKT = new Date("2026-08-03");
-const WAAROM_KOOPRAPPORT_BIJGEWERKT = new Date("2026-08-03");
-const BIEDADVIES_BIJGEWERKT = new Date("2026-08-04");
+const WAAROM_KOOPRAPPORT_BIJGEWERKT = new Date("2026-08-05");
+const BIEDADVIES_BIJGEWERKT = new Date("2026-08-05");
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [

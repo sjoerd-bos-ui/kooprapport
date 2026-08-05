@@ -93,7 +93,7 @@ export interface KoopgidsArtikel {
 export const ARTIKELEN: KoopgidsArtikel[] = [
   {
     slug: "woningwaarde-bepalen",
-    bijgewerkt: "2026-08-03",
+    bijgewerkt: "2026-08-05",
     titel: "Hoe bepaalt u de waarde van een woning?",
     metaBeschrijving:
       "Hoe een vraagprijs tot stand komt, waarom overbieden de norm is en hoe een modelmatige schatting (AVM) dit samenbrengt in een betrouwbare bandbreedte.",
@@ -208,7 +208,7 @@ export const ARTIKELEN: KoopgidsArtikel[] = [
   },
   {
     slug: "bouwjaar-en-gebruiksdoel",
-    bijgewerkt: "2026-08-03",
+    bijgewerkt: "2026-08-05",
     titel: "Wat bouwjaar, oppervlakte en gebruiksdoel u eigenlijk vertellen",
     metaTitel: "Bouwjaar, oppervlakte en gebruiksdoel",
     metaBeschrijving:

@@ -33,6 +33,18 @@ export const metadata: Metadata = {
   },
 };
 
+// SEO-audit: dit was de enige pagina in de hoofdnavigatie zonder eigen
+// BreadcrumbList JSON-LD (koopgids/marktupdates/woningmarkt/homepage hebben
+// dit allemaal al) -- zelfde patroon hier toegevoegd, geen nieuw systeem.
+const breadcrumbJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "Kooprapport", item: APP_BASE_URL },
+    { "@type": "ListItem", position: 2, name: "Biedadvies", item: `${APP_BASE_URL}${CANONICAL_PATH}` },
+  ],
+};
+
 const PUNTEN = [
   {
     icon: MapPinIcon,
@@ -54,6 +66,7 @@ const PUNTEN = [
 export default function BiedadviesPagina() {
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
       <SiteHeader />
       <main className="relative overflow-hidden bg-parchment">
         <div

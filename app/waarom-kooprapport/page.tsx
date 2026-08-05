@@ -48,6 +48,15 @@ export const metadata: Metadata = {
   },
 };
 
+const breadcrumbJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "Kooprapport", item: APP_BASE_URL },
+    { "@type": "ListItem", position: 2, name: "Waarom Kooprapport", item: `${APP_BASE_URL}${CANONICAL_PATH}` },
+  ],
+};
+
 interface Situatie {
   titel: string;
   tekst: string;
@@ -98,6 +107,7 @@ const SITUATIES: Situatie[] = [
 export default function WaaromKooprapportPagina() {
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
       <SiteHeader />
       <main className="relative overflow-hidden bg-parchment">
         <div

@@ -36,9 +36,19 @@ export const metadata: Metadata = {
   },
 };
 
+const breadcrumbJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "Kooprapport", item: APP_BASE_URL },
+    { "@type": "ListItem", position: 2, name: "Werkwijze", item: `${APP_BASE_URL}${CANONICAL_PATH}` },
+  ],
+};
+
 export default function WerkwijzePagina() {
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
       <SiteHeader />
       {/* Zelfde parchment-canvas + zachte kleurvlekken als de homepage
           (na de "hele site voelt te wit"-ronde) i.p.v. het eerdere vlakke
