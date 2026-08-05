@@ -405,8 +405,8 @@ export default function BiedadviesTool() {
                 <div className="pointer-events-none absolute -right-4 -top-4 h-20 w-20 rounded-full bg-white/10" aria-hidden="true" />
                 <BulbIcon className="h-5 w-5 shrink-0 text-white" />
                 <p className="relative text-[12px] leading-relaxed text-white">
-                  <strong>Binnenkort:</strong> een kant-en-klare biedstrategie, automatisch berekend voor deze
-                  woning.
+                  <strong>In het volledige rapport:</strong> hetzelfde biedadvies, maar dan automatisch op basis
+                  van de echte modelwaarde van dit huis. Geen schatting nodig.
                 </p>
               </div>
 
