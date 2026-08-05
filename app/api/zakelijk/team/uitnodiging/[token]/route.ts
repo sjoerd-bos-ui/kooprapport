@@ -61,7 +61,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       orgId: uitnodiging.orgId,
       naam,
       email: uitnodiging.email,
-      rol: "lid",
+      rol: uitnodiging.rol,
       wachtwoordHash: hash,
       wachtwoordSalt: salt,
     });

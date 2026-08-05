@@ -1,5 +1,5 @@
 import { randomUUID, randomBytes } from "crypto";
-import { kvGet, kvSet, kvZAdd, kvZRangeByScore, kvIncrWithTtl } from "@/lib/services/kvStore";
+import { kvGet, kvSet, kvZAdd, kvZRangeByScore, kvZRem, kvIncrWithTtl } from "@/lib/services/kvStore";
 import { slugify } from "@/lib/utils/slug";
 import type {
   B2bOrganisatie,
@@ -314,7 +314,8 @@ const UITNODIGING_TTL_SECONDEN = 7 * 24 * 60 * 60;
 export async function maakUitnodiging(
   orgId: string,
   email: string,
-  uitgenodigdDoorUserId: string
+  uitgenodigdDoorUserId: string,
+  rol: B2bGebruiker["rol"] = "lid"
 ): Promise<B2bUitnodiging> {
   const nu = new Date();
   const record: B2bUitnodiging = {
@@ -322,6 +323,7 @@ export async function maakUitnodiging(
     orgId,
     email: email.trim().toLowerCase(),
     token: randomBytes(24).toString("hex"),
+    rol,
     uitgenodigdDoorUserId,
     aangemaaktOp: nu.toISOString(),
     verlooptOp: new Date(nu.getTime() + UITNODIGING_TTL_SECONDEN * 1000).toISOString(),
@@ -331,6 +333,25 @@ export async function maakUitnodiging(
   await kvSet(uitnodigingByTokenKey(record.token), record.id, UITNODIGING_TTL_SECONDEN);
   await kvZAdd(orgUitnodigingenIndexKey(orgId), Date.now(), record.id);
   return record;
+}
+
+// Uitnodiging intrekken -- verwijdert zowel het record zelf als de
+// token-lookup (zodat een al gekopieerde link niet blijft werken) en de
+// index-vermelding. orgId wordt meegegeven en gecontroleerd door de
+// aanroepende route, niet hier -- zelfde verantwoordelijkheidsverdeling als
+// de andere store-functies in dit bestand.
+export async function verwijderUitnodiging(id: string): Promise<void> {
+  const raw = await kvGet(uitnodigingKey(id));
+  if (!raw) return;
+  const uitnodiging = JSON.parse(raw) as B2bUitnodiging;
+  await kvSet(uitnodigingKey(id), "", 1);
+  await kvSet(uitnodigingByTokenKey(uitnodiging.token), "", 1);
+  await kvZRem(orgUitnodigingenIndexKey(uitnodiging.orgId), id);
+}
+
+export async function getUitnodiging(id: string): Promise<B2bUitnodiging | null> {
+  const raw = await kvGet(uitnodigingKey(id));
+  return raw ? (JSON.parse(raw) as B2bUitnodiging) : null;
 }
 
 export async function getUitnodigingDoorToken(token: string): Promise<B2bUitnodiging | null> {

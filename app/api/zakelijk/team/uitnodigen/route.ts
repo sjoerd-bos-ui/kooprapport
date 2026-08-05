@@ -4,6 +4,7 @@ import { checkRateLimit } from "@/lib/services/rateLimit";
 import { getGebruikerDoorEmail, maakUitnodiging } from "@/lib/services/b2bStore";
 import { stuurB2bUitnodigingEmail, isGeldigEmailadres } from "@/lib/services/email";
 import { APP_BASE_URL } from "@/lib/config/payment";
+import type { B2bRol } from "@/types/b2b";
 
 // -----------------------------------------------------------------------------
 // Teamlid uitnodigen (#7). Alleen "eigenaar" mag dit -- een "lid" kan zo geen
@@ -23,7 +24,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Alleen de eigenaar kan teamleden uitnodigen." }, { status: 403 });
   }
 
-  let body: { email?: string };
+  let body: { email?: string; rol?: string };
   try {
     body = await req.json();
   } catch {
@@ -34,13 +35,14 @@ export async function POST(req: NextRequest) {
   if (!email || !isGeldigEmailadres(email)) {
     return NextResponse.json({ error: "Vul een geldig e-mailadres in." }, { status: 400 });
   }
+  const rol: B2bRol = body.rol === "eigenaar" ? "eigenaar" : "lid";
 
   const bestaand = await getGebruikerDoorEmail(email);
   if (bestaand) {
     return NextResponse.json({ error: "Er bestaat al een gebruiker met dit e-mailadres." }, { status: 409 });
   }
 
-  const uitnodiging = await maakUitnodiging(context.organisatie.id, email, context.gebruiker.id);
+  const uitnodiging = await maakUitnodiging(context.organisatie.id, email, context.gebruiker.id, rol);
   const uitnodigingUrl = `${APP_BASE_URL}/zakelijk/uitnodiging/${uitnodiging.token}`;
 
   const resultaat = await stuurB2bUitnodigingEmail({

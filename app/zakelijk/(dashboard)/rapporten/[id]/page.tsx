@@ -24,13 +24,13 @@ export default async function ZakelijkRapportDetailPagina({ params }: { params: 
       <Link href="/zakelijk/rapporten" className="text-[11px] font-semibold text-ink/50 hover:text-ink">
         ← Terug naar rapporten
       </Link>
-      <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
-        <div className="flex items-start gap-3">
+      <div className="mt-2 flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
           <span className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-accent to-accent-dark shadow-sm">
             <HomeIcon className="h-5 w-5 text-white" />
           </span>
-          <div>
-            <p className="font-display text-xl font-extrabold text-ink">{aanvraag.adres.label}</p>
+          <div className="min-w-0">
+            <p className="truncate font-display text-xl font-extrabold text-ink">{aanvraag.adres.label}</p>
             <p className="mt-1 text-[12px] text-ink/50">
               Aangevraagd op {new Date(aanvraag.aangemaaktOp).toLocaleDateString("nl-NL")}
               {klant && (
@@ -45,7 +45,9 @@ export default async function ZakelijkRapportDetailPagina({ params }: { params: 
             </p>
           </div>
         </div>
-        <DeelKnop rapportId={aanvraag.id} initieleDeelUrl={aanvraag.deelToken ? `${APP_BASE_URL}/deelrapport/${aanvraag.deelToken}` : null} />
+        <div className="max-w-[380px] shrink-0">
+          <DeelKnop rapportId={aanvraag.id} initieleDeelUrl={aanvraag.deelToken ? `${APP_BASE_URL}/deelrapport/${aanvraag.deelToken}` : null} />
+        </div>
       </div>
 
       <div className="mt-5">

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 export default function TeamUitnodigenForm() {
   const router = useRouter();
   const [email, setEmail] = useState("");
+  const [rol, setRol] = useState<"lid" | "eigenaar">("lid");
   const [bezig, setBezig] = useState(false);
   const [melding, setMelding] = useState<{ tekst: string; fout: boolean } | null>(null);
 
@@ -16,7 +17,7 @@ export default function TeamUitnodigenForm() {
     const res = await fetch("/api/zakelijk/team/uitnodigen", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email, rol }),
     });
     const body = await res.json().catch(() => null);
     setBezig(false);
@@ -39,6 +40,14 @@ export default function TeamUitnodigenForm() {
         placeholder="naam@kantoor.nl"
         className="w-56 rounded-lg border border-ink/10 bg-parchment px-3 py-2 text-[12.5px] text-ink outline-none focus:border-accent"
       />
+      <select
+        value={rol}
+        onChange={(e) => setRol(e.target.value as "lid" | "eigenaar")}
+        className="rounded-lg border border-ink/10 bg-parchment px-3 py-2 text-[12.5px] text-ink outline-none focus:border-accent"
+      >
+        <option value="lid">Lid</option>
+        <option value="eigenaar">Eigenaar</option>
+      </select>
       <button
         type="submit"
         disabled={bezig}

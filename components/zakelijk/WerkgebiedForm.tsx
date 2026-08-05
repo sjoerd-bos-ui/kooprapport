@@ -40,6 +40,10 @@ export default function WerkgebiedForm({ alleRegioNamen, huidig }: { alleRegioNa
 
   return (
     <div>
+      <p className="mb-2.5 text-[11px] text-ink/45">
+        Klik op één of meer regio&apos;s om te selecteren (nogmaals klikken om te deselecteren), klik daarna op
+        &quot;Werkgebied opslaan&quot;.
+      </p>
       <div className="flex flex-wrap gap-1.5">
         {alleRegioNamen.map((naam) => {
           const actief = geselecteerd.includes(naam);
@@ -66,7 +70,12 @@ export default function WerkgebiedForm({ alleRegioNamen, huidig }: { alleRegioNa
         >
           {bezig ? "Opslaan…" : "Werkgebied opslaan"}
         </button>
-        {melding && <span className="text-[11.5px] text-ink/50">{melding}</span>}
+        {melding && (
+          <span className={`text-[11.5px] font-semibold ${melding.startsWith("Opgeslagen") ? "text-[#3B6D11]" : "text-rust"}`}>
+            {melding.startsWith("Opgeslagen") ? "✓ " : ""}
+            {melding} {geselecteerd.length > 0 && melding.startsWith("Opgeslagen") ? `(${geselecteerd.join(", ")})` : ""}
+          </span>
+        )}
       </div>
       <p className="mt-2.5 text-[10.5px] text-ink/40">
         Niets geselecteerd? Dan ziet u marktmeldingen voor alle regio&apos;s uit de nieuwste Marktupdate, zoals nu.

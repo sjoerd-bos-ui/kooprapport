@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getB2bSessieUitCookies } from "@/lib/services/b2bAuth";
 import { listGebruikersVoorOrg, listRapportenVoorOrg, listOpenUitnodigingenVoorOrg, huidigeJaarMaand } from "@/lib/services/b2bStore";
 import TeamUitnodigenForm from "@/components/zakelijk/TeamUitnodigenForm";
+import UitnodigingIntrekkenKnop from "@/components/zakelijk/UitnodigingIntrekkenKnop";
 
 export const metadata = { title: "Team · Kooprapport Zakelijk", robots: { index: false, follow: false } };
 
@@ -48,9 +49,15 @@ export default async function ZakelijkTeamPagina() {
             <div className="mt-4 flex flex-col gap-1.5 border-t border-ink/[0.06] pt-3.5">
               <p className="text-[10px] font-bold uppercase tracking-wide text-ink/35">Openstaande uitnodigingen</p>
               {openUitnodigingen.map((u) => (
-                <p key={u.id} className="text-[11.5px] text-ink/55">
-                  {u.email} <span className="text-ink/35">· verstuurd {new Date(u.aangemaaktOp).toLocaleDateString("nl-NL")}</span>
-                </p>
+                <div key={u.id} className="flex items-center justify-between gap-2">
+                  <p className="text-[11.5px] text-ink/55">
+                    {u.email}{" "}
+                    <span className="text-ink/35">
+                      · {u.rol} · verstuurd {new Date(u.aangemaaktOp).toLocaleDateString("nl-NL")}
+                    </span>
+                  </p>
+                  <UitnodigingIntrekkenKnop id={u.id} />
+                </div>
               ))}
             </div>
           )}

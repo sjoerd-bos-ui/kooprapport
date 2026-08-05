@@ -22,8 +22,17 @@ function valideerBranding(input: unknown): { ok: true; branding: B2bBranding } |
   const logoUrl = typeof raw.logoUrl === "string" ? raw.logoUrl.trim() : "";
   const accentKleur = typeof raw.accentKleur === "string" ? raw.accentKleur.trim() : "";
 
-  if (logoUrl && !logoUrl.startsWith("https://")) {
-    return { ok: false, error: "Logo-URL moet met https:// beginnen." };
+  // Logo is óf een al gehoste https://-URL, óf een in de browser verkleinde
+  // base64 data-URI (zie BrandingForm.tsx -- geen bestandsopslag in dit
+  // project, dus dit is de manier om echt een bestand te "uploaden" zonder
+  // een nieuwe, betaalde dienst toe te voegen). Een ruime lengtelimiet
+  // voorkomt dat hier per ongeluk (of moedwillig) een veel te grote blob in
+  // de organisatie-JSON terechtkomt.
+  if (logoUrl && !logoUrl.startsWith("https://") && !logoUrl.startsWith("data:image/")) {
+    return { ok: false, error: "Logo moet een https://-URL zijn, of een geüpload bestand." };
+  }
+  if (logoUrl.length > 400_000) {
+    return { ok: false, error: "Dit logo is te groot. Probeer een kleinere/eenvoudigere afbeelding." };
   }
   if (accentKleur && !HEX_KLEUR.test(accentKleur)) {
     return { ok: false, error: "Accentkleur moet een hex-code zijn, bv. #0F766E." };

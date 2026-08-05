@@ -131,6 +131,7 @@ export interface B2bUitnodiging {
   orgId: string;
   email: string; // genormaliseerd (lowercase)
   token: string;
+  rol: B2bRol; // rol die de uitgenodigde krijgt zodra de uitnodiging geaccepteerd wordt
   uitgenodigdDoorUserId: string;
   aangemaaktOp: string; // ISO
   verlooptOp: string; // ISO -- 7 dagen geldig

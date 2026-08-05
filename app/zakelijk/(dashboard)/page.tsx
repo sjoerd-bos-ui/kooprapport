@@ -65,6 +65,14 @@ export default async function ZakelijkDashboardHome() {
         </div>
       )}
 
+      {meldingen.length === 0 && organisatie.werkgebiedRegios && organisatie.werkgebiedRegios.length > 0 && (
+        <div className="mt-5 rounded-2xl border border-dashed border-ink/15 bg-white px-4 py-3 text-[11.5px] text-ink/50">
+          Uw werkgebied ({organisatie.werkgebiedRegios.join(", ")}) is opgeslagen, maar in de nieuwste Marktupdate
+          staat voor deze regio&apos;s nu geen noemenswaardige beweging (of geen van deze regio&apos;s kwam erin
+          voor). Zodra dat verandert, verschijnt hier weer een marktmelding.
+        </div>
+      )}
+
       <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="rounded-2xl bg-white p-4 shadow-sm">
           <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-[#EEF0FF] text-accent">
