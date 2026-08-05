@@ -3,9 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import { getB2bSessieUitCookies } from "@/lib/services/b2bAuth";
 import { getRapportAanvraag, getKlantdossier } from "@/lib/services/b2bStore";
 import { APP_BASE_URL } from "@/lib/config/payment";
-import B2bRapportSamenvatting from "@/components/zakelijk/B2bRapportSamenvatting";
+import B2bReportView from "@/components/zakelijk/B2bReportView";
 import DeelKnop from "@/components/zakelijk/DeelKnop";
-import { HomeIcon } from "@/components/report/icons";
 
 export const metadata = { title: "Rapport · Kooprapport Zakelijk", robots: { index: false, follow: false } };
 
@@ -25,33 +24,28 @@ export default async function ZakelijkRapportDetailPagina({ params }: { params: 
         ← Terug naar rapporten
       </Link>
       <div className="mt-2 flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-start gap-3">
-          <span className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-accent to-accent-dark shadow-sm">
-            <HomeIcon className="h-5 w-5 text-white" />
-          </span>
-          <div className="min-w-0">
-            <p className="truncate font-display text-xl font-extrabold text-ink">{aanvraag.adres.label}</p>
-            <p className="mt-1 text-[12px] text-ink/50">
-              Aangevraagd op {new Date(aanvraag.aangemaaktOp).toLocaleDateString("nl-NL")}
-              {klant && (
-                <>
-                  {" "}
-                  · Klantdossier:{" "}
-                  <Link href={`/zakelijk/klanten/${klant.id}`} className="font-semibold text-accent hover:underline">
-                    {klant.klantnaam}
-                  </Link>
-                </>
-              )}
-            </p>
-          </div>
-        </div>
+        <p className="min-w-0 truncate text-[12px] text-ink/50">
+          Aangevraagd op {new Date(aanvraag.aangemaaktOp).toLocaleDateString("nl-NL")}
+          {klant && (
+            <>
+              {" "}
+              · Klantdossier:{" "}
+              <Link href={`/zakelijk/klanten/${klant.id}`} className="font-semibold text-accent hover:underline">
+                {klant.klantnaam}
+              </Link>
+            </>
+          )}
+        </p>
         <div className="max-w-[380px] shrink-0">
           <DeelKnop rapportId={aanvraag.id} initieleDeelUrl={aanvraag.deelToken ? `${APP_BASE_URL}/deelrapport/${aanvraag.deelToken}` : null} />
         </div>
       </div>
 
-      <div className="mt-5">
-        <B2bRapportSamenvatting report={aanvraag.report} />
+      {/* Vanaf hier het ECHTE rapport-component, exact hetzelfde als de
+          consumentenkant en de PDF (zie B2bReportView.tsx) -- geen los,
+          dunner B2B-samenvattingscomponent meer. */}
+      <div className="-mx-8 mt-2">
+        <B2bReportView report={aanvraag.report} />
       </div>
     </div>
   );

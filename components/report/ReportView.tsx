@@ -427,6 +427,7 @@ export default function ReportView({
   onUnlock,
   kortingToken,
   bestellingId = null,
+  naaktModus = false,
 }: {
   report: Report;
   isUnlocked: boolean;
@@ -450,6 +451,16 @@ export default function ReportView({
   // rapport op een andere manier ontgrendeld raakte zonder dat we een
   // bestellingId kregen.
   bestellingId?: string | null;
+  // Voor hergebruik van dit EXACTE rapport-component buiten de publieke
+  // /rapport/[slug]-pagina (bv. "Kooprapport Zakelijk", zie
+  // components/zakelijk/B2bReportView.tsx) -- laat SiteHeader/SiteFooter
+  // weg, die horen bij de publieke site-navigatie, niet bij een pagina die
+  // al in een ander eigen frame zit (bv. het B2B-dashboard met eigen
+  // sidebar/topbar). De rest van het rapport (hero, tabbladen, download-
+  // acties) blijft exact hetzelfde -- dat is precies het doel: hetzelfde
+  // rapport, alleen zonder de publieke site-chrome eromheen. Default false,
+  // dus geen enkel gedragsverschil voor de bestaande consumentenpagina.
+  naaktModus?: boolean;
 }) {
   const [showPaywall, setShowPaywall] = useState(false);
   // Welk tabblad actief is — ReportTabs is nu een controlled component, zodat
@@ -1656,8 +1667,8 @@ export default function ReportView({
   );
 
   return (
-    <main className="bg-parchment">
-      <SiteHeader />
+    <main className={naaktModus ? "" : "bg-parchment"}>
+      {!naaktModus && <SiteHeader />}
       <Container width="narrow">
         {/* Eén doorlopend paneel i.p.v. losse gestapelde kaarten: indigo hero
             (adres, kenmerken, locatie) en de vergelijkingstabel delen nu
@@ -1788,7 +1799,7 @@ export default function ReportView({
           </div>
         )}
       </Container>
-      <SiteFooter />
+      {!naaktModus && <SiteFooter />}
 
       <PaywallModal
         open={showPaywall}

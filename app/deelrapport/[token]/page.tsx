@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getRapportAanvraagDoorDeelToken, getOrganisatie } from "@/lib/services/b2bStore";
-import B2bRapportSamenvatting from "@/components/zakelijk/B2bRapportSamenvatting";
+import B2bReportView from "@/components/zakelijk/B2bReportView";
 import { HomeIcon } from "@/components/report/icons";
 
 // -----------------------------------------------------------------------------
@@ -12,9 +12,9 @@ import { HomeIcon } from "@/components/report/icons";
 //
 // Toont, als de organisatie dat heeft ingesteld (#6, zie types/b2b.ts:
 // B2bBranding), het eigen kantoorlogo/-naam en accentkleur in de kopbalk
-// i.p.v. "Kooprapport" -- de rest van de pagina (B2bRapportSamenvatting)
-// hergebruikt bewust dezelfde, al geteste component als het interne
-// dashboard, dus zonder een tweede parallelle weergave te hoeven bouwen.
+// i.p.v. "Kooprapport" -- daaronder het ECHTE rapport-component
+// (B2bReportView, exact hetzelfde als de consumentenkant en de PDF), geen
+// los, dunner samenvattingscomponent meer.
 // -----------------------------------------------------------------------------
 
 export const metadata: Metadata = { title: "Gedeeld rapport", robots: { index: false, follow: false } };
@@ -30,7 +30,7 @@ export default async function DeelrapportPagina({ params }: { params: Promise<{ 
   const weergaveNaam = branding?.weergaveNaam ?? "Kooprapport";
 
   return (
-    <main className="min-h-screen bg-parchment">
+    <div className="min-h-screen bg-parchment">
       <div className="px-6 py-5" style={{ backgroundColor: "#1F1F2E" }}>
         <div className="mx-auto flex max-w-3xl items-center gap-2.5">
           {branding?.logoUrl ? (
@@ -45,18 +45,13 @@ export default async function DeelrapportPagina({ params }: { params: Promise<{ 
         </div>
       </div>
 
-      <div className="mx-auto max-w-3xl px-6 py-8">
-        <p className="font-display text-xl font-extrabold text-ink">{rapport.adres.label}</p>
-        <p className="mt-1 text-[12px] text-ink/50">Met u gedeeld door {weergaveNaam}</p>
+      <p className="mx-auto max-w-3xl px-6 pt-6 text-[12px] text-ink/50 sm:px-8 lg:px-10">Met u gedeeld door {weergaveNaam}</p>
 
-        <div className="mt-5">
-          <B2bRapportSamenvatting report={rapport.report} />
-        </div>
+      <B2bReportView report={rapport.report} />
 
-        <p className="mt-8 text-center text-[10.5px] text-ink/35">
-          Dit rapport is gemaakt met Kooprapport en met u gedeeld door {weergaveNaam}.
-        </p>
-      </div>
-    </main>
+      <p className="mx-auto max-w-3xl px-6 pb-8 pt-2 text-center text-[10.5px] text-ink/35 sm:px-8 lg:px-10">
+        Dit rapport is gemaakt met Kooprapport en met u gedeeld door {weergaveNaam}.
+      </p>
+    </div>
   );
 }
