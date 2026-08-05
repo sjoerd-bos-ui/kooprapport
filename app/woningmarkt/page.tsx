@@ -6,7 +6,7 @@ import Container from "@/components/ui/Container";
 import AddressSearchBar from "@/components/address/AddressSearchBar";
 import { ArrowRightIcon, MapPinIcon } from "@/components/report/icons";
 import { STEDEN, getStadCijfers } from "@/lib/content/steden";
-import { LAUNCH_REGIOS, regioSlug } from "@/lib/content/woningmarktRegios";
+import { LAUNCH_REGIOS, regioWeergaveNaam, regioWeergaveSlug } from "@/lib/content/woningmarktRegios";
 import { APP_BASE_URL } from "@/lib/config/payment";
 
 // -----------------------------------------------------------------------------
@@ -52,8 +52,8 @@ const collectionJsonLd = {
       ...LAUNCH_REGIOS.map((regio, i) => ({
         "@type": "ListItem",
         position: STEDEN.length + i + 1,
-        name: regio.regio,
-        url: `${APP_BASE_URL}/woningmarkt/regio/${regioSlug(regio.regio)}`,
+        name: regioWeergaveNaam(regio.regio),
+        url: `${APP_BASE_URL}/woningmarkt/regio/${regioWeergaveSlug(regio.regio)}`,
       })),
     ],
   },
@@ -134,11 +134,11 @@ export default function WoningmarktHub() {
             {LAUNCH_REGIOS.map((regio) => (
               <Link
                 key={regio.regio}
-                href={`/woningmarkt/regio/${regioSlug(regio.regio)}`}
+                href={`/woningmarkt/regio/${regioWeergaveSlug(regio.regio)}`}
                 className="flex items-center justify-between gap-3 rounded-2xl border border-ink/10 bg-white p-4 transition-shadow hover:shadow-lg"
               >
                 <div>
-                  <p className="text-sm font-bold text-ink">{regio.regio}</p>
+                  <p className="text-sm font-bold text-ink">{regioWeergaveNaam(regio.regio)}</p>
                   <p className="mt-0.5 text-xs text-ink/55">
                     {regio.percentageBovenVraagprijs}% boven vraagprijs · {regio.periodeLabel}
                   </p>

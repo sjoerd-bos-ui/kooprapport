@@ -7,7 +7,7 @@ import Container from "@/components/ui/Container";
 import AddressSearchBar from "@/components/address/AddressSearchBar";
 import { ArrowRightIcon } from "@/components/report/icons";
 import { STEDEN, getStadBySlug, getStadCijfers } from "@/lib/content/steden";
-import { getRegioVoorStadSlug, regioSlug } from "@/lib/content/woningmarktRegios";
+import { getRegioVoorStadSlug, regioWeergaveNaam, regioWeergaveSlug } from "@/lib/content/woningmarktRegios";
 import type { RegioRichting } from "@/lib/content/marktupdates";
 import { APP_BASE_URL } from "@/lib/config/payment";
 
@@ -94,10 +94,10 @@ export default async function StadPagina({ params }: { params: Promise<{ stad: s
           </p>
           {regio && (
             <p className="mt-2 text-[12.5px] text-ink/50">
-              {stad.naam} valt onder de regio {regio.regio} -- benieuwd naar het overbiedpercentage voor de hele
-              regio?{" "}
-              <Link href={`/woningmarkt/regio/${regioSlug(regio.regio)}`} className="font-semibold text-accent underline underline-offset-2">
-                bekijk {regio.regio}
+              {stad.naam} valt onder de regio {regioWeergaveNaam(regio.regio)} -- benieuwd naar het overbiedpercentage
+              voor de hele regio?{" "}
+              <Link href={`/woningmarkt/regio/${regioWeergaveSlug(regio.regio)}`} className="font-semibold text-accent underline underline-offset-2">
+                bekijk {regioWeergaveNaam(regio.regio)}
               </Link>
               .
             </p>

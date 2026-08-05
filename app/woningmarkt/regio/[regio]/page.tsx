@@ -6,7 +6,14 @@ import SiteFooter from "@/components/layout/SiteFooter";
 import Container from "@/components/ui/Container";
 import AddressSearchBar from "@/components/address/AddressSearchBar";
 import { ArrowRightIcon } from "@/components/report/icons";
-import { LAUNCH_REGIOS, getRegioBySlug, regioSlug, getStadVoorRegio, regioContextZin } from "@/lib/content/woningmarktRegios";
+import {
+  LAUNCH_REGIOS,
+  getRegioByWeergaveSlug,
+  regioWeergaveSlug,
+  regioWeergaveNaam,
+  getStadVoorRegio,
+  regioContextZin,
+} from "@/lib/content/woningmarktRegios";
 import { landelijkOverbiedPercentage } from "@/lib/services/biedadvies";
 import { APP_BASE_URL } from "@/lib/config/payment";
 
@@ -19,15 +26,16 @@ import { APP_BASE_URL } from "@/lib/config/payment";
 // -----------------------------------------------------------------------------
 
 export function generateStaticParams() {
-  return LAUNCH_REGIOS.map((r) => ({ regio: regioSlug(r.regio) }));
+  return LAUNCH_REGIOS.map((r) => ({ regio: regioWeergaveSlug(r.regio) }));
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ regio: string }> }): Promise<Metadata> {
   const { regio: slug } = await params;
-  const regio = getRegioBySlug(slug);
+  const regio = getRegioByWeergaveSlug(slug);
   if (!regio) return {};
-  const canonicalPath = `/woningmarkt/regio/${regioSlug(regio.regio)}`;
-  const title = `Huizenprijzen in de regio ${regio.regio}`;
+  const naam = regioWeergaveNaam(regio.regio);
+  const canonicalPath = `/woningmarkt/regio/${regioWeergaveSlug(regio.regio)}`;
+  const title = `Huizenprijzen in ${naam}`;
   const gemeentenLabel = regio.gemeenten.slice(0, 4).join(", ") + (regio.gemeenten.length > 4 ? " en omgeving" : "");
   const description = `Overbiedpercentage en vraag-verkoopprijsverschil voor ${gemeentenLabel}, uit het officiële NVM Marktoverzicht ${regio.periodeLabel}.`;
   return {
@@ -53,8 +61,8 @@ const breadcrumbJsonLdVoor = (regio: { regio: string }) => ({
     {
       "@type": "ListItem",
       position: 3,
-      name: `Regio ${regio.regio}`,
-      item: `${APP_BASE_URL}/woningmarkt/regio/${regioSlug(regio.regio)}`,
+      name: regioWeergaveNaam(regio.regio),
+      item: `${APP_BASE_URL}/woningmarkt/regio/${regioWeergaveSlug(regio.regio)}`,
     },
   ],
 });
@@ -65,9 +73,10 @@ function pct(n: number): string {
 
 export default async function RegioPagina({ params }: { params: Promise<{ regio: string }> }) {
   const { regio: slug } = await params;
-  const regio = getRegioBySlug(slug);
+  const regio = getRegioByWeergaveSlug(slug);
   if (!regio || !LAUNCH_REGIOS.some((r) => r.regio === regio.regio)) notFound();
 
+  const naam = regioWeergaveNaam(regio.regio);
   const landelijkGemiddelde = landelijkOverbiedPercentage();
   const contextZin = regioContextZin(regio, landelijkGemiddelde);
   const stad = getStadVoorRegio(regio.regio);
@@ -101,7 +110,7 @@ export default async function RegioPagina({ params }: { params: Promise<{ regio:
           </span>
 
           <h1 className="mt-4 font-display text-3xl font-extrabold leading-tight text-ink sm:text-4xl">
-            Huizenprijzen in de regio {regio.regio}
+            Huizenprijzen in {naam}
           </h1>
           <p className="mt-4 max-w-lg text-[15px] leading-relaxed text-ink/65">
             Cijfers voor {hoofdplaatsen.join(", ")}

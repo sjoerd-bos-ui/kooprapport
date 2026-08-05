@@ -52,6 +52,34 @@ export const LAUNCH_REGIOS: RegioOverbiedCijfer[] = REGIO_OVERBIEDEN.filter((r) 
 export { regioSlug, getRegioBySlug } from "@/lib/content/regioOverbieden";
 export type { RegioOverbiedCijfer };
 
+// "Agglomeratie" is de officiële NVM-term (blijft ongewijzigd in regio.bron/
+// bronUrl, zodat de brontitel klopt met het echte document), maar niemand
+// zoekt of praat zo -- lastig woord, en slecht voor SEO omdat het niet
+// aansluit bij hoe mensen typen ("Den Haag" of "regio Den Haag", niet
+// "agglomeratie Den Haag"). Voor alles wat een bezoeker ZIET (H1, titel,
+// kaartjes, URL) gebruiken we daarom een leesbaardere weergavenaam. Alleen
+// deze drie regio's hebben die term in hun officiële naam.
+const WEERGAVE_OVERRIDES: Record<string, string> = {
+  "Agglomeratie Den Haag": "Den Haag en omgeving",
+  "Agglomeratie Haarlem": "Haarlem en omgeving",
+  "Agglomeratie Leiden en Bollenstreek": "Leiden en Bollenstreek",
+};
+
+export function regioWeergaveNaam(regioNaam: string): string {
+  return WEERGAVE_OVERRIDES[regioNaam] ?? regioNaam;
+}
+
+// URL-slug op basis van de weergavenaam (dus "den-haag-en-omgeving" i.p.v.
+// "agglomeratie-den-haag") -- ook voor de URL zelf is het leesbare woord
+// beter, mensen delen/onthouden dat soort links nu eenmaal eerder.
+export function regioWeergaveSlug(regioNaam: string): string {
+  return regioSlug(regioWeergaveNaam(regioNaam));
+}
+
+export function getRegioByWeergaveSlug(slug: string): RegioOverbiedCijfer | undefined {
+  return REGIO_OVERBIEDEN.find((r) => regioWeergaveSlug(r.regio) === slug);
+}
+
 // Is dit een regio die tijdens deze eerste batch al live staat? (i.e. heeft
 // een eigen, statisch gegenereerde pagina). Gebruikt om ergens WEL naar te
 // linken vs. een regio alleen te tonen zonder link.
