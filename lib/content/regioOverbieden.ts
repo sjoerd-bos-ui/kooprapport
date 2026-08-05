@@ -44,6 +44,23 @@ export interface RegioOverbiedCijfer {
   bronUrl: string;
 }
 
+// URL-slug voor een regionaam -- één functie i.p.v. 40x een los, met de hand
+// getypt slug-veld (voorkomt typefouten en drift als een regionaam ooit
+// wijzigt). "Arnhem/Nijmegen" -> "arnhem-nijmegen", "'s-Gravenhage" ->
+// "s-gravenhage", diakrieten (Fryslân e.d.) worden genormaliseerd.
+export function regioSlug(regioNaam: string): string {
+  return regioNaam
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[/\s]+/g, "-")
+    .replace(/[^a-z0-9-]/g, "");
+}
+
+export function getRegioBySlug(slug: string): RegioOverbiedCijfer | undefined {
+  return REGIO_OVERBIEDEN.find((r) => regioSlug(r.regio) === slug);
+}
+
 const PERIODE = "Q2 2026";
 const BRON_PREFIX = "NVM Marktoverzicht";
 

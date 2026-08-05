@@ -31,6 +31,17 @@ function parsePercentage(waarde: string | undefined): number | null {
   return match ? Number(match[0]) : null;
 }
 
+// Landelijk overbiedpercentage uit de nieuwste Marktupdate -- los, exportbaar
+// stukje van resolveOverbiedBasis() hieronder, zodat andere plekken (bv. de
+// woningmarkt-regiopagina's) dezelfde landelijke referentie kunnen tonen
+// zonder de parse-logica te dupliceren.
+export function landelijkOverbiedPercentage(): number | null {
+  const update = nieuwsteMarktupdate();
+  if (!update) return null;
+  const overboden = update.landelijkeCijfers.stats.find((s) => s.label === "overboden");
+  return parsePercentage(overboden?.waarde);
+}
+
 export interface Biedadvies {
   ondergrens: number;
   bovengrens: number;

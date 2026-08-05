@@ -3,6 +3,7 @@ import { APP_BASE_URL } from "@/lib/config/payment";
 import { ARTIKELEN } from "@/lib/content/koopgids";
 import { MARKTUPDATES } from "@/lib/content/marktupdates";
 import { STEDEN } from "@/lib/content/steden";
+import { LAUNCH_REGIOS, regioSlug } from "@/lib/content/woningmarktRegios";
 
 // Bewust ALLEEN de homepage. Rapportpagina's (/rapport/[slug]) bestaan pas
 // zodra iemand daadwerkelijk een adres opzoekt — er is geen database met
@@ -140,6 +141,15 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
     ...STEDEN.map((stad) => ({
       url: `${APP_BASE_URL}/woningmarkt/${stad.slug}`,
+      lastModified: MARKTUPDATES.length > 0 ? new Date(MARKTUPDATES[MARKTUPDATES.length - 1].gepubliceerdISO) : WONINGMARKT_HUB_BIJGEWERKT,
+      changeFrequency: "monthly" as const,
+      priority: 0.4,
+    })),
+    // Regiopagina's: eerste batch van 15 (zie lib/content/woningmarktRegios.ts),
+    // zelfde lastModified-bron als de stadspagina's hierboven -- de cijfers
+    // komen uit hetzelfde kwartaal.
+    ...LAUNCH_REGIOS.map((regio) => ({
+      url: `${APP_BASE_URL}/woningmarkt/regio/${regioSlug(regio.regio)}`,
       lastModified: MARKTUPDATES.length > 0 ? new Date(MARKTUPDATES[MARKTUPDATES.length - 1].gepubliceerdISO) : WONINGMARKT_HUB_BIJGEWERKT,
       changeFrequency: "monthly" as const,
       priority: 0.4,

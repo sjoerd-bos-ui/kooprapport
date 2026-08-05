@@ -6,6 +6,7 @@ import Container from "@/components/ui/Container";
 import AddressSearchBar from "@/components/address/AddressSearchBar";
 import { ArrowRightIcon, MapPinIcon } from "@/components/report/icons";
 import { STEDEN, getStadCijfers } from "@/lib/content/steden";
+import { LAUNCH_REGIOS, regioSlug } from "@/lib/content/woningmarktRegios";
 import { APP_BASE_URL } from "@/lib/config/payment";
 
 // -----------------------------------------------------------------------------
@@ -20,13 +21,13 @@ const CANONICAL_PATH = "/woningmarkt";
 export const metadata: Metadata = {
   title: "Woningmarkt per stad",
   description:
-    "Huizenprijzen en marktontwikkeling per stad, gebaseerd op de kwartaalcijfers uit onze Marktupdates: Amsterdam, Rotterdam, Den Haag en Groningen.",
+    "Huizenprijzen en overbiedpercentage per stad en regio, gebaseerd op NVM-cijfers: Amsterdam, Rotterdam, Den Haag, Utrecht en 11 andere regio's.",
   alternates: { canonical: CANONICAL_PATH },
   robots: { index: true, follow: true },
   openGraph: {
     title: "Woningmarkt per stad · Kooprapport",
     description:
-      "Huizenprijzen en marktontwikkeling per stad, gebaseerd op de kwartaalcijfers uit onze Marktupdates: Amsterdam, Rotterdam, Den Haag en Groningen.",
+      "Huizenprijzen en overbiedpercentage per stad en regio, gebaseerd op NVM-cijfers: Amsterdam, Rotterdam, Den Haag, Utrecht en 11 andere regio's.",
     url: `${APP_BASE_URL}${CANONICAL_PATH}`,
     type: "website",
   },
@@ -41,12 +42,20 @@ const collectionJsonLd = {
   inLanguage: "nl-NL",
   mainEntity: {
     "@type": "ItemList",
-    itemListElement: STEDEN.map((stad, i) => ({
-      "@type": "ListItem",
-      position: i + 1,
-      name: stad.naam,
-      url: `${APP_BASE_URL}/woningmarkt/${stad.slug}`,
-    })),
+    itemListElement: [
+      ...STEDEN.map((stad, i) => ({
+        "@type": "ListItem",
+        position: i + 1,
+        name: stad.naam,
+        url: `${APP_BASE_URL}/woningmarkt/${stad.slug}`,
+      })),
+      ...LAUNCH_REGIOS.map((regio, i) => ({
+        "@type": "ListItem",
+        position: STEDEN.length + i + 1,
+        name: regio.regio,
+        url: `${APP_BASE_URL}/woningmarkt/regio/${regioSlug(regio.regio)}`,
+      })),
+    ],
   },
 };
 const breadcrumbJsonLd = {
@@ -112,6 +121,31 @@ export default function WoningmarktHub() {
                 </Link>
               );
             })}
+          </div>
+
+          {/* Regio's -- naast de stadspagina's hierboven (kwartaaltrend uit de
+              Marktupdates), dekken deze het overbiedpercentage per NVM COROP-
+              regio (zie lib/content/woningmarktRegios.ts voor waarom dit een
+              kleinere eerste batch is i.p.v. alle 40 regio's meteen). */}
+          <p className="mb-3 mt-10 text-[11px] font-bold uppercase tracking-wider3 text-ink/40">
+            Overbieden per regio
+          </p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {LAUNCH_REGIOS.map((regio) => (
+              <Link
+                key={regio.regio}
+                href={`/woningmarkt/regio/${regioSlug(regio.regio)}`}
+                className="flex items-center justify-between gap-3 rounded-2xl border border-ink/10 bg-white p-4 transition-shadow hover:shadow-lg"
+              >
+                <div>
+                  <p className="text-sm font-bold text-ink">{regio.regio}</p>
+                  <p className="mt-0.5 text-xs text-ink/55">
+                    {regio.percentageBovenVraagprijs}% boven vraagprijs · {regio.periodeLabel}
+                  </p>
+                </div>
+                <ArrowRightIcon className="h-3.5 w-3.5 shrink-0 text-ink/30" />
+              </Link>
+            ))}
           </div>
 
           <div className="mt-10 rounded-2xl bg-[#EEF0FF] p-6">

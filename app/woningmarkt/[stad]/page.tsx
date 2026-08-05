@@ -7,6 +7,7 @@ import Container from "@/components/ui/Container";
 import AddressSearchBar from "@/components/address/AddressSearchBar";
 import { ArrowRightIcon } from "@/components/report/icons";
 import { STEDEN, getStadBySlug, getStadCijfers } from "@/lib/content/steden";
+import { getRegioVoorStadSlug, regioSlug } from "@/lib/content/woningmarktRegios";
 import type { RegioRichting } from "@/lib/content/marktupdates";
 import { APP_BASE_URL } from "@/lib/config/payment";
 
@@ -69,6 +70,7 @@ export default async function StadPagina({ params }: { params: Promise<{ stad: s
   if (!stad) notFound();
 
   const cijfers = getStadCijfers(stad.naam);
+  const regio = getRegioVoorStadSlug(stad.slug);
 
   return (
     <>
@@ -90,6 +92,16 @@ export default async function StadPagina({ params }: { params: Promise<{ stad: s
             Prijsontwikkeling en overbieden in {stad.naam}, per kwartaal, uit onze Marktupdates -- gebaseerd op
             NVM-cijfers, niet geschat.
           </p>
+          {regio && (
+            <p className="mt-2 text-[12.5px] text-ink/50">
+              {stad.naam} valt onder de regio {regio.regio} -- benieuwd naar het overbiedpercentage voor de hele
+              regio?{" "}
+              <Link href={`/woningmarkt/regio/${regioSlug(regio.regio)}`} className="font-semibold text-accent underline underline-offset-2">
+                bekijk {regio.regio}
+              </Link>
+              .
+            </p>
+          )}
 
           {cijfers.length > 0 ? (
             <div className="mt-8 flex flex-col gap-1.5">
