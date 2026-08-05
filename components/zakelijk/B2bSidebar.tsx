@@ -10,6 +10,7 @@ import {
   TrendingUpIcon,
   CompassIcon,
   LayersIcon,
+  MapPinIcon,
 } from "@/components/report/icons";
 
 interface NavItem {
@@ -23,6 +24,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/zakelijk", label: "Dashboard", icoon: HomeIcon, exact: true },
   { href: "/zakelijk/rapporten", label: "Rapporten", icoon: FileCheckIcon },
   { href: "/zakelijk/klanten", label: "Klanten", icoon: UsersIcon },
+  { href: "/zakelijk/werkgebied", label: "Werkgebied", icoon: MapPinIcon },
   { href: "/zakelijk/vergelijken", label: "Vergelijken", icoon: TrendingUpIcon },
   { href: "/zakelijk/team", label: "Team", icoon: UsersIcon },
   { href: "/zakelijk/instellingen", label: "Instellingen", icoon: CompassIcon },

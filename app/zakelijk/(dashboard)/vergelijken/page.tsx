@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import type { AddressMeta } from "@/types/report";
 import type { B2bRapportAanvraag } from "@/types/b2b";
-import { berekenBiedadvies } from "@/lib/services/biedadvies";
-import { TrendingUpIcon, BoltIcon, AlertTriangleIcon, MapPinIcon, ScaleIcon } from "@/components/report/icons";
+import VergelijkTabel from "@/components/zakelijk/VergelijkTabel";
+import { TrendingUpIcon } from "@/components/report/icons";
 
 interface RapportListItem {
   id: string;
@@ -19,12 +19,6 @@ function euro(bedrag: number | null | undefined): string {
   if (bedrag == null) return "onbekend";
   return new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(bedrag);
 }
-
-const FUNDERING_KLEUR: Record<string, string> = {
-  laag: "text-[#3B6D11]",
-  midden: "text-[#B4562E]",
-  hoog: "text-rust",
-};
 
 export default function ZakelijkVergelijkenPagina() {
   const [rapporten, setRapporten] = useState<RapportListItem[]>([]);
@@ -71,17 +65,33 @@ export default function ZakelijkVergelijkenPagina() {
       <div className="mt-4 flex flex-wrap gap-2">
         {rapporten.map((r) => {
           const actief = geselecteerd.includes(r.id);
+          const uitgeschakeld = !actief && geselecteerd.length >= 3;
           return (
             <button
               key={r.id}
               type="button"
               onClick={() => toggleSelectie(r.id)}
-              className={`rounded-full px-3.5 py-1.5 text-[11.5px] font-semibold shadow-sm transition-colors ${
-                actief ? "bg-accent text-white" : "bg-white text-ink/70 hover:bg-mist"
+              disabled={uitgeschakeld}
+              className={`flex items-center gap-2 rounded-2xl px-3.5 py-2 text-left shadow-sm transition-colors ${
+                actief ? "bg-accent text-white" : uitgeschakeld ? "bg-white/60 text-ink/30" : "bg-white text-ink/70 hover:bg-mist"
               }`}
             >
-              {r.adres.straat} {r.adres.huisnummer}
-              {r.adres.huisletter ?? ""}
+              <span
+                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[9px] font-bold ${
+                  actief ? "border-white/70 bg-white/15 text-white" : "border-ink/15 text-ink/30"
+                }`}
+              >
+                {actief ? "✓" : ""}
+              </span>
+              <span>
+                <span className="block text-[11.5px] font-semibold leading-tight">
+                  {r.adres.straat} {r.adres.huisnummer}
+                  {r.adres.huisletter ?? ""}
+                </span>
+                <span className={`block text-[9.5px] leading-tight ${actief ? "text-white/65" : "text-ink/40"}`}>
+                  {r.adres.plaats} · {euro(r.geschatteWaarde)}
+                </span>
+              </span>
             </button>
           );
         })}
@@ -104,76 +114,8 @@ export default function ZakelijkVergelijkenPagina() {
       {laden && <p className="mt-6 text-[12px] text-ink/45">Details laden…</p>}
 
       {!laden && details.length > 0 && (
-        <div className={`mt-6 grid grid-cols-1 gap-4 ${details.length === 2 ? "sm:grid-cols-2" : details.length >= 3 ? "sm:grid-cols-3" : ""}`}>
-          {details.map((d) => (
-            <div key={d.id} className="rounded-2xl bg-white p-5 shadow-sm">
-              <p className="font-display text-[14px] font-extrabold text-ink">
-                {d.adres.straat} {d.adres.huisnummer}
-                {d.adres.huisletter ?? ""}
-              </p>
-              <p className="text-[10.5px] text-ink/45">{d.adres.plaats}</p>
-
-              <div className="mt-4 flex flex-col gap-3">
-                <div className="flex items-center gap-2.5">
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#EEF0FF] text-accent">
-                    <TrendingUpIcon className="h-3.5 w-3.5" />
-                  </span>
-                  <div>
-                    <p className="text-[9.5px] font-bold text-ink/40">Waarde-indicatie</p>
-                    <p className="text-[12px] font-semibold text-ink">
-                      {euro(d.report.market.data?.bandbreedteMin ?? d.report.market.data?.geschatteWaarde)}
-                      {d.report.market.data?.bandbreedteMax ? ` – ${euro(d.report.market.data.bandbreedteMax)}` : ""}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2.5">
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#EEF0FF] text-accent">
-                    <BoltIcon className="h-3.5 w-3.5" />
-                  </span>
-                  <div>
-                    <p className="text-[9.5px] font-bold text-ink/40">Energielabel</p>
-                    <p className="text-[12px] font-semibold text-ink">{d.report.energy.data?.klasse ?? "onbekend"}</p>
-                  </div>
-                </div>
-                {(() => {
-                  const biedadvies = berekenBiedadvies(d.report.market.data?.geschatteWaarde, d.adres.plaats);
-                  return (
-                    <div className="flex items-center gap-2.5">
-                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#EEF0FF] text-accent">
-                        <ScaleIcon className="h-3.5 w-3.5" />
-                      </span>
-                      <div>
-                        <p className="text-[9.5px] font-bold text-ink/40">Biedadvies</p>
-                        <p className="text-[12px] font-semibold text-ink">
-                          {biedadvies ? `${euro(biedadvies.ondergrens)} – ${euro(biedadvies.bovengrens)}` : "niet beschikbaar"}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })()}
-                <div className="flex items-center gap-2.5">
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#EEF0FF] text-accent">
-                    <AlertTriangleIcon className="h-3.5 w-3.5" />
-                  </span>
-                  <div>
-                    <p className="text-[9.5px] font-bold text-ink/40">Funderingsrisico</p>
-                    <p className={`text-[12px] font-semibold capitalize ${d.report.fundering.data?.niveau ? FUNDERING_KLEUR[d.report.fundering.data.niveau] : "text-ink/40"}`}>
-                      {d.report.fundering.data?.niveau ?? "onbekend"}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-2.5">
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#EEF0FF] text-accent">
-                    <MapPinIcon className="h-3.5 w-3.5" />
-                  </span>
-                  <div>
-                    <p className="text-[9.5px] font-bold text-ink/40">Buurtprofiel</p>
-                    <p className="text-[11.5px] leading-relaxed text-ink/70">{d.report.buurtprofiel.data?.samenvatting ?? "niet beschikbaar"}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
+        <div className="mt-6">
+          <VergelijkTabel details={details} />
         </div>
       )}
     </div>

@@ -90,6 +90,19 @@ export interface B2bGebruiker {
 export type B2bDossierType = "aankoop" | "verkoop";
 export type B2bDossierStatus = "lopend" | "afgerond";
 
+// Essentiële informatie uit de zoekopdracht (#3) -- bewust een klein, vast
+// setje vrije velden i.p.v. een los notitieveld: budget en locatie zijn de
+// twee dingen die een makelaar bij vrijwel elk aankooptraject nodig heeft om
+// snel een nieuw rapport te kunnen beoordelen ("past dit binnen het budget
+// van deze klant?"). Alles optioneel/nullable, want een dossier kan zonder
+// ingevulde zoekopdracht bestaan (bestaande dossiers hebben dit veld niet).
+export interface B2bZoekopdracht {
+  budgetMin: number | null;
+  budgetMax: number | null;
+  locatieVoorkeur: string | null; // vrije tekst, bv. "Rotterdam-Zuid, max 20 min. naar centrum"
+  moetHebben: string | null; // vrije tekst, bv. "min. 4 kamers, tuin op het zuiden, geen begane grond"
+}
+
 export interface B2bKlantdossier {
   id: string;
   orgId: string;
@@ -98,6 +111,7 @@ export interface B2bKlantdossier {
   status: B2bDossierStatus;
   aangemaaktOp: string; // ISO
   aangemaaktDoorUserId: string;
+  zoekopdracht?: B2bZoekopdracht;
 }
 
 export interface B2bRapportAanvraag {

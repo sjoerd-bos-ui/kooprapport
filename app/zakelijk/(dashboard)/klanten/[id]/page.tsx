@@ -5,6 +5,9 @@ import { getKlantdossier, listRapportenVoorKlant } from "@/lib/services/b2bStore
 import { berekenBiedadvies } from "@/lib/services/biedadvies";
 import { heeftNieuweMarktcijfersSinds, laatsteMarktupdateSlug } from "@/lib/services/marktAlert";
 import DossierStatusKnop from "@/components/zakelijk/DossierStatusKnop";
+import DossierVergelijken from "@/components/zakelijk/DossierVergelijken";
+import ZoekopdrachtForm from "@/components/zakelijk/ZoekopdrachtForm";
+import VerwijderDossierKnop from "@/components/zakelijk/VerwijderDossierKnop";
 import { FileCheckIcon, TrendingUpIcon } from "@/components/report/icons";
 
 function euro(bedrag: number | null | undefined): string {
@@ -72,6 +75,7 @@ export default async function ZakelijkKlantDetailPagina({ params }: { params: Pr
           >
             + Rapport toevoegen
           </Link>
+          <VerwijderDossierKnop dossierId={dossier.id} />
         </div>
       </div>
 
@@ -110,6 +114,9 @@ export default async function ZakelijkKlantDetailPagina({ params }: { params: Pr
         </div>
 
         <div>
+          <div className="mb-4">
+            <ZoekopdrachtForm dossierId={dossier.id} huidig={dossier.zoekopdracht} />
+          </div>
           {laatsteBiedadvies && (
             <div className="mb-4 rounded-2xl bg-gradient-to-br from-accent to-accent-dark p-4">
               <p className="text-[10px] font-bold uppercase tracking-wide text-white/60">Actueel biedadvies</p>
@@ -148,6 +155,8 @@ export default async function ZakelijkKlantDetailPagina({ params }: { params: Pr
           </div>
         </div>
       </div>
+
+      <DossierVergelijken rapporten={rapporten} />
     </div>
   );
 }

@@ -61,6 +61,49 @@ export function getRegioBySlug(slug: string): RegioOverbiedCijfer | undefined {
   return REGIO_OVERBIEDEN.find((r) => regioSlug(r.regio) === slug);
 }
 
+// -----------------------------------------------------------------------------
+// Vertaaltabel voor het "Werkgebied"-blok in Kooprapport Zakelijk
+// (app/zakelijk/(dashboard)/werkgebied/page.tsx). Een organisatie kiest haar
+// werkgebied via de redactionele Marktupdate-regionamen (zie
+// B2bOrganisatie.werkgebiedRegios / alleGebruikteRegioNamen() in
+// lib/services/marktAlert.ts) -- BEWUST niet nog een tweede, losse
+// COROP-regioselectie, dat zou een makelaar die net "Rotterdam" heeft
+// aangevinkt nodeloos een tweede keer hetzelfde laten instellen.
+//
+// Deze tabel is dus GEEN runtime fuzzy-match (die is elders expliciet
+// afgewezen, zie het commentaar bij werkgebiedRegios in types/b2b.ts) maar een
+// kleine, met de hand geverifieerde 1-op-1 (of 1-op-meerdere) koppeling tussen
+// de handjevol redactionele namen die ooit in een Marktupdate zijn gebruikt en
+// de officiële NVM COROP-regio's hierboven, puur om bij een al gekozen
+// werkgebied de bijbehorende officiële kwartaalcijfers te kunnen tonen.
+// Nieuwe redactionele regionamen die hier nog niet in staan worden gewoon
+// overgeslagen (zie overbiedenVoorWerkgebied), nooit geraden.
+const MARKTUPDATE_NAAM_NAAR_COROP: Record<string, string[]> = {
+  Amsterdam: ["Groot-Amsterdam"],
+  Rotterdam: ["Groot-Rijnmond"],
+  "Den Haag": ["Agglomeratie Den Haag"],
+  Haaglanden: ["Agglomeratie Den Haag", "Delft en Westland"],
+  Drenthe: ["Noord-Drenthe", "Zuidoost-Drenthe", "Zuidwest-Drenthe"],
+  Groningen: ["Overig Groningen"],
+  "Overig Groningen": ["Overig Groningen"],
+};
+
+export function overbiedenVoorWerkgebied(werkgebiedRegios: string[] | undefined): RegioOverbiedCijfer[] {
+  if (!werkgebiedRegios || werkgebiedRegios.length === 0) return [];
+  const gezien = new Set<string>();
+  const resultaat: RegioOverbiedCijfer[] = [];
+  for (const naam of werkgebiedRegios) {
+    for (const coropNaam of MARKTUPDATE_NAAM_NAAR_COROP[naam] ?? []) {
+      const regio = REGIO_OVERBIEDEN.find((r) => r.regio === coropNaam);
+      if (regio && !gezien.has(regio.regio)) {
+        gezien.add(regio.regio);
+        resultaat.push(regio);
+      }
+    }
+  }
+  return resultaat;
+}
+
 const PERIODE = "Q2 2026";
 const BRON_PREFIX = "NVM Marktoverzicht";
 

@@ -1,5 +1,5 @@
 import { randomUUID, randomBytes } from "crypto";
-import { kvGet, kvSet, kvZAdd, kvZRangeByScore, kvZRem, kvIncrWithTtl } from "@/lib/services/kvStore";
+import { kvGet, kvSet, kvDel, kvZAdd, kvZRangeByScore, kvZRem, kvIncrWithTtl } from "@/lib/services/kvStore";
 import { slugify } from "@/lib/utils/slug";
 import type {
   B2bOrganisatie,
@@ -187,6 +187,41 @@ export async function listKlantdossiersVoorOrg(orgId: string): Promise<B2bKlantd
   const dossiers = await Promise.all(ids.map((id) => getKlantdossier(id)));
   // Nieuwste eerst -- kvZRangeByScore geeft oplopend terug (zie kvStore.ts).
   return dossiers.filter((d): d is B2bKlantdossier => d !== null).reverse();
+}
+
+export async function zetKlantdossierZoekopdracht(
+  id: string,
+  zoekopdracht: B2bKlantdossier["zoekopdracht"]
+): Promise<B2bKlantdossier | null> {
+  const dossier = await getKlantdossier(id);
+  if (!dossier) return null;
+  const bijgewerkt: B2bKlantdossier = { ...dossier, zoekopdracht };
+  await kvSet(klantKey(id), JSON.stringify(bijgewerkt));
+  return bijgewerkt;
+}
+
+// Verwijdert een klantdossier (#3). Rapportdata wordt NOOIT weggegooid (dat
+// zou onomkeerbaar historische Altum-data kosten die de organisatie al
+// betaald heeft) -- rapporten die aan dit dossier hingen blijven gewoon
+// bestaan in de organisatiebrede /rapporten-lijst, alleen ontkoppeld
+// (klantId -> null) zodat er nergens een rapport overblijft dat naar een
+// niet-bestaand dossier verwijst.
+export async function verwijderKlantdossier(id: string): Promise<boolean> {
+  const dossier = await getKlantdossier(id);
+  if (!dossier) return false;
+
+  const rapportIds = await kvZRangeByScore(klantRapportenIndexKey(id), VER_IN_DE_TOEKOMST);
+  for (const rapportId of rapportIds) {
+    const rapport = await getRapportAanvraag(rapportId);
+    if (rapport) {
+      await kvSet(rapportKey(rapportId), JSON.stringify({ ...rapport, klantId: null }));
+    }
+  }
+
+  await kvDel(klantKey(id));
+  await kvDel(klantRapportenIndexKey(id));
+  await kvZRem(orgKlantenIndexKey(dossier.orgId), id);
+  return true;
 }
 
 // --- Rapportaanvragen -----------------------------------------------------------

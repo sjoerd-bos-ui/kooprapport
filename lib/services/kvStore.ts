@@ -120,6 +120,18 @@ export async function kvZRangeByScore(key: string, maxScore: number): Promise<st
     .map((entry) => entry.member);
 }
 
+// Hele sleutel verwijderen (bv. een klantdossier dat de gebruiker expliciet
+// wist) -- tot nu toe was er nooit een "harde" delete nodig (alleen
+// status-toggles en losse index-updates via kvZRem), vandaar dat dit er nog
+// niet was.
+export async function kvDel(key: string): Promise<void> {
+  if (kvIsLive()) {
+    await upstashCommand(["DEL", key]);
+    return;
+  }
+  memoryStore.delete(key);
+}
+
 export async function kvZRem(key: string, member: string): Promise<void> {
   if (kvIsLive()) {
     await upstashCommand(["ZREM", key, member]);
