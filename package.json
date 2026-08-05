@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "postinstall": "node scripts/copy-pdf-worker.js",
-    "zakelijk:account": "node scripts/maak-zakelijk-account.js"
+    "zakelijk:account": "node scripts/maak-zakelijk-account.js",
+    "zakelijk:wachtwoord": "node scripts/reset-zakelijk-wachtwoord.js"
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.1.0",

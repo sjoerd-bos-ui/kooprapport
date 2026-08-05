@@ -126,6 +126,17 @@ export async function maakGebruiker(
   return record;
 }
 
+// Wachtwoord resetten voor een bestaande gebruiker -- er is geen "wachtwoord
+// vergeten"-zelfbedieningsflow in dit dashboard (zie de toelichting bij de
+// inlogpagina), dus dit is de admin-route (zelfde ADMIN_SECRET-patroon als
+// het aanmaken van een organisatie) om iemand weer toegang te geven.
+export async function zetGebruikerWachtwoord(userId: string, hash: string, salt: string): Promise<void> {
+  const gebruiker = await getGebruiker(userId);
+  if (!gebruiker) throw new Error("Gebruiker niet gevonden.");
+  const bijgewerkt: B2bGebruiker = { ...gebruiker, wachtwoordHash: hash, wachtwoordSalt: salt };
+  await kvSet(userKey(userId), JSON.stringify(bijgewerkt));
+}
+
 export async function getGebruiker(id: string): Promise<B2bGebruiker | null> {
   const raw = await kvGet(userKey(id));
   return raw ? (JSON.parse(raw) as B2bGebruiker) : null;
