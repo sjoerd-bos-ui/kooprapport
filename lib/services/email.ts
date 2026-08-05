@@ -465,6 +465,138 @@ function buildMarktupdateBevestigingsEmailHtml(bevestigUrl: string): string {
 </html>`;
 }
 
+export interface StuurB2bUitnodigingEmailInput {
+  naar: string;
+  orgNaam: string;
+  uitgenodigdDoorNaam: string;
+  uitnodigingUrl: string;
+}
+
+// -----------------------------------------------------------------------------
+// Teamuitnodiging voor "Kooprapport Zakelijk" (zie lib/services/b2bStore.ts:
+// maakUitnodiging, en app/zakelijk/(auth)/uitnodiging/[token]/page.tsx voor
+// de acceptatiepagina). Zelfde tabel-gebaseerde template als de rest van
+// email.ts, alleen met de donkere kop i.p.v. het Kooprapport-logo -- dit is
+// een interne, zakelijke uitnodiging, geen consumentenmail.
+// -----------------------------------------------------------------------------
+export async function stuurB2bUitnodigingEmail(input: StuurB2bUitnodigingEmailInput): Promise<StuurRapportEmailResultaat> {
+  const apiKey = process.env.RESEND_API_KEY;
+  const van = process.env.RESEND_FROM_EMAIL;
+  if (!apiKey || !van) {
+    return { ok: false, error: "E-mailverzending is nog niet geconfigureerd." };
+  }
+
+  const orgNaam = escapeHtml(input.orgNaam);
+  const doorNaam = escapeHtml(input.uitgenodigdDoorNaam);
+  const link = escapeHtml(input.uitnodigingUrl);
+
+  const html = `<!DOCTYPE html>
+<html lang="nl">
+  <body style="margin:0;padding:0;background-color:#F5F5FA;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F5F5FA;padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background-color:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #EEF0FF;">
+            <tr>
+              <td style="background-color:#1F1F2E;padding:22px 32px;">
+                <span style="font-size:18px;font-weight:700;color:#ffffff;letter-spacing:-0.01em;">Kooprapport Zakelijk</span>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:32px;">
+                <p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#4F46E5;">
+                  Uitnodiging
+                </p>
+                <p style="margin:0 0 18px;font-size:20px;line-height:1.4;font-weight:700;color:#1F1F2E;">
+                  ${doorNaam} nodigt u uit voor ${orgNaam}
+                </p>
+                <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#1F1F2E;">
+                  Stel een wachtwoord in om toegang te krijgen tot het Kooprapport Zakelijk-dashboard van ${orgNaam}.
+                  Deze link is 7 dagen geldig.
+                </p>
+                <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;">
+                  <tr>
+                    <td align="center" style="border-radius:10px;background-color:#4F46E5;">
+                      <a href="${link}" style="display:inline-block;padding:14px 28px;font-size:14px;font-weight:700;color:#ffffff;text-decoration:none;">
+                        Account activeren
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin:24px 0 0;font-size:13px;line-height:1.6;color:#6B7280;">
+                  Verwachtte u deze uitnodiging niet? Dan kunt u 'm gewoon negeren.
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:20px 32px;background-color:#F5F5FA;border-top:1px solid #EEF0FF;">
+                <p style="margin:0 0 4px;font-size:12px;line-height:1.6;color:#9CA3AF;">
+                  Kooprapport · KvK 87451387 · Pleinweg 66D, 3083 EH Rotterdam
+                </p>
+                <p style="margin:0;font-size:12px;line-height:1.6;color:#9CA3AF;">
+                  <a href="mailto:info@kooprapport.nl" style="color:#4F46E5;text-decoration:none;">info@kooprapport.nl</a>
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+
+  const res = await fetch(RESEND_API_URL, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ from: van, to: [input.naar], subject: `Uitnodiging voor ${input.orgNaam} op Kooprapport Zakelijk`, html }),
+  });
+
+  if (!res.ok) {
+    const tekst = await res.text().catch(() => "");
+    console.error(`[email] Resend gaf status ${res.status} (b2b-uitnodiging):`, tekst);
+    return { ok: false, error: "Versturen is niet gelukt. Probeer het later opnieuw." };
+  }
+  return { ok: true };
+}
+
+// -----------------------------------------------------------------------------
+// Interne melding naar Sjoerd bij een tier-wijzigingsverzoek (zie
+// app/api/zakelijk/abonnement/wijzigen/route.ts) -- er is geen automatische
+// Mollie-incasso voor abonnementen (alleen eenmalige betalingen, zie
+// lib/config/payment.ts), dus dit is bewust een "kom in actie"-mail, geen
+// bevestiging aan de klant dat er al iets geregeld is.
+// -----------------------------------------------------------------------------
+export async function stuurTierWijzigingsverzoekEmail(input: {
+  orgNaam: string;
+  huidigeTierLabel: string;
+  gewensteTierLabel: string;
+  aangevraagdDoorNaam: string;
+  aangevraagdDoorEmail: string;
+}): Promise<StuurRapportEmailResultaat> {
+  const apiKey = process.env.RESEND_API_KEY;
+  const van = process.env.RESEND_FROM_EMAIL;
+  const naar = process.env.ADMIN_NOTIFICATION_EMAIL || "info@kooprapport.nl";
+  if (!apiKey || !van) {
+    return { ok: false, error: "E-mailverzending is nog niet geconfigureerd." };
+  }
+
+  const html = `<p>${escapeHtml(input.orgNaam)} (${escapeHtml(input.aangevraagdDoorNaam)}, ${escapeHtml(input.aangevraagdDoorEmail)}) vraagt een wijziging aan van
+    <strong>${escapeHtml(input.huidigeTierLabel)}</strong> naar <strong>${escapeHtml(input.gewensteTierLabel)}</strong>.</p>`;
+
+  const res = await fetch(RESEND_API_URL, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ from: van, to: [naar], subject: `Tier-wijziging aangevraagd: ${input.orgNaam}`, html }),
+  });
+
+  if (!res.ok) {
+    const tekst = await res.text().catch(() => "");
+    console.error(`[email] Resend gaf status ${res.status} (tier-wijziging):`, tekst);
+    return { ok: false, error: "Versturen is niet gelukt." };
+  }
+  return { ok: true };
+}
+
 function escapeHtml(input: string): string {
   return input
     .replace(/&/g, "&amp;")

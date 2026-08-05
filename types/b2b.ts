@@ -48,6 +48,18 @@ export function getTierInfo(tier: B2bAbonnementTier): B2bAbonnementTierInfo {
   return B2B_ABONNEMENT_TIERS.find((t) => t.tier === tier) ?? B2B_ABONNEMENT_TIERS[0];
 }
 
+// Eigen huisstijl op alles wat een EINDKLANT te zien krijgt (het gedeelde
+// rapport, zie app/deelrapport/[token]) -- alle velden optioneel, zodat een
+// kantoor zonder ingevulde branding gewoon de standaard Kooprapport-uitstraling
+// behoudt. Geen file-upload-infrastructuur in dit project (zie ook de
+// widget-/badge-aanpak in instellingen), dus een logo is een geplakte URL,
+// geen upload.
+export interface B2bBranding {
+  weergaveNaam: string | null; // bv. "Jansen Makelaars" i.p.v. "Kooprapport" op het gedeelde rapport
+  logoUrl: string | null;
+  accentKleur: string | null; // hex, bv. "#0F766E" -- toegepast via inline style, niet via Tailwind-config (per-org, geen build-time kleur)
+}
+
 export interface B2bOrganisatie {
   id: string;
   naam: string;
@@ -55,6 +67,11 @@ export interface B2bOrganisatie {
   tier: B2bAbonnementTier;
   quotumPerMaand: number; // los van getTierInfo() opgeslagen, zodat een individuele afspraak kan afwijken van de standaardtier
   aangemaaktOp: string; // ISO
+  // Onderstaande velden zijn later toegevoegd -- bestaande, al opgeslagen
+  // organisaties hebben deze niet, dus overal defensief lezen (?? fallback),
+  // nooit aannemen dat ze bestaan.
+  werkgebiedRegios?: string[]; // exacte MarktupdateRegioRij.naam-waarden (zie lib/services/marktAlert.ts) -- bewust GEEN COROP-regionamen, om nooit te hoeven fuzzy-matchen tussen twee losse naamgevingen
+  branding?: B2bBranding;
 }
 
 export type B2bRol = "eigenaar" | "lid";
@@ -91,9 +108,48 @@ export interface B2bRapportAanvraag {
   adres: AddressMeta;
   report: Report;
   aangemaaktOp: string; // ISO
+  // Los, herroepbaar deel-token (zie lib/services/b2bDeelrapport.ts) --
+  // BEWUST niet gewoon het rapport-id zelf gebruiken als publieke link: een
+  // los token kan ingetrokken/opnieuw gegenereerd worden zonder de rapport-id
+  // (en daarmee alle interne links ernaar) te veranderen.
+  deelToken?: string | null;
 }
 
 export interface B2bSessieData {
   userId: string;
   orgId: string;
+}
+
+// --- Teamuitnodigingen -------------------------------------------------------
+// Zie lib/services/b2bStore.ts (maakUitnodiging/etc.) en
+// app/api/zakelijk/team/uitnodigen/route.ts. Een uitnodiging is een los
+// record met een eigen token (mailtoken, niet de sessie-token), zodat de
+// ontvanger via een publieke link (geen login nodig) een wachtwoord kan
+// instellen en zo lid wordt van de organisatie.
+export interface B2bUitnodiging {
+  id: string;
+  orgId: string;
+  email: string; // genormaliseerd (lowercase)
+  token: string;
+  uitgenodigdDoorUserId: string;
+  aangemaaktOp: string; // ISO
+  verlooptOp: string; // ISO -- 7 dagen geldig
+  status: "open" | "geaccepteerd";
+}
+
+// --- Zelfbediening abonnement -------------------------------------------------
+// Zie lib/services/b2bStore.ts en app/api/zakelijk/abonnement/wijzigen/route.ts.
+// BEWUST geen automatische Mollie-incasso hier: er is in dit project alleen
+// een eenmalige-betaling-koppeling met Mollie (zie lib/config/payment.ts),
+// geen abonnementen-API. Dit registreert een wijzigingsverzoek en informeert
+// Sjoerd per e-mail, zodat het quotum/tier handmatig bevestigd/verwerkt kan
+// worden -- geen stille aanname dat er al automatisch geïncasseerd wordt.
+export interface B2bTierWijzigingsverzoek {
+  id: string;
+  orgId: string;
+  huidigeTier: B2bAbonnementTier;
+  gewensteTier: B2bAbonnementTier;
+  aangevraagdDoorUserId: string;
+  aangemaaktOp: string; // ISO
+  status: "openstaand" | "verwerkt";
 }

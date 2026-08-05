@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import type { AddressMeta } from "@/types/report";
 import type { B2bRapportAanvraag } from "@/types/b2b";
-import { TrendingUpIcon, BoltIcon, AlertTriangleIcon, MapPinIcon } from "@/components/report/icons";
+import { berekenBiedadvies } from "@/lib/services/biedadvies";
+import { TrendingUpIcon, BoltIcon, AlertTriangleIcon, MapPinIcon, ScaleIcon } from "@/components/report/icons";
 
 interface RapportListItem {
   id: string;
@@ -134,6 +135,22 @@ export default function ZakelijkVergelijkenPagina() {
                     <p className="text-[12px] font-semibold text-ink">{d.report.energy.data?.klasse ?? "onbekend"}</p>
                   </div>
                 </div>
+                {(() => {
+                  const biedadvies = berekenBiedadvies(d.report.market.data?.geschatteWaarde, d.adres.plaats);
+                  return (
+                    <div className="flex items-center gap-2.5">
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#EEF0FF] text-accent">
+                        <ScaleIcon className="h-3.5 w-3.5" />
+                      </span>
+                      <div>
+                        <p className="text-[9.5px] font-bold text-ink/40">Biedadvies</p>
+                        <p className="text-[12px] font-semibold text-ink">
+                          {biedadvies ? `${euro(biedadvies.ondergrens)} – ${euro(biedadvies.bovengrens)}` : "niet beschikbaar"}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })()}
                 <div className="flex items-center gap-2.5">
                   <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#EEF0FF] text-accent">
                     <AlertTriangleIcon className="h-3.5 w-3.5" />

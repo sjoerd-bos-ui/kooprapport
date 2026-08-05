@@ -18,8 +18,12 @@ export default function robots(): MetadataRoute.Robots {
         // zelfregistratie) -- geen publieke content, hoort dus niet
         // geïndexeerd te worden. Elke pagina daaronder zet ook zelf al
         // robots: {index:false} (zie de metadata-exports in app/zakelijk/),
-        // dit is de extra, crawler-brede laag daarbovenop.
-        disallow: ["/api/", "/zakelijk/"],
+        // dit is de extra, crawler-brede laag daarbovenop. /deelrapport/ is
+        // om dezelfde reden dicht: dat zijn privé, per-token gedeelde
+        // rapportlinks voor één specifieke klant, geen content om te
+        // indexeren (ook daar staat al robots: {index:false} op de pagina
+        // zelf, zie app/deelrapport/[token]/page.tsx).
+        disallow: ["/api/", "/zakelijk/", "/deelrapport/"],
       },
     ],
     sitemap: `${APP_BASE_URL}/sitemap.xml`,

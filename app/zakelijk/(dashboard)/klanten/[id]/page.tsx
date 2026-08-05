@@ -2,8 +2,15 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getB2bSessieUitCookies } from "@/lib/services/b2bAuth";
 import { getKlantdossier, listRapportenVoorKlant } from "@/lib/services/b2bStore";
+import { berekenBiedadvies } from "@/lib/services/biedadvies";
+import { heeftNieuweMarktcijfersSinds, laatsteMarktupdateSlug } from "@/lib/services/marktAlert";
 import DossierStatusKnop from "@/components/zakelijk/DossierStatusKnop";
-import { FileCheckIcon } from "@/components/report/icons";
+import { FileCheckIcon, TrendingUpIcon } from "@/components/report/icons";
+
+function euro(bedrag: number | null | undefined): string {
+  if (bedrag == null) return "onbekend";
+  return new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(bedrag);
+}
 
 export const metadata = { title: "Klantdossier · Kooprapport Zakelijk", robots: { index: false, follow: false } };
 
@@ -22,6 +29,14 @@ export default async function ZakelijkKlantDetailPagina({ params }: { params: Pr
   if (!dossier || dossier.orgId !== context.organisatie.id) notFound();
 
   const rapporten = await listRapportenVoorKlant(id);
+  // Nieuwste rapport in dit dossier -- meest relevante bandbreedte om te tonen
+  // zolang er geen apart per-dossier "huidig bod"-veld bestaat.
+  const laatsteBiedadvies = rapporten[0]
+    ? berekenBiedadvies(rapporten[0].report.market.data?.geschatteWaarde, rapporten[0].adres.plaats)
+    : null;
+  const referentieDatum = rapporten[0]?.aangemaaktOp ?? dossier.aangemaaktOp;
+  const nieuweCijfers = dossier.status === "lopend" && heeftNieuweMarktcijfersSinds(referentieDatum);
+  const laatsteSlug = laatsteMarktupdateSlug();
 
   const tijdlijn: TijdlijnMoment[] = [
     { tekst: "Dossier aangemaakt", datum: dossier.aangemaaktOp },
@@ -60,6 +75,16 @@ export default async function ZakelijkKlantDetailPagina({ params }: { params: Pr
         </div>
       </div>
 
+      {nieuweCijfers && laatsteSlug && (
+        <Link
+          href={`/marktupdates/${laatsteSlug}`}
+          className="mt-4 flex items-center gap-2.5 rounded-2xl bg-[#EAF3DE] px-4 py-3 text-[12px] font-semibold text-[#3B6D11] hover:bg-[#DFEFCE]"
+        >
+          <TrendingUpIcon className="h-3.5 w-3.5 shrink-0" />
+          Er zijn nieuwe marktcijfers gepubliceerd sinds het laatste rapport in dit dossier -- bekijk de update
+        </Link>
+      )}
+
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-[1.3fr_0.7fr]">
         <div>
           <p className="text-[11px] font-bold uppercase tracking-wide text-ink/40">Rapporten in dit dossier ({rapporten.length})</p>
@@ -85,6 +110,19 @@ export default async function ZakelijkKlantDetailPagina({ params }: { params: Pr
         </div>
 
         <div>
+          {laatsteBiedadvies && (
+            <div className="mb-4 rounded-2xl bg-gradient-to-br from-accent to-accent-dark p-4">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-white/60">Actueel biedadvies</p>
+              <p className="mt-1.5 font-display text-lg font-extrabold text-white">
+                {euro(laatsteBiedadvies.ondergrens)} – {euro(laatsteBiedadvies.bovengrens)}
+              </p>
+              <p className="mt-1.5 text-[10.5px] leading-relaxed text-white/70">
+                Gebaseerd op het laatst opgevraagde rapport in dit dossier ({rapporten[0].adres.label}) en{" "}
+                {laatsteBiedadvies.niveau === "regio" ? `regio ${laatsteBiedadvies.regioNaam}` : "het landelijk gemiddelde"},{" "}
+                {laatsteBiedadvies.periodeLabel}.
+              </p>
+            </div>
+          )}
           <p className="text-[11px] font-bold uppercase tracking-wide text-ink/40">Tijdlijn</p>
           <div className="mt-2.5 rounded-2xl bg-white p-4 shadow-sm">
             <div className="flex flex-col gap-4">

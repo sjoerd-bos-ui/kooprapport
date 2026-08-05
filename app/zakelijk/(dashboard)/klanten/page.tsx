@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getB2bSessieUitCookies } from "@/lib/services/b2bAuth";
-import { listKlantdossiersVoorOrg } from "@/lib/services/b2bStore";
+import { listKlantdossiersVoorOrg, listRapportenVoorKlant } from "@/lib/services/b2bStore";
+import { heeftNieuweMarktcijfersSinds, laatsteMarktupdateSlug } from "@/lib/services/marktAlert";
 import NieuwKlantForm from "@/components/zakelijk/NieuwKlantForm";
-import { UsersIcon } from "@/components/report/icons";
+import { UsersIcon, TrendingUpIcon } from "@/components/report/icons";
 
 export const metadata = { title: "Klanten · Kooprapport Zakelijk", robots: { index: false, follow: false } };
 
@@ -12,6 +13,22 @@ export default async function ZakelijkKlantenPagina() {
   if (!context) redirect("/zakelijk/login");
 
   const dossiers = await listKlantdossiersVoorOrg(context.organisatie.id);
+
+  // Monitoring (#5): voor lopende dossiers checken of er sinds het laatst
+  // opgevraagde rapport nieuwe marktcijfers zijn gepubliceerd. Alleen voor
+  // lopende dossiers -- bij een afgerond dossier is dit niet meer relevant.
+  const nieuweCijfersPerDossier = new Map<string, boolean>();
+  const laatsteSlug = laatsteMarktupdateSlug();
+  await Promise.all(
+    dossiers
+      .filter((d) => d.status === "lopend")
+      .map(async (d) => {
+        const rapporten = await listRapportenVoorKlant(d.id);
+        const laatsteRapport = rapporten[0];
+        const referentieDatum = laatsteRapport?.aangemaaktOp ?? d.aangemaaktOp;
+        nieuweCijfersPerDossier.set(d.id, heeftNieuweMarktcijfersSinds(referentieDatum));
+      })
+  );
 
   return (
     <div>
@@ -42,8 +59,13 @@ export default async function ZakelijkKlantenPagina() {
                 {dossiers.map((d) => (
                   <tr key={d.id} className="border-b border-ink/[0.06] last:border-0">
                     <td className="px-5 py-3">
-                      <Link href={`/zakelijk/klanten/${d.id}`} className="font-semibold text-ink hover:text-accent">
+                      <Link href={`/zakelijk/klanten/${d.id}`} className="flex items-center gap-1.5 font-semibold text-ink hover:text-accent">
                         {d.klantnaam}
+                        {nieuweCijfersPerDossier.get(d.id) && (
+                          <span title={laatsteSlug ? `Nieuwe marktcijfers beschikbaar (${laatsteSlug})` : "Nieuwe marktcijfers beschikbaar"}>
+                            <TrendingUpIcon className="h-3 w-3 text-[#3B6D11]" />
+                          </span>
+                        )}
                       </Link>
                     </td>
                     <td className="px-5 py-3 text-ink/60">{d.type === "aankoop" ? "Aankoop" : "Verkoop"}</td>

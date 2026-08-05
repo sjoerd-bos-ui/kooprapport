@@ -18,7 +18,7 @@ export default async function ZakelijkDashboardHome() {
     listKlantdossiersVoorOrg(organisatie.id),
     listGebruikersVoorOrg(organisatie.id),
   ]);
-  const meldingen = getMarktMeldingen();
+  const meldingen = getMarktMeldingen(organisatie.werkgebiedRegios);
   const resterend = Math.max(0, organisatie.quotumPerMaand - verbruikt);
   const lopendeDossiers = klanten.filter((k) => k.status === "lopend").length;
 
@@ -48,6 +48,9 @@ export default async function ZakelijkDashboardHome() {
           />
           <p className="relative flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-wide text-white/65">
             <TrendingUpIcon className="h-3 w-3" /> Marktmelding
+            {organisatie.werkgebiedRegios && organisatie.werkgebiedRegios.length > 0 && (
+              <span className="font-normal normal-case text-white/50">· voor uw werkgebied</span>
+            )}
           </p>
           <div className="relative mt-2.5 flex flex-col gap-1.5">
             {meldingen.slice(0, 2).map((m) => (

@@ -1,4 +1,4 @@
-import { randomUUID } from "crypto";
+import { randomUUID, randomBytes } from "crypto";
 import { kvGet, kvSet, kvZAdd, kvZRangeByScore, kvIncrWithTtl } from "@/lib/services/kvStore";
 import { slugify } from "@/lib/utils/slug";
 import type {
@@ -7,6 +7,8 @@ import type {
   B2bKlantdossier,
   B2bRapportAanvraag,
   B2bAbonnementTier,
+  B2bUitnodiging,
+  B2bTierWijzigingsverzoek,
 } from "@/types/b2b";
 
 // -----------------------------------------------------------------------------
@@ -87,6 +89,20 @@ export async function maakOrganisatie(
 export async function getOrganisatie(id: string): Promise<B2bOrganisatie | null> {
   const raw = await kvGet(orgKey(id));
   return raw ? (JSON.parse(raw) as B2bOrganisatie) : null;
+}
+
+// Gedeeld door instellingen-updates (werkgebied, branding) -- shallow merge
+// op organisatie-niveau, zodat een update van het ene veld (bv. werkgebied)
+// nooit per ongeluk het andere veld (bv. branding) wist.
+export async function updateOrganisatie(
+  id: string,
+  patch: Partial<Pick<B2bOrganisatie, "werkgebiedRegios" | "branding" | "tier" | "quotumPerMaand">>
+): Promise<B2bOrganisatie | null> {
+  const org = await getOrganisatie(id);
+  if (!org) return null;
+  const bijgewerkt: B2bOrganisatie = { ...org, ...patch };
+  await kvSet(orgKey(id), JSON.stringify(bijgewerkt));
+  return bijgewerkt;
 }
 
 // --- Gebruikers ---------------------------------------------------------------
@@ -201,6 +217,39 @@ export async function listRapportenVoorKlant(klantId: string): Promise<B2bRappor
   return rapporten.filter((r): r is B2bRapportAanvraag => r !== null).reverse();
 }
 
+// --- Deellinks (zie app/deelrapport/[token]) ---------------------------------
+// Los token-record (i.p.v. het rapport-id zelf publiek bruikbaar maken), zodat
+// een link ingetrokken/vernieuwd kan worden zonder de rapport-id (en dus alle
+// interne verwijzingen ernaar) te veranderen.
+function deelTokenKey(token: string) {
+  return `b2b-deeltoken:${token}`;
+}
+
+export async function maakOfVernieuwDeelToken(rapportId: string): Promise<string> {
+  const rapport = await getRapportAanvraag(rapportId);
+  if (!rapport) throw new Error("Rapport niet gevonden.");
+  // Oud token (indien aanwezig) laten vervallen, zodat een eerder gedeelde
+  // link na "vernieuwen" niet stilletjes blijft werken.
+  if (rapport.deelToken) await kvSet(deelTokenKey(rapport.deelToken), "", 1);
+  const token = randomBytes(24).toString("hex");
+  await kvSet(deelTokenKey(token), rapportId);
+  await kvSet(rapportKey(rapportId), JSON.stringify({ ...rapport, deelToken: token }));
+  return token;
+}
+
+export async function verwijderDeelToken(rapportId: string): Promise<void> {
+  const rapport = await getRapportAanvraag(rapportId);
+  if (!rapport?.deelToken) return;
+  await kvSet(deelTokenKey(rapport.deelToken), "", 1);
+  await kvSet(rapportKey(rapportId), JSON.stringify({ ...rapport, deelToken: null }));
+}
+
+export async function getRapportAanvraagDoorDeelToken(token: string): Promise<B2bRapportAanvraag | null> {
+  const rapportId = await kvGet(deelTokenKey(token));
+  if (!rapportId) return null;
+  return getRapportAanvraag(rapportId);
+}
+
 // --- Quotum -----------------------------------------------------------------
 
 // Huidig verbruik komt uit de losse teller (snel, geen lijst nodig).
@@ -219,4 +268,115 @@ export async function verbruikRapport(orgId: string, quotumPerMaand: number): Pr
   const jaarMaand = huidigeJaarMaand();
   const nieuweTeller = await kvIncrWithTtl(usageKey(orgId, jaarMaand), 60 * 24 * 60 * 60);
   return { toegestaan: nieuweTeller <= quotumPerMaand, verbruikt: nieuweTeller };
+}
+
+// Historisch verbruik per kalendermaand -- alleen af te leiden uit de
+// rapporten zelf (de losse usageKey-teller heeft een TTL en is dus niet
+// geschikt voor een terugblik van meerdere maanden). Gebruikt door de
+// zelfbediening-/factuuroverzicht-pagina (#8).
+export async function verbruikPerMaand(orgId: string, aantalMaanden: number): Promise<{ jaarMaand: string; aantal: number }[]> {
+  const rapporten = await listRapportenVoorOrg(orgId);
+  const nu = new Date();
+  const maanden: { jaarMaand: string; aantal: number }[] = [];
+  for (let i = 0; i < aantalMaanden; i++) {
+    const datum = new Date(Date.UTC(nu.getUTCFullYear(), nu.getUTCMonth() - i, 1));
+    const jaarMaand = huidigeJaarMaand(datum);
+    const aantal = rapporten.filter((r) => huidigeJaarMaand(new Date(r.aangemaaktOp)) === jaarMaand).length;
+    maanden.push({ jaarMaand, aantal });
+  }
+  return maanden;
+}
+
+// --- Teamuitnodigingen --------------------------------------------------------
+
+function uitnodigingKey(id: string) {
+  return `b2b-uitnodiging:${id}`;
+}
+function uitnodigingByTokenKey(token: string) {
+  return `b2b-uitnodiging-token:${token}`;
+}
+function orgUitnodigingenIndexKey(orgId: string) {
+  return `b2b-org-uitnodigingen:${orgId}`;
+}
+const UITNODIGING_TTL_SECONDEN = 7 * 24 * 60 * 60;
+
+export async function maakUitnodiging(
+  orgId: string,
+  email: string,
+  uitgenodigdDoorUserId: string
+): Promise<B2bUitnodiging> {
+  const nu = new Date();
+  const record: B2bUitnodiging = {
+    id: randomUUID(),
+    orgId,
+    email: email.trim().toLowerCase(),
+    token: randomBytes(24).toString("hex"),
+    uitgenodigdDoorUserId,
+    aangemaaktOp: nu.toISOString(),
+    verlooptOp: new Date(nu.getTime() + UITNODIGING_TTL_SECONDEN * 1000).toISOString(),
+    status: "open",
+  };
+  await kvSet(uitnodigingKey(record.id), JSON.stringify(record), UITNODIGING_TTL_SECONDEN);
+  await kvSet(uitnodigingByTokenKey(record.token), record.id, UITNODIGING_TTL_SECONDEN);
+  await kvZAdd(orgUitnodigingenIndexKey(orgId), Date.now(), record.id);
+  return record;
+}
+
+export async function getUitnodigingDoorToken(token: string): Promise<B2bUitnodiging | null> {
+  const id = await kvGet(uitnodigingByTokenKey(token));
+  if (!id) return null;
+  const raw = await kvGet(uitnodigingKey(id));
+  return raw ? (JSON.parse(raw) as B2bUitnodiging) : null;
+}
+
+export async function zetUitnodigingGeaccepteerd(id: string): Promise<void> {
+  const raw = await kvGet(uitnodigingKey(id));
+  if (!raw) return;
+  const uitnodiging = JSON.parse(raw) as B2bUitnodiging;
+  await kvSet(uitnodigingKey(id), JSON.stringify({ ...uitnodiging, status: "geaccepteerd" }), UITNODIGING_TTL_SECONDEN);
+}
+
+export async function listOpenUitnodigingenVoorOrg(orgId: string): Promise<B2bUitnodiging[]> {
+  const ids = await kvZRangeByScore(orgUitnodigingenIndexKey(orgId), VER_IN_DE_TOEKOMST);
+  const uitnodigingen = await Promise.all(
+    ids.map(async (id) => {
+      const raw = await kvGet(uitnodigingKey(id));
+      return raw ? (JSON.parse(raw) as B2bUitnodiging) : null;
+    })
+  );
+  return uitnodigingen.filter((u): u is B2bUitnodiging => u !== null && u.status === "open").reverse();
+}
+
+// --- Zelfbediening abonnement --------------------------------------------------
+
+function tierWijzigingKey(id: string) {
+  return `b2b-tierwijziging:${id}`;
+}
+function orgTierWijzigingenIndexKey(orgId: string) {
+  return `b2b-org-tierwijzigingen:${orgId}`;
+}
+
+export async function maakTierWijzigingsverzoek(
+  input: Omit<B2bTierWijzigingsverzoek, "id" | "aangemaaktOp" | "status">
+): Promise<B2bTierWijzigingsverzoek> {
+  const record: B2bTierWijzigingsverzoek = {
+    ...input,
+    id: randomUUID(),
+    aangemaaktOp: new Date().toISOString(),
+    status: "openstaand",
+  };
+  await kvSet(tierWijzigingKey(record.id), JSON.stringify(record));
+  await kvZAdd(orgTierWijzigingenIndexKey(record.orgId), Date.now(), record.id);
+  return record;
+}
+
+export async function listTierWijzigingenVoorOrg(orgId: string): Promise<B2bTierWijzigingsverzoek[]> {
+  const ids = await kvZRangeByScore(orgTierWijzigingenIndexKey(orgId), VER_IN_DE_TOEKOMST);
+  const verzoeken = await Promise.all(
+    ids.map(async (id) => {
+      const raw = await kvGet(tierWijzigingKey(id));
+      return raw ? (JSON.parse(raw) as B2bTierWijzigingsverzoek) : null;
+    })
+  );
+  return verzoeken.filter((v): v is B2bTierWijzigingsverzoek => v !== null).reverse();
 }

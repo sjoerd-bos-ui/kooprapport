@@ -1,8 +1,12 @@
 import { redirect } from "next/navigation";
 import { getB2bSessieUitCookies } from "@/lib/services/b2bAuth";
-import { huidigVerbruik } from "@/lib/services/b2bStore";
+import { huidigVerbruik, verbruikPerMaand, listTierWijzigingenVoorOrg } from "@/lib/services/b2bStore";
+import { alleGebruikteRegioNamen } from "@/lib/services/marktAlert";
 import { getTierInfo, B2B_ABONNEMENT_TIERS } from "@/types/b2b";
 import { ShieldCheckIcon } from "@/components/report/icons";
+import WerkgebiedForm from "@/components/zakelijk/WerkgebiedForm";
+import BrandingForm from "@/components/zakelijk/BrandingForm";
+import AbonnementZelfbediening from "@/components/zakelijk/AbonnementZelfbediening";
 
 export const metadata = { title: "Instellingen · Kooprapport Zakelijk", robots: { index: false, follow: false } };
 
@@ -13,6 +17,12 @@ export default async function ZakelijkInstellingenPagina() {
   const tierInfo = getTierInfo(organisatie.tier);
   const verbruikt = await huidigVerbruik(organisatie.id);
   const percentage = Math.min(100, Math.round((verbruikt / Math.max(1, organisatie.quotumPerMaand)) * 100));
+
+  const [maandelijksVerbruik, tierWijzigingen] = await Promise.all([
+    verbruikPerMaand(organisatie.id, 6),
+    listTierWijzigingenVoorOrg(organisatie.id),
+  ]);
+  const openstaandVerzoek = tierWijzigingen.find((v) => v.status === "openstaand") ?? null;
 
   const widgetSnippet = `<script src="https://kooprapport.nl/widget.js" data-kantoor="${organisatie.slug}" async></script>`;
 
@@ -49,13 +59,35 @@ export default async function ZakelijkInstellingenPagina() {
           </div>
         ))}
       </div>
-      <p className="mt-2 text-[11px] text-ink/45">
-        Wilt u van tier wisselen? Neem contact op via{" "}
-        <a href="mailto:info@kooprapport.nl" className="font-semibold text-accent underline underline-offset-2">
-          info@kooprapport.nl
-        </a>
-        .
-      </p>
+      <div className="mt-4">
+        <AbonnementZelfbediening
+          huidigeTier={organisatie.tier}
+          tiers={B2B_ABONNEMENT_TIERS}
+          maandelijksVerbruik={maandelijksVerbruik}
+          openstaandVerzoek={openstaandVerzoek}
+        />
+      </div>
+
+      <div className="mt-8 rounded-2xl bg-white p-5 shadow-sm">
+        <p className="text-[12px] font-bold text-ink">Werkgebied</p>
+        <p className="mt-1 text-[11px] leading-relaxed text-ink/55">
+          Kies de regio&apos;s waar u actief bent -- de marktmelding op uw dashboard toont dan alleen nog relevante
+          regio&apos;s in plaats van alles uit de nieuwste Marktupdate.
+        </p>
+        <div className="mt-3.5">
+          <WerkgebiedForm alleRegioNamen={alleGebruikteRegioNamen()} huidig={organisatie.werkgebiedRegios ?? []} />
+        </div>
+      </div>
+
+      <div className="mt-4 rounded-2xl bg-white p-5 shadow-sm">
+        <p className="text-[12px] font-bold text-ink">Eigen huisstijl</p>
+        <p className="mt-1 text-[11px] leading-relaxed text-ink/55">
+          Toon uw eigen kantoornaam, logo en accentkleur op rapporten die u met klanten deelt.
+        </p>
+        <div className="mt-3.5">
+          <BrandingForm huidig={organisatie.branding} />
+        </div>
+      </div>
 
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className="rounded-2xl bg-white p-5 shadow-sm">
