@@ -38,24 +38,37 @@ function naarFundaSlug(naam: string): string {
     .replace(/\s+/g, "-");
 }
 
+// BUGFIX (live getest tegen PDOK, zie het gesprek hierover): twee dingen
+// klopten niet voor "kleinere" gebieden zoals "Kralingen Oost".
+//   1. Veel plekken die mensen een "wijk" noemen, zijn in PDOK's indeling
+//      een fijnmaziger `type:buurt` (bv. "Kralingen Oost" is een buurt
+//      binnen de wijk "Kralingen-Crooswijk") -- zonder `buurt` in de
+//      type-filter leverde zo'n zoekopdracht 0 resultaten op.
+//   2. weergavenaam voor wijk/buurt komt terug als "Kralingen Oost
+//      Rotterdam" (spatie-gescheiden, GEEN komma) i.p.v. het aangenomen
+//      "Kralingen Oost, Rotterdam" -- split(",") gaf dus de hele string
+//      (inclusief plaatsnaam) terug als wijknaam. Nu wordt de betrouwbare
+//      gemeentenaam van het EIND van weergavenaam afgeknipt, wat wel/geen
+//      komma er ook staat.
 function mapPdokDoc(doc: PdokLocatieDoc): B2bLocatie | null {
   if (doc.type === "woonplaats" && doc.woonplaatsnaam) {
     return { label: doc.woonplaatsnaam, plaatsSlug: naarFundaSlug(doc.woonplaatsnaam), wijkSlug: null };
   }
-  if (doc.type === "wijk" && doc.weergavenaam) {
-    // gemeentenaam is de betrouwbaarste bron voor de bijbehorende plaats; als
-    // die ontbreekt, valt dit terug op het laatste deel van weergavenaam (bv.
-    // "Kralingen, Rotterdam" -> "Rotterdam") -- nooit gokken zonder bron.
-    const plaatsNaam = doc.gemeentenaam?.trim() || doc.weergavenaam.split(",").pop()?.trim();
-    const wijkNaam = doc.weergavenaam.split(",")[0]?.trim();
-    if (!plaatsNaam || !wijkNaam) return null;
-    return { label: doc.weergavenaam, plaatsSlug: naarFundaSlug(plaatsNaam), wijkSlug: naarFundaSlug(wijkNaam) };
+  if ((doc.type === "wijk" || doc.type === "buurt") && doc.weergavenaam) {
+    const plaatsNaam = doc.gemeentenaam?.trim();
+    if (!plaatsNaam) return null;
+    let subNaam = doc.weergavenaam.trim();
+    if (subNaam.endsWith(plaatsNaam)) {
+      subNaam = subNaam.slice(0, subNaam.length - plaatsNaam.length).replace(/,\s*$/, "").trim();
+    }
+    if (!subNaam) return null;
+    return { label: `${subNaam}, ${plaatsNaam}`, plaatsSlug: naarFundaSlug(plaatsNaam), wijkSlug: naarFundaSlug(subNaam) };
   }
   return null;
 }
 
 export async function fetchLiveLocatieSuggesties(query: string, limit = 8): Promise<B2bLocatie[]> {
-  const url = `${PDOK_SUGGEST_URL}?q=${encodeURIComponent(query)}&fq=type:(woonplaats OR wijk)&rows=${limit}&fl=${encodeURIComponent(PDOK_FIELDS)}`;
+  const url = `${PDOK_SUGGEST_URL}?q=${encodeURIComponent(query)}&fq=type:(woonplaats OR wijk OR buurt)&rows=${limit}&fl=${encodeURIComponent(PDOK_FIELDS)}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`PDOK suggest HTTP ${res.status}`);
   const data = await res.json();
