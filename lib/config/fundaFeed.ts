@@ -6,13 +6,19 @@ import type { DataMode } from "@/types/dataSource";
 // de rest van dit project: zonder FUNDA_FEED_MODE=live blijft dit op "mock"
 // staan, dus geen enkel verzoek naar Funda totdat dat bewust aangezet wordt.
 //
-// BELANGRIJK, in tegenstelling tot de andere databronnen in dit project: dit
-// is GEEN officiële, door Funda ondersteunde API. Het is de oude, niet meer
-// gedocumenteerde partner-RSS-feed (partnerapi.funda.nl) die nog wel
-// bereikbaar blijkt, maar zonder enige garantie -- Funda kan dit zonder
-// aankondiging aanpassen of blokkeren. Zie de toelichting in
-// lib/data-sources/fundaFeed.ts voor hoe daar defensief mee wordt omgegaan
-// (elke fout levert gewoon 0 matches op, nooit een crash van de cron).
+// GESCHIEDENIS: dit gebruikte eerst de oude, niet meer gedocumenteerde
+// partner-RSS-feed (partnerapi.funda.nl) -- die geeft inmiddels HTTP 401
+// (live geverifieerd) en is dus definitief dood. Vervolgens is een betaalde
+// Apify-actor geprobeerd ($14,99/maand) -- die bleek het prijsveld structureel
+// niet te vullen (live geverifieerd: overal "price": null). De huidige
+// aanpak leest in plaats daarvan RECHTSTREEKS de publieke funda.nl-pagina's:
+// de zoekresultatenpagina (voor woninglinks) en per woning de detailpagina
+// (voor prijs/adres/foto, via de schema.org JSON-LD die daar al standaard
+// in staat -- live geverifieerd, geen JavaScript-rendering nodig, gewone
+// server-side fetch volstaat). Nog steeds GEEN officiële, ondersteunde
+// koppeling: Funda kan de paginastructuur op elk moment wijzigen of
+// verkeersblokkades instellen, dus alles hier blijft net zo defensief als
+// eerder (elke fout levert gewoon minder/geen matches op, nooit een crash).
 // -----------------------------------------------------------------------------
 
 function readMode(envVar: string): DataMode {
@@ -20,13 +26,12 @@ function readMode(envVar: string): DataMode {
 }
 
 export const FUNDA_FEED_MODE: DataMode = readMode("FUNDA_FEED_MODE");
-export const FUNDA_FEED_BASE_URL = process.env.FUNDA_FEED_BASE_URL ?? "http://partnerapi.funda.nl/feeds/Aanbod.svc/rss";
-export const FUNDA_FEED_TIMEOUT_MS = 10000;
 
-// Timeout voor het los ophalen van de og:image-foto per listingpagina (zie
-// haalOgAfbeelding in lib/data-sources/fundaFeed.ts) -- de RSS-feed zelf
-// levert vrijwel nooit een foto, maar de listingpagina's op funda.nl doen dat
-// wel via een standaard og:image-metatag (LIVE geverifieerd tegen een echte
-// Funda-detailpagina). Kort gehouden: dit gebeurt per gevonden woning, dus
-// een trage/hangende aanroep mag de rest van de batch niet vertragen.
-export const OG_IMAGE_TIMEOUT_MS = 5000;
+// Timeout voor het ophalen van de zoekresultatenpagina (levert de lijst met
+// woninglinks) en, los daarvan, per gevonden woning de detailpagina (levert
+// prijs/adres/foto). Twee aparte constanten omdat er per zoekopdracht 1
+// zoekpagina-aanroep is maar tot ~15 detailpagina-aanroepen -- die laatste
+// mogen individueel korter timeouten zodat één trage woning de rest van de
+// batch niet ophoudt.
+export const FUNDA_SEARCH_TIMEOUT_MS = 10000;
+export const FUNDA_DETAIL_TIMEOUT_MS = 6000;

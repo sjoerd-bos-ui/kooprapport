@@ -1,19 +1,25 @@
-import { FUNDA_FEED_MODE, FUNDA_FEED_BASE_URL, FUNDA_FEED_TIMEOUT_MS, OG_IMAGE_TIMEOUT_MS } from "@/lib/config/fundaFeed";
-import type { B2bLocatie, B2bKenmerken } from "@/types/b2b";
+import { FUNDA_FEED_MODE, FUNDA_SEARCH_TIMEOUT_MS, FUNDA_DETAIL_TIMEOUT_MS } from "@/lib/config/fundaFeed";
+import type { B2bLocatie, B2bKenmerken, B2bWoningtype } from "@/types/b2b";
 
 // -----------------------------------------------------------------------------
-// Adapter voor de niet-officiële Funda partner-RSS-feed (zie de uitleg in
-// lib/config/fundaFeed.ts). Geeft per (plaats, budgetMax) de nieuwste
-// woningaanbiedingen terug -- de feed zelf levert al maximaal ~15 items per
-// zoekopdracht, wat voor een dossier met een specifieke, smalle zoekopdracht
-// (budget + plaats) doorgaans ruim voldoende is.
+// Directe adapter voor de publieke funda.nl-pagina's (zie de uitleg in
+// lib/config/fundaFeed.ts voor waarom dit de partner-RSS-feed en de
+// Apify-actor vervangt). Twee stappen:
+//   1. De zoekresultatenpagina ophalen en daaruit de woninglinks halen
+//      (gewone server-side fetch, geen JavaScript-rendering nodig -- live
+//      geverifieerd: de links staan gewoon in de ruwe HTML).
+//   2. Per woning de detailpagina ophalen en het schema.org JSON-LD-blok
+//      uitlezen dat funda.nl daar standaard in zet (live geverifieerd: bevat
+//      een betrouwbare prijs, adres en foto -- in tegenstelling tot de
+//      geteste Apify-actor, waar het prijsveld structureel leeg bleef).
 //
-// BEWUST geen npm-XML-parser: dit is een klein, plat RSS 2.0-document (title/
-// link/description/pubDate per <item>), een lichte regex-extractie is hier
-// voldoende en scheelt een nieuwe dependency. Elke stap is defensief: een
-// onverwacht/gewijzigd formaat levert gewoon minder of geen items op, nooit
-// een crash -- want dit is een ongedocumenteerde, niet-ondersteunde feed die
-// zonder waarschuwing kan veranderen.
+// URL-parameters (selected_area, price, rooms, exterior_space_type,
+// object_type, object_type_house_orientation) zijn LIVE GEVERIFIEERD door de
+// filters handmatig in de Funda-UI te bedienen en de resulterende URL af te
+// lezen -- niet gegokt, met uitzondering van de expliciet gemarkeerde
+// plekken hieronder (die zijn wél een educated guess, en dat is ook zo
+// gedocumenteerd). Nog steeds geen officiële/ondersteunde koppeling: elke
+// stap faalt defensief (minder/geen matches), nooit een crash.
 // -----------------------------------------------------------------------------
 
 export interface FundaFeedItem {
@@ -25,125 +31,91 @@ export interface FundaFeedItem {
 
 // Vaste, kosteloze voorbeelddata voor mock-modus (standaard) -- zodat de
 // matchfunctie in de UI en met demo-data te testen is zonder ooit een
-// aanroep naar Funda te doen. 5 stuks (i.p.v. eerder 2), zodat de "direct 3
-// tot 5 woningen"-weergave ook in mock-modus realistisch oogt. fotoUrl wijst
-// naar picsum.photos (stabiele, gratis foto-placeholder-dienst, vast seed per
-// adres) i.p.v. null -- zodat ook de mock-demo al met echte foto's oogt,
-// dezelfde reden waarom haalOgAfbeelding() hieronder in live-modus de echte
-// Funda-listingfoto ophaalt i.p.v. de neutrale huisillustratie te tonen.
+// aanroep naar Funda te doen. fotoUrl wijst naar picsum.photos (stabiele,
+// gratis foto-placeholder-dienst, vast seed per adres).
 const MOCK_ITEMS: FundaFeedItem[] = [
   {
     titel: "Boezemsingel 24, Rotterdam",
-    url: "https://www.funda.nl/koop/rotterdam/huis-00000001-boezemsingel-24/",
+    url: "https://www.funda.nl/detail/koop/rotterdam/huis-boezemsingel-24/00000001/",
     prijsLabel: "€ 489.000 k.k.",
     fotoUrl: "https://picsum.photos/seed/boezemsingel24/480/360",
   },
   {
     titel: "Zwart Janstraat 51, Rotterdam",
-    url: "https://www.funda.nl/koop/rotterdam/huis-00000002-zwart-janstraat-51/",
+    url: "https://www.funda.nl/detail/koop/rotterdam/huis-zwart-janstraat-51/00000002/",
     prijsLabel: "€ 525.000 k.k.",
     fotoUrl: "https://picsum.photos/seed/zwartjanstraat51/480/360",
   },
   {
     titel: "Bergselaan 142, Rotterdam",
-    url: "https://www.funda.nl/koop/rotterdam/huis-00000003-bergselaan-142/",
+    url: "https://www.funda.nl/detail/koop/rotterdam/huis-bergselaan-142/00000003/",
     prijsLabel: "€ 425.000 k.k.",
     fotoUrl: "https://picsum.photos/seed/bergselaan142/480/360",
   },
   {
     titel: "Kralingse Plaslaan 88, Rotterdam",
-    url: "https://www.funda.nl/koop/rotterdam/huis-00000004-kralingse-plaslaan-88/",
+    url: "https://www.funda.nl/detail/koop/rotterdam/huis-kralingse-plaslaan-88/00000004/",
     prijsLabel: "€ 389.000 k.k.",
     fotoUrl: "https://picsum.photos/seed/kralingseplaslaan88/480/360",
   },
   {
     titel: "Vroesenlaan 21, Rotterdam",
-    url: "https://www.funda.nl/koop/rotterdam/huis-00000005-vroesenlaan-21/",
+    url: "https://www.funda.nl/detail/koop/rotterdam/huis-vroesenlaan-21/00000005/",
     prijsLabel: "€ 465.000 k.k.",
     fotoUrl: "https://picsum.photos/seed/vroesenlaan21/480/360",
   },
 ];
 
-// Vertaalt de gestructureerde kenmerken (#3, zie types/b2b.ts) naar extra
-// pad-segmenten in dezelfde "zo="-padstructuur die Funda's publieke
-// zoek-URLs gebruiken (bv. /rotterdam/tussenwoning/tuin/). Dit is, net als de
-// rest van deze feed, EMPIRISCH NIET GEVERIFIEERD tegen de live feed -- het
-// is de meest plausibele aanname op basis van Funda's publieke URL-schema.
-// Faalt dit segment stil (verkeerde/genegeerde filter), dan levert de feed
-// gewoon bredere of geen resultaten op, nooit een crash (zie haalFundaMatches
-// hieronder). energielabelAB wordt bewust NIET meegegeven: geen betrouwbaar
-// vermoeden van het juiste padsegment, en een verkeerd segment kan een hele
-// zoekopdracht onterecht leeglaten.
-function kenmerkenSegmenten(kenmerken: B2bKenmerken | undefined): string[] {
-  if (!kenmerken) return [];
-  const segmenten: string[] = [];
-  if (kenmerken.woningtype) segmenten.push(kenmerken.woningtype);
-  if (kenmerken.minKamers && kenmerken.minKamers > 0) segmenten.push(`${kenmerken.minKamers}-kamers`);
-  if (kenmerken.minSlaapkamers && kenmerken.minSlaapkamers > 0) segmenten.push(`${kenmerken.minSlaapkamers}-slaapkamers`);
-  if (kenmerken.tuin) segmenten.push("tuin");
-  if (kenmerken.balkon) segmenten.push("balkon");
-  if (kenmerken.dakterras) segmenten.push("dakterras");
-  if (kenmerken.garage) segmenten.push("garage");
-  if (kenmerken.lift) segmenten.push("lift");
-  return segmenten;
-}
+// object_type + object_type_house_orientation -- "house"/"apartment" en
+// "terraced" (tussenwoning) zijn live geverifieerd. De overige oriëntaties
+// (hoekwoning/2-onder-1-kap/vrijstaand) zijn NIET los getest -- dit zijn de
+// meest voor de hand liggende Engelse tegenhangers naar analogie van
+// "terraced", maar geen garantie.
+const WONINGTYPE_PARAMS: Record<B2bWoningtype, { objectType: string; orientation?: string }> = {
+  tussenwoning: { objectType: "house", orientation: "terraced" },
+  hoekwoning: { objectType: "house", orientation: "corner" },
+  "2-onder-1-kapwoning": { objectType: "house", orientation: "semi_detached" },
+  "vrijstaande-woning": { objectType: "house", orientation: "detached" },
+  appartement: { objectType: "apartment" },
+};
 
-function bouwZoekpad(locatie: B2bLocatie, budgetMax: number | null, kenmerken: B2bKenmerken | undefined): string {
-  const delen = [locatie.plaatsSlug];
-  if (locatie.wijkSlug) delen.push(locatie.wijkSlug);
-  if (budgetMax && budgetMax > 0) delen.push(`0-${Math.round(budgetMax)}`);
-  delen.push(...kenmerkenSegmenten(kenmerken));
-  return `/${delen.join("/")}/`;
-}
+// exterior_space_type -- "garden" (tuin) en "balcony" (balkon) zijn live
+// geverifieerd (comma-separated in de URL). "roof_terrace" voor dakterras is
+// NIET los getest, is de meest voor de hand liggende waarde naar analogie.
+// garage/lift zijn bewust NIET meegenomen: geen filter hiervoor gevonden in
+// de Funda-UI binnen de tijd die daarvoor stond -- liever weglaten dan een
+// verkeerd geraden parameter die een zoekopdracht onterecht leegtrekt.
+function kenmerkenNaarParams(kenmerken: B2bKenmerken | undefined): URLSearchParams {
+  const params = new URLSearchParams();
+  if (!kenmerken) return params;
 
-function bouwFeedUrl(locatie: B2bLocatie, budgetMax: number | null, kenmerken: B2bKenmerken | undefined): string {
-  const params = new URLSearchParams({ type: "koop", zo: bouwZoekpad(locatie, budgetMax, kenmerken) });
-  return `${FUNDA_FEED_BASE_URL}/?${params.toString()}`;
-}
-
-function extractTag(itemXml: string, tag: string): string | null {
-  const match = itemXml.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, "i"));
-  if (!match) return null;
-  let value = match[1].trim();
-  const cdata = value.match(/^<!\[CDATA\[([\s\S]*?)\]\]>$/);
-  if (cdata) value = cdata[1].trim();
-  return value || null;
-}
-
-function decodeEntities(s: string): string {
-  return s.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'");
-}
-
-function parseRssItems(xml: string): FundaFeedItem[] {
-  const items: FundaFeedItem[] = [];
-  const itemMatches = xml.match(/<item[\s\S]*?<\/item>/gi) ?? [];
-  for (const itemXml of itemMatches) {
-    const titelRaw = extractTag(itemXml, "title");
-    const url = extractTag(itemXml, "link");
-    if (!titelRaw || !url) continue;
-
-    const beschrijving = extractTag(itemXml, "description");
-    // Deze feed heeft geen los, gestructureerd fotoveld gegarandeerd -- pak
-    // een eventuele <enclosure>/<media:content> als die er wel is, anders
-    // blijft fotoUrl null en toont de UI een neutrale illustratie.
-    const enclosureMatch = itemXml.match(/<enclosure[^>]*url=["']([^"']+)["']/i);
-    const mediaMatch = itemXml.match(/<media:content[^>]*url=["']([^"']+)["']/i);
-    const fotoUrl = enclosureMatch?.[1] ?? mediaMatch?.[1] ?? null;
-
-    // Prijs staat niet los in deze feed -- het eerste "€ ..."-patroon in
-    // titel/beschrijving is de beste, eerlijke gok (blijft null als het er
-    // niet in staat, nooit een verzonnen bedrag).
-    const prijsBron = `${titelRaw} ${beschrijving ?? ""}`;
-    const prijsMatch = prijsBron.match(/€\s?[\d.,]+(?:\s?k\.k\.)?/i);
-
-    items.push({
-      titel: decodeEntities(titelRaw),
-      url: decodeEntities(url),
-      prijsLabel: prijsMatch ? prijsMatch[0].trim() : null,
-      fotoUrl,
-    });
+  if (kenmerken.woningtype) {
+    const w = WONINGTYPE_PARAMS[kenmerken.woningtype];
+    params.set("object_type", w.objectType);
+    if (w.orientation) params.set("object_type_house_orientation", w.orientation);
   }
-  return items;
+  if (kenmerken.minKamers && kenmerken.minKamers > 0) params.set("rooms", `${kenmerken.minKamers}-`);
+
+  const buiten: string[] = [];
+  if (kenmerken.tuin) buiten.push("garden");
+  if (kenmerken.balkon) buiten.push("balcony");
+  if (kenmerken.dakterras) buiten.push("roof_terrace");
+  if (buiten.length > 0) params.set("exterior_space_type", buiten.join(","));
+
+  return params;
+}
+
+// selected_area -- LIVE geverifieerd voor een enkele plaats
+// (selected_area=["rotterdam"]). Voor een wijk is dit NIET los geverifieerd
+// -- de aanname (["plaatsSlug","wijkSlug"], zoals Funda's "Selecteer
+// buurten"-verfijning suggereert) is een educated guess. Faalt dit, dan
+// levert de zoekopdracht gewoon 0 resultaten op, nooit een crash.
+function bouwZoekUrl(locatie: B2bLocatie, budgetMax: number | null, kenmerken: B2bKenmerken | undefined): string {
+  const gebieden = locatie.wijkSlug ? [locatie.plaatsSlug, locatie.wijkSlug] : [locatie.plaatsSlug];
+  const params = kenmerkenNaarParams(kenmerken);
+  params.set("selected_area", JSON.stringify(gebieden));
+  if (budgetMax && budgetMax > 0) params.set("price", `0-${Math.round(budgetMax)}`);
+  return `https://www.funda.nl/zoeken/koop?${params.toString()}`;
 }
 
 async function fetchMetTimeout(url: string, timeoutMs: number): Promise<Response> {
@@ -159,37 +131,69 @@ async function fetchMetTimeout(url: string, timeoutMs: number): Promise<Response
   }
 }
 
-// De RSS-feed zelf levert vrijwel nooit een foto (zie parseRssItems
-// hierboven), maar elke Funda-listingpagina heeft een standaard
-// og:image-metatag met de hoofdfoto -- LIVE geverifieerd tegen een echte
-// Funda-detailpagina (zie het commentaar bij OG_IMAGE_TIMEOUT_MS in
-// lib/config/fundaFeed.ts). Dit is een gewone, publieke paginafetch (geen
-// aparte/verborgen API), vergelijkbaar met hoe elke linkpreview (Slack,
-// WhatsApp, social media) al werkt -- en net als de rest van deze feed:
-// faalt dit (timeout, layout-wijziging, blokkade), dan blijft fotoUrl
-// gewoon null en valt de UI terug op de neutrale huisillustratie.
-async function haalOgAfbeelding(listingUrl: string): Promise<string | null> {
+// De zoekresultatenpagina is een gewone server-gerenderde pagina (geen
+// client-side rendering nodig) -- de detaillinks staan al in de ruwe HTML,
+// live geverifieerd. Dedupliceren omdat dezelfde advertentie soms meerdere
+// keren op één pagina linkt (bv. in een "topadvertentie"-blok bovenaan).
+function extractDetailLinks(html: string, limiet: number): string[] {
+  const matches = html.match(/\/detail\/koop\/[a-z0-9-]+\/[a-z0-9-]+\/\d+\//gi) ?? [];
+  const uniek = [...new Set(matches)];
+  return uniek.slice(0, limiet).map((pad) => `https://www.funda.nl${pad}`);
+}
+
+interface FundaJsonLd {
+  name?: string;
+  address?: { streetAddress?: string; addressLocality?: string };
+  offers?: { price?: number | string; priceCurrency?: string };
+  image?: string;
+}
+
+function extractJsonLd(html: string): FundaJsonLd | null {
+  const matches = [...html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)];
+  for (const m of matches) {
+    try {
+      const data = JSON.parse(m[1]);
+      // Funda's listing-JSON-LD heeft een "offers"-blok met de prijs -- dat
+      // is het blok dat we nodig hebben (er kunnen ook andere ld+json-
+      // blokken op de pagina staan, bv. voor breadcrumbs, die slaan we over).
+      if (data?.offers?.price != null) return data as FundaJsonLd;
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
+function formatPrijs(prijs: number | string | undefined): string | null {
+  if (prijs == null) return null;
+  const bedrag = typeof prijs === "string" ? Number(prijs) : prijs;
+  if (!Number.isFinite(bedrag) || bedrag <= 0) return null;
+  // "k.k." is een aanname (kosten koper is verreweg het gangbaarst bij
+  // bestaande bouw) -- de JSON-LD zelf specificeert v.o.n./k.k. niet apart.
+  return `${new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(bedrag)} k.k.`;
+}
+
+async function haalListingDetails(detailUrl: string): Promise<FundaFeedItem | null> {
   try {
-    const res = await fetchMetTimeout(listingUrl, OG_IMAGE_TIMEOUT_MS);
+    const res = await fetchMetTimeout(detailUrl, FUNDA_DETAIL_TIMEOUT_MS);
     if (!res.ok) return null;
     const html = await res.text();
-    const match =
-      html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i) ??
-      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
-    return match?.[1] ? decodeEntities(match[1]) : null;
+    const ld = extractJsonLd(html);
+    if (!ld) return null;
+
+    const straat = ld.address?.streetAddress ?? ld.name ?? "";
+    const plaats = ld.address?.addressLocality ?? "";
+    const titel = [straat, plaats].filter(Boolean).join(", ") || ld.name || "Woning";
+
+    return {
+      titel,
+      url: detailUrl,
+      prijsLabel: formatPrijs(ld.offers?.price),
+      fotoUrl: ld.image ?? null,
+    };
   } catch {
     return null;
   }
-}
-
-async function verrijkMetFotos(items: FundaFeedItem[]): Promise<FundaFeedItem[]> {
-  return Promise.all(
-    items.map(async (item) => {
-      if (item.fotoUrl) return item;
-      const fotoUrl = await haalOgAfbeelding(item.url);
-      return fotoUrl ? { ...item, fotoUrl } : item;
-    })
-  );
 }
 
 export async function haalFundaMatches(
@@ -203,17 +207,20 @@ export async function haalFundaMatches(
   }
 
   try {
-    const url = bouwFeedUrl(locatie, budgetMax, kenmerken);
-    const res = await fetchMetTimeout(url, FUNDA_FEED_TIMEOUT_MS);
+    const zoekUrl = bouwZoekUrl(locatie, budgetMax, kenmerken);
+    const res = await fetchMetTimeout(zoekUrl, FUNDA_SEARCH_TIMEOUT_MS);
     if (!res.ok) {
-      console.error(`[fundaFeed] HTTP ${res.status} bij ophalen van ${url}`);
+      console.error(`[fundaFeed] HTTP ${res.status} bij ophalen van ${zoekUrl}`);
       return [];
     }
-    const xml = await res.text();
-    const items = parseRssItems(xml).slice(0, limiet);
-    return await verrijkMetFotos(items);
+    const html = await res.text();
+    const links = extractDetailLinks(html, limiet);
+    if (links.length === 0) return [];
+
+    const resultaten = await Promise.all(links.map(haalListingDetails));
+    return resultaten.filter((item): item is FundaFeedItem => item !== null);
   } catch (err) {
-    console.error("[fundaFeed] ophalen/parsen mislukt (mogelijk is de niet-officiële feed niet meer bereikbaar):", err);
+    console.error("[fundaFeed] ophalen/parsen mislukt (funda.nl is geen officiële, ondersteunde koppeling):", err);
     return [];
   }
 }
