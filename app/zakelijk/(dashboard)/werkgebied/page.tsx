@@ -1,13 +1,18 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getB2bSessieUitCookies } from "@/lib/services/b2bAuth";
-import { overbiedenVoorWerkgebied, editorialeNamenVoorRegio } from "@/lib/content/regioOverbieden";
+import {
+  REGIO_OVERBIEDEN,
+  editorialeNamenVoorRegio,
+  werkgebiedStatusVoorRegio,
+  overbiedenPerProvincie,
+} from "@/lib/content/regioOverbieden";
 import { regioContextZin } from "@/lib/content/woningmarktRegios";
 import { alleGebruikteRegioNamen, laatsteMarktupdateSlug } from "@/lib/services/marktAlert";
 import { getMarktupdateBySlug } from "@/lib/content/marktupdates";
 import { MapPinIcon, TrendingUpIcon, ShieldCheckIcon } from "@/components/report/icons";
 import RegiosBeherenPaneel from "@/components/zakelijk/RegiosBeherenPaneel";
-import WerkgebiedRegioGrid, { type WerkgebiedRegioWeergave } from "@/components/zakelijk/WerkgebiedRegioGrid";
+import WerkgebiedTabel, { type WerkgebiedTabelRegio } from "@/components/zakelijk/WerkgebiedTabel";
 
 export const metadata = { title: "Werkgebied · Kooprapport Zakelijk", robots: { index: false, follow: false } };
 
@@ -43,13 +48,17 @@ export default async function WerkgebiedPagina() {
   const { organisatie } = context;
 
   const werkgebied = organisatie.werkgebiedRegios ?? [];
-  const ruweCijfers = overbiedenVoorWerkgebied(werkgebied);
   const laatsteSlug = laatsteMarktupdateSlug();
   const laatsteUpdate = laatsteSlug ? getMarktupdateBySlug(laatsteSlug) : undefined;
   const landelijkOverbodStat = laatsteUpdate?.landelijkeCijfers.stats.find((s) => s.label === "overboden")?.waarde;
   const landelijkGemiddeldOverbod = landelijkOverbodStat ? Number(landelijkOverbodStat.replace("%", "").replace(",", ".")) : null;
 
-  const cijfers: WerkgebiedRegioWeergave[] = ruweCijfers.map((regio) => {
+  // Alle 37 officiële regio's, verrijkt -- de tabel/heatmap moet doorzoekbaar
+  // zijn over het VOLLEDIGE aanbod (om een regio te kunnen vinden en
+  // toevoegen), niet alleen over het al gekozen werkgebied. `status` bepaalt
+  // per rij of hij al in het werkgebied zit en op welke manier (zie
+  // werkgebiedStatusVoorRegio).
+  const alleRegios: WerkgebiedTabelRegio[] = REGIO_OVERBIEDEN.map((regio) => {
     const editorialeNamen = editorialeNamenVoorRegio(regio.regio);
     const rij = laatsteUpdate?.perRegio.rijen.find((r) => editorialeNamen.includes(r.naam));
     return {
@@ -63,8 +72,12 @@ export default async function WerkgebiedPagina() {
       bronUrl: regio.bronUrl,
       contextZin: regioContextZin(regio, landelijkGemiddeldOverbod),
       trend: rij ? { jaarVergelijking: rij.jaarVergelijking, richting: rij.richting } : null,
+      status: werkgebiedStatusVoorRegio(regio.regio, werkgebied),
     };
   });
+
+  const cijfers = alleRegios.filter((r) => r.status !== "geen");
+  const provincies = overbiedenPerProvincie();
 
   const gemWerkgebiedOverbod =
     cijfers.length > 0 ? cijfers.reduce((som, r) => som + r.gemiddeldOverbod, 0) / cijfers.length : null;
@@ -103,26 +116,16 @@ export default async function WerkgebiedPagina() {
         <RegiosBeherenPaneel alleRegioNamen={alleGebruikteRegioNamen()} huidig={werkgebied} startOpen={werkgebied.length === 0} />
       </div>
 
-      {werkgebied.length === 0 && (
-        <div className="mt-4 flex flex-col items-center gap-3 rounded-2xl bg-white px-6 py-12 text-center shadow-sm">
-          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#EEF0FF] text-accent">
-            <MapPinIcon className="h-5 w-5" />
+      {cijfers.length === 0 && (
+        <div className="mt-4 flex items-center gap-3 rounded-2xl bg-white px-5 py-4 shadow-sm">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#EEF0FF] text-accent">
+            <MapPinIcon className="h-4 w-4" />
           </span>
-          <div>
-            <p className="text-[13px] font-bold text-ink">Stel eerst uw werkgebied in</p>
-            <p className="mt-1 max-w-sm text-[11.5px] text-ink/50">
-              Kies hierboven bij &quot;Regio&apos;s beheren&quot; één of meer regio&apos;s. Hier verschijnen dan direct de
-              officiële NVM-kwartaalcijfers (% boven vraagprijs, gemiddeld overbod, jaarvergelijking) voor precies die
-              regio&apos;s.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {werkgebied.length > 0 && cijfers.length === 0 && (
-        <div className="mt-4 rounded-2xl border border-dashed border-ink/15 bg-white px-5 py-6 text-[11.5px] text-ink/50">
-          Voor uw huidige werkgebied ({werkgebied.join(", ")}) zijn nog geen gedetailleerde regio-kwartaalcijfers
-          beschikbaar. Zodra dit bijgewerkt is, verschijnen hier de cijfers automatisch.
+          <p className="text-[11.5px] text-ink/55">
+            <span className="font-bold text-ink">Nog geen werkgebied ingesteld.</span> Vink hieronder in de tabel (of
+            hierboven bij &quot;Regio&apos;s beheren&quot;) één of meer regio&apos;s aan -- de officiële NVM-kwartaalcijfers
+            verschijnen dan direct.
+          </p>
         </div>
       )}
 
@@ -178,12 +181,12 @@ export default async function WerkgebiedPagina() {
               vraagprijs betaald — ter vergelijking met de cijfers hieronder.
             </div>
           )}
-
-          <div className="mt-5">
-            <WerkgebiedRegioGrid cijfers={cijfers} />
-          </div>
         </>
       )}
+
+      <div className="mt-5">
+        <WerkgebiedTabel alleRegios={alleRegios} provincies={provincies} werkgebiedRegiosRuw={werkgebied} />
+      </div>
     </div>
   );
 }

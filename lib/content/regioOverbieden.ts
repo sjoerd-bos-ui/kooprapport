@@ -104,15 +104,69 @@ export function overbiedenVoorWerkgebied(werkgebiedRegios: string[] | undefined)
   const gezien = new Set<string>();
   const resultaat: RegioOverbiedCijfer[] = [];
   for (const naam of werkgebiedRegios) {
-    for (const coropNaam of MARKTUPDATE_NAAM_NAAR_COROP[naam] ?? []) {
-      const regio = REGIO_OVERBIEDEN.find((r) => r.regio === coropNaam);
-      if (regio && !gezien.has(regio.regio)) {
-        gezien.add(regio.regio);
-        resultaat.push(regio);
+    const coropNamen = MARKTUPDATE_NAAM_NAAR_COROP[naam];
+    if (coropNamen) {
+      for (const coropNaam of coropNamen) {
+        const regio = REGIO_OVERBIEDEN.find((r) => r.regio === coropNaam);
+        if (regio && !gezien.has(regio.regio)) {
+          gezien.add(regio.regio);
+          resultaat.push(regio);
+        }
       }
+      continue;
+    }
+    // NIEUW: `naam` is geen bekende redactionele Marktupdate-naam -- kan
+    // ook een officiële COROP-regionaam zelf zijn, rechtstreeks gekozen via
+    // de tabel/heatmap op de Werkgebied-pagina (zie WerkgebiedTabel.tsx en
+    // werkgebiedStatusVoorRegio hieronder) i.p.v. via een redactionele naam.
+    // Achterwaarts compatibel: bestaande, alleen-redactionele werkgebieden
+    // blijven exact hetzelfde werken, dit is puur een extra, fijnmaziger pad.
+    const directeRegio = REGIO_OVERBIEDEN.find((r) => r.regio === naam);
+    if (directeRegio && !gezien.has(directeRegio.regio)) {
+      gezien.add(directeRegio.regio);
+      resultaat.push(directeRegio);
     }
   }
   return resultaat;
+}
+
+// Is een specifieke COROP-regio onderdeel van het werkgebied, en zo ja, via
+// welk pad? "direct" = de officiële regionaam staat letterlijk in
+// werkgebiedRegios (toegevoegd via de tabel) en kan dus veilig los
+// aan/uitgezet worden. "editorial" = onderdeel via een gedeelde
+// redactionele naam (bv. "Drenthe" dekt 3 COROP-regio's tegelijk) -- zo'n
+// regio kan NIET los uitgezet worden zonder de andere twee mee te raken,
+// dus de tabel toont die als vergrendeld (beheer dan via "Regio's beheren").
+export type WerkgebiedRegioStatus = "direct" | "editorial" | "geen";
+
+export function werkgebiedStatusVoorRegio(regioNaam: string, werkgebiedRegios: string[] | undefined): WerkgebiedRegioStatus {
+  if (!werkgebiedRegios || werkgebiedRegios.length === 0) return "geen";
+  if (werkgebiedRegios.includes(regioNaam)) return "direct";
+  const editorialeNamen = editorialeNamenVoorRegio(regioNaam);
+  if (editorialeNamen.some((naam) => werkgebiedRegios.includes(naam))) return "editorial";
+  return "geen";
+}
+
+// Gemiddeld overbod per provincie -- puur een aggregatie over de al
+// bestaande, officiële REGIO_OVERBIEDEN-data (geen nieuwe/geschatte
+// cijfers), voor de provincie-heatmap op de Werkgebied-pagina.
+export interface ProvincieOverbiedSamenvatting {
+  provincie: string;
+  gemiddeldOverbod: number;
+  aantalRegios: number;
+}
+
+export function overbiedenPerProvincie(): ProvincieOverbiedSamenvatting[] {
+  const perProvincie = new Map<string, { som: number; aantal: number }>();
+  for (const regio of REGIO_OVERBIEDEN) {
+    const huidig = perProvincie.get(regio.provincie) ?? { som: 0, aantal: 0 };
+    huidig.som += regio.gemiddeldOverbod;
+    huidig.aantal += 1;
+    perProvincie.set(regio.provincie, huidig);
+  }
+  return Array.from(perProvincie.entries())
+    .map(([provincie, { som, aantal }]) => ({ provincie, gemiddeldOverbod: som / aantal, aantalRegios: aantal }))
+    .sort((a, b) => a.provincie.localeCompare(b.provincie, "nl"));
 }
 
 const PERIODE = "Q2 2026";

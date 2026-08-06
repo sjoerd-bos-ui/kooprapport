@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getB2bSessieUitRequest } from "@/lib/services/b2bAuth";
 import { updateOrganisatie } from "@/lib/services/b2bStore";
 import { alleGebruikteRegioNamen } from "@/lib/services/marktAlert";
+import { REGIO_OVERBIEDEN } from "@/lib/content/regioOverbieden";
 import type { B2bBranding } from "@/types/b2b";
 
 // -----------------------------------------------------------------------------
@@ -68,10 +69,16 @@ export async function PATCH(req: NextRequest) {
     if (!Array.isArray(body.werkgebiedRegios) || body.werkgebiedRegios.some((r) => typeof r !== "string")) {
       return NextResponse.json({ error: "werkgebiedRegios moet een lijst met tekst zijn." }, { status: 400 });
     }
-    // Alleen namen accepteren die ook echt ooit in een Marktupdate zijn
-    // gebruikt -- nooit ongefilterde tekst opslaan die vervolgens toch nooit
-    // een match kan opleveren.
-    const geldig = new Set(alleGebruikteRegioNamen());
+    // Alleen namen accepteren die ergens een match kunnen opleveren -- nooit
+    // ongefilterde tekst opslaan. Dat is ofwel een redactionele naam die
+    // ooit in een Marktupdate is gebruikt (het bestaande, grove pad, zie
+    // WerkgebiedForm/RegiosBeherenPaneel), OFWEL een officiële COROP-
+    // regionaam uit REGIO_OVERBIEDEN zelf (het nieuwe, fijnmazige pad,
+    // rechtstreeks vanuit de tabel op de Werkgebied-pagina -- zie
+    // werkgebiedStatusVoorRegio/overbiedenVoorWerkgebied in
+    // lib/content/regioOverbieden.ts voor hoe beide vormen naast elkaar
+    // blijven werken).
+    const geldig = new Set([...alleGebruikteRegioNamen(), ...REGIO_OVERBIEDEN.map((r) => r.regio)]);
     const gekozen = (body.werkgebiedRegios as string[]).filter((naam) => geldig.has(naam));
     patch.werkgebiedRegios = gekozen;
   }
