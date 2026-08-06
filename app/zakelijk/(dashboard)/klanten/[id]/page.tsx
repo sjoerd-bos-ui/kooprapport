@@ -9,6 +9,7 @@ import DossierVergelijken from "@/components/zakelijk/DossierVergelijken";
 import ZoekopdrachtForm from "@/components/zakelijk/ZoekopdrachtForm";
 import VerwijderDossierKnop from "@/components/zakelijk/VerwijderDossierKnop";
 import MatchesKaart from "@/components/zakelijk/MatchesKaart";
+import KlantdossierTabs from "@/components/zakelijk/KlantdossierTabs";
 import { FileCheckIcon, TrendingUpIcon } from "@/components/report/icons";
 
 function euro(bedrag: number | null | undefined): string {
@@ -90,79 +91,102 @@ export default async function ZakelijkKlantDetailPagina({ params }: { params: Pr
         </Link>
       )}
 
-      <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-[1.3fr_0.7fr]">
-        <div>
-          <p className="text-[11px] font-bold uppercase tracking-wide text-ink/40">Rapporten in dit dossier ({rapporten.length})</p>
-          <div className="mt-2.5 overflow-hidden rounded-2xl bg-white shadow-sm">
-            {rapporten.length === 0 ? (
-              <div className="flex flex-col items-center gap-2.5 px-5 py-9 text-center">
-                <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#EEF0FF] text-accent">
-                  <FileCheckIcon className="h-5 w-5" />
-                </span>
-                <p className="text-[12.5px] text-ink/50">Nog geen rapporten in dit dossier.</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-ink/[0.06]">
-                {rapporten.map((r) => (
-                  <Link key={r.id} href={`/zakelijk/rapporten/${r.id}`} className="flex items-center justify-between px-5 py-3.5 hover:bg-mist">
-                    <span className="text-[12.5px] font-semibold text-ink">{r.adres.label}</span>
-                    <span className="text-[10.5px] text-ink/45">{new Date(r.aangemaaktOp).toLocaleDateString("nl-NL")}</span>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div>
-          <div className="mb-4">
-            <ZoekopdrachtForm dossierId={dossier.id} huidig={dossier.zoekopdracht} />
-          </div>
-          {matches.length > 0 && (
-            <div className="mb-4">
-              <MatchesKaart matches={matches} />
-            </div>
-          )}
-          {laatsteBiedadvies && (
-            <div className="mb-4 rounded-2xl bg-gradient-to-br from-accent to-accent-dark p-4">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-white/60">Actueel biedadvies</p>
-              <p className="mt-1.5 font-display text-lg font-extrabold text-white">
-                {euro(laatsteBiedadvies.ondergrens)} – {euro(laatsteBiedadvies.bovengrens)}
-              </p>
-              <p className="mt-1.5 text-[10.5px] leading-relaxed text-white/70">
-                Gebaseerd op het laatst opgevraagde rapport in dit dossier ({rapporten[0].adres.label}) en{" "}
-                {laatsteBiedadvies.niveau === "regio" ? `regio ${laatsteBiedadvies.regioNaam}` : "het landelijk gemiddelde"},{" "}
-                {laatsteBiedadvies.periodeLabel}.
-              </p>
-            </div>
-          )}
-          <p className="text-[11px] font-bold uppercase tracking-wide text-ink/40">Tijdlijn</p>
-          <div className="mt-2.5 rounded-2xl bg-white p-4 shadow-sm">
-            <div className="flex flex-col gap-4">
-              {tijdlijn.map((moment, i) => (
-                <div key={`${moment.tekst}-${moment.datum}`} className="relative flex gap-3 pl-1">
-                  <div className="flex flex-col items-center">
-                    <span className={`h-2 w-2 rounded-full ${i === tijdlijn.length - 1 ? "bg-accent" : "bg-ink/20"}`} />
-                    {i < tijdlijn.length - 1 && <span className="mt-1 w-px flex-1 bg-ink/10" />}
+      <KlantdossierTabs
+        standaardTab="matches"
+        tabs={[
+          {
+            key: "matches",
+            label: "Zoekopdracht en matches",
+            content: (
+              <div className="flex flex-col gap-4">
+                <ZoekopdrachtForm dossierId={dossier.id} huidig={dossier.zoekopdracht} />
+                <MatchesKaart
+                  matches={matches}
+                  rapporten={rapporten}
+                  dossierId={dossier.id}
+                  matchenActief={dossier.zoekopdracht?.matchenActief ?? false}
+                />
+                {laatsteBiedadvies && (
+                  <div className="rounded-2xl bg-gradient-to-br from-accent to-accent-dark p-4">
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-white/60">Actueel biedadvies</p>
+                    <p className="mt-1.5 font-display text-lg font-extrabold text-white">
+                      {euro(laatsteBiedadvies.ondergrens)} – {euro(laatsteBiedadvies.bovengrens)}
+                    </p>
+                    <p className="mt-1.5 text-[10.5px] leading-relaxed text-white/70">
+                      Gebaseerd op het laatst opgevraagde rapport in dit dossier ({rapporten[0].adres.label}) en{" "}
+                      {laatsteBiedadvies.niveau === "regio" ? `regio ${laatsteBiedadvies.regioNaam}` : "het landelijk gemiddelde"},{" "}
+                      {laatsteBiedadvies.periodeLabel}.
+                    </p>
                   </div>
-                  <div className="pb-1">
-                    {moment.href ? (
-                      <Link href={moment.href} className="text-[11.5px] font-semibold text-ink hover:text-accent">
-                        {moment.tekst}
+                )}
+              </div>
+            ),
+          },
+          {
+            key: "rapporten",
+            label: `Rapporten (${rapporten.length})`,
+            content: (
+              <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
+                {rapporten.length === 0 ? (
+                  <div className="flex flex-col items-center gap-2.5 px-5 py-9 text-center">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#EEF0FF] text-accent">
+                      <FileCheckIcon className="h-5 w-5" />
+                    </span>
+                    <p className="text-[12.5px] text-ink/50">Nog geen rapporten in dit dossier.</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-ink/[0.06]">
+                    {rapporten.map((r) => (
+                      <Link key={r.id} href={`/zakelijk/rapporten/${r.id}`} className="flex items-center justify-between px-5 py-3.5 hover:bg-mist">
+                        <span className="text-[12.5px] font-semibold text-ink">{r.adres.label}</span>
+                        <span className="text-[10.5px] text-ink/45">{new Date(r.aangemaaktOp).toLocaleDateString("nl-NL")}</span>
                       </Link>
-                    ) : (
-                      <p className="text-[11.5px] font-semibold text-ink">{moment.tekst}</p>
-                    )}
-                    <p className="text-[10px] text-ink/40">{new Date(moment.datum).toLocaleDateString("nl-NL")}</p>
+                    ))}
                   </div>
+                )}
+              </div>
+            ),
+          },
+          {
+            key: "vergelijken",
+            label: "Vergelijken",
+            content:
+              rapporten.length < 2 ? (
+                <p className="text-[12.5px] text-ink/40">Voeg minstens twee rapporten toe aan dit dossier om ze te kunnen vergelijken.</p>
+              ) : (
+                <DossierVergelijken rapporten={rapporten} />
+              ),
+          },
+          {
+            key: "tijdlijn",
+            label: "Tijdlijn",
+            content: (
+              <div className="rounded-2xl bg-white p-4 shadow-sm">
+                <div className="flex flex-col gap-4">
+                  {tijdlijn.map((moment, i) => (
+                    <div key={`${moment.tekst}-${moment.datum}`} className="relative flex gap-3 pl-1">
+                      <div className="flex flex-col items-center">
+                        <span className={`h-2 w-2 rounded-full ${i === tijdlijn.length - 1 ? "bg-accent" : "bg-ink/20"}`} />
+                        {i < tijdlijn.length - 1 && <span className="mt-1 w-px flex-1 bg-ink/10" />}
+                      </div>
+                      <div className="pb-1">
+                        {moment.href ? (
+                          <Link href={moment.href} className="text-[11.5px] font-semibold text-ink hover:text-accent">
+                            {moment.tekst}
+                          </Link>
+                        ) : (
+                          <p className="text-[11.5px] font-semibold text-ink">{moment.tekst}</p>
+                        )}
+                        <p className="text-[10px] text-ink/40">{new Date(moment.datum).toLocaleDateString("nl-NL")}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <DossierVergelijken rapporten={rapporten} />
+              </div>
+            ),
+          },
+        ]}
+      />
     </div>
   );
 }

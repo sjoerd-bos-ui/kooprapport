@@ -14,8 +14,13 @@ function NieuwRapportForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const voorafGeselecteerdKlantId = searchParams.get("klantId");
+  // Prefill vanuit een matchkaart (zie MatchesKaart.tsx "Rapport genereren
+  // voor dit adres"): de titel van de Funda-advertentie komt hier binnen als
+  // startzoekterm, zodat de makelaar alleen nog het juiste PDOK-adres uit de
+  // suggesties hoeft te kiezen i.p.v. opnieuw te moeten typen.
+  const vooringevuldAdres = searchParams.get("adres");
 
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(vooringevuldAdres ?? "");
   const [suggesties, setSuggesties] = useState<AddressMeta[]>([]);
   const [gekozenAdres, setGekozenAdres] = useState<AddressMeta | null>(null);
   const [klanten, setKlanten] = useState<B2bKlantdossier[]>([]);

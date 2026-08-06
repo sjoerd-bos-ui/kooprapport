@@ -1,15 +1,24 @@
 "use client";
 
 import { useState } from "react";
-import type { B2bWoningMatch } from "@/types/b2b";
-import { BoltIcon, ArrowRightIcon } from "@/components/report/icons";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import type { B2bWoningMatch, B2bRapportAanvraag } from "@/types/b2b";
+import { vindGekoppeldRapport } from "@/lib/services/matchRapportKoppeling";
+import { BoltIcon, ArrowRightIcon, FileCheckIcon } from "@/components/report/icons";
 
 // -----------------------------------------------------------------------------
-// Toont de opgeslagen matches (#2) voor een klantdossier -- puur
-// presentationeel, geen client-state nodig (de matches zelf worden server-
-// side opgehaald via listMatchenVoorKlant, zie klanten/[id]/page.tsx). Zonder
-// echte foto uit de feed (meestal het geval, zie fundaFeed.ts) valt dit terug
-// op een neutrale, flat huisillustratie i.p.v. een kapot afbeeldingsicoon.
+// Matches (#2), herbouwd van een smal lijstje onderaan de sidebar naar een
+// volwaardig, breed resultatenraster -- "voor ons eigen zoekmachine" was de
+// expliciete wens. Elke kaart klikbaar, maar i.p.v. direct doorlinken naar
+// Funda (het eerdere gedrag) opent een klik nu een keuzemenu: de advertentie
+// zelf bekijken, OF het eigen Kooprapport voor dat adres (indien al
+// aangevraagd in dit dossier, anders een link om er een aan te vragen).
+//
+// GEEN m²/kamers/energielabel-metadata in de kaarten: de Funda-detailpagina's
+// JSON-LD (zie lib/data-sources/fundaFeed.ts) geeft betrouwbaar alleen titel,
+// prijs en foto -- die extra kenmerken zouden geraden/verzonnen moeten
+// worden, en dat doen we hier bewust niet.
 // -----------------------------------------------------------------------------
 
 const HUIS_KLEUREN = [
@@ -18,10 +27,15 @@ const HUIS_KLEUREN = [
   { lucht: "#DDE7EF", dak: "#7A4A34", muur: "#E9DFC9" },
 ];
 
-function HuisIllustratie({ index }: { index: number }) {
+function HuisIllustratie({ index, groot }: { index: number; groot?: boolean }) {
   const k = HUIS_KLEUREN[index % HUIS_KLEUREN.length];
   return (
-    <svg width="88" height="72" viewBox="0 0 104 88" style={{ borderRadius: 10, flexShrink: 0 }}>
+    <svg
+      width={groot ? 104 : 88}
+      height={groot ? 88 : 72}
+      viewBox="0 0 104 88"
+      style={{ borderRadius: 10, flexShrink: 0, width: "100%", height: "100%" }}
+    >
       <rect width="104" height="88" fill={k.lucht} />
       <rect y="58" width="104" height="30" fill="#D9E4C9" />
       <polygon points="14,58 52,30 90,58" fill={k.dak} />
@@ -46,60 +60,171 @@ function relatieveTijd(iso: string): string {
 
 const BRON_LABEL: Record<string, string> = { funda: "Funda" };
 
-// Losse subcomponent (i.p.v. inline in de map hieronder) omdat de
-// error-fallback per afbeelding zijn eigen state nodig heeft -- een foto-URL
-// die (nog) niet laadt (verlopen CDN-link, CSP-domein niet toegestaan, etc.)
-// mag nooit een kapot-afbeeldingicoon tonen, valt dan terug op dezelfde
-// neutrale illustratie als wanneer er helemaal geen fotoUrl is.
+// Losse subcomponent (i.p.v. inline) omdat de error-fallback per afbeelding
+// zijn eigen state nodig heeft -- een foto-URL die (nog) niet laadt (verlopen
+// CDN-link, CSP-domein niet toegestaan, etc.) mag nooit een kapot-
+// afbeeldingicoon tonen, valt dan terug op dezelfde neutrale illustratie als
+// wanneer er helemaal geen fotoUrl is.
 function MatchThumbnail({ fotoUrl, index }: { fotoUrl: string | null; index: number }) {
   const [fout, setFout] = useState(false);
-  if (!fotoUrl || fout) return <HuisIllustratie index={index} />;
+  if (!fotoUrl || fout) return <HuisIllustratie index={index} groot />;
   return (
     // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={fotoUrl}
-      alt=""
-      className="h-[72px] w-[88px] shrink-0 rounded-[10px] object-cover"
-      onError={() => setFout(true)}
-    />
+    <img src={fotoUrl} alt="" className="h-full w-full object-cover" onError={() => setFout(true)} />
   );
 }
 
-export default function MatchesKaart({ matches }: { matches: B2bWoningMatch[] }) {
-  if (matches.length === 0) return null;
-
+function MatchActieMenu({
+  match,
+  dossierId,
+  gekoppeldRapport,
+  onSluiten,
+}: {
+  match: B2bWoningMatch;
+  dossierId: string;
+  gekoppeldRapport: B2bRapportAanvraag | null;
+  onSluiten: () => void;
+}) {
   return (
-    <div className="rounded-2xl bg-white p-4 shadow-sm">
-      <div className="flex items-center justify-between">
-        <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-ink/40">
-          <BoltIcon className="h-3 w-3 text-accent" /> Nieuwe matches
-        </p>
-        <span className="rounded-full bg-accent px-2.5 py-0.5 text-[10px] font-bold text-white">{matches.length}</span>
-      </div>
-      <div className="mt-3 flex flex-col gap-2.5">
-        {matches.map((m, i) => (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 px-4" onClick={onSluiten}>
+      <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-overlay" onClick={(e) => e.stopPropagation()}>
+        <p className="text-[12.5px] font-semibold text-ink">{match.titel}</p>
+        {match.prijsLabel && <p className="mt-0.5 text-[11.5px] text-ink/50">{match.prijsLabel}</p>}
+
+        <div className="mt-4 flex flex-col gap-2">
           <a
-            key={m.id}
-            href={m.url}
+            href={match.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex gap-3 rounded-xl border border-ink/[0.06] p-2.5 hover:bg-mist/40"
+            className="flex items-center justify-between rounded-xl border border-ink/10 px-3.5 py-3 hover:bg-mist/60"
           >
-            <MatchThumbnail fotoUrl={m.fotoUrl} index={i} />
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <span className="rounded-md bg-[#EAF3DE] px-1.5 py-0.5 text-[9px] font-bold text-[#3B6D11]">
-                  {BRON_LABEL[m.bron] ?? m.bron}
-                </span>
-                <span className="text-[10px] text-ink/40">{relatieveTijd(m.gevondenOp)}</span>
-              </div>
-              <p className="mt-1 truncate text-[12px] font-semibold text-ink">{m.titel}</p>
-              {m.prijsLabel && <p className="text-[11px] text-ink/50">{m.prijsLabel}</p>}
-            </div>
-            <ArrowRightIcon className="h-3.5 w-3.5 shrink-0 self-center text-ink/25" />
+            <span className="text-[12px] font-semibold text-ink">Bekijk advertentie op {BRON_LABEL[match.bron] ?? match.bron}</span>
+            <ArrowRightIcon className="h-3.5 w-3.5 shrink-0 text-ink/30" />
           </a>
-        ))}
+
+          {gekoppeldRapport ? (
+            <Link
+              href={`/zakelijk/rapporten/${gekoppeldRapport.id}`}
+              className="flex items-center justify-between rounded-xl bg-[#EEF0FF] px-3.5 py-3 hover:bg-[#E2E5FF]"
+            >
+              <span className="flex items-center gap-2 text-[12px] font-semibold text-accent">
+                <FileCheckIcon className="h-3.5 w-3.5" /> Bekijk ons rapport
+              </span>
+              <ArrowRightIcon className="h-3.5 w-3.5 shrink-0 text-accent/50" />
+            </Link>
+          ) : (
+            <Link
+              href={`/zakelijk/rapporten/nieuw?klantId=${dossierId}&adres=${encodeURIComponent(match.titel)}`}
+              className="flex flex-col rounded-xl border border-dashed border-accent/40 px-3.5 py-3 hover:bg-[#EEF0FF]/50"
+            >
+              <span className="flex items-center gap-2 text-[12px] font-semibold text-accent">
+                <FileCheckIcon className="h-3.5 w-3.5" /> Rapport genereren voor dit adres
+              </span>
+              <span className="mt-0.5 text-[10.5px] text-ink/40">Nog geen rapport voor dit adres in dit dossier.</span>
+            </Link>
+          )}
+        </div>
+
+        <button type="button" onClick={onSluiten} className="mt-4 w-full text-center text-[11px] font-semibold text-ink/40 hover:text-ink/60">
+          Sluiten
+        </button>
       </div>
+    </div>
+  );
+}
+
+export default function MatchesKaart({
+  matches,
+  rapporten,
+  dossierId,
+  matchenActief,
+}: {
+  matches: B2bWoningMatch[];
+  rapporten: B2bRapportAanvraag[];
+  dossierId: string;
+  matchenActief: boolean;
+}) {
+  const router = useRouter();
+  const [actieveMatch, setActieveMatch] = useState<B2bWoningMatch | null>(null);
+  const [ververst, setVerverst] = useState(false);
+
+  async function ververs() {
+    setVerverst(true);
+    try {
+      await fetch(`/api/zakelijk/klanten/${dossierId}/matches-verversen`, { method: "POST" });
+      router.refresh();
+    } finally {
+      setVerverst(false);
+    }
+  }
+
+  const laatstGevonden = matches[0]?.gevondenOp;
+
+  return (
+    <div className="rounded-2xl bg-white p-5 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2.5">
+          <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-ink/40">
+            <BoltIcon className="h-3 w-3 text-accent" /> Matches
+          </p>
+          <span className="rounded-full bg-accent px-2.5 py-0.5 text-[10px] font-bold text-white">{matches.length}</span>
+          <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${matchenActief ? "bg-[#EAF3DE] text-[#3B6D11]" : "bg-ink/5 text-ink/40"}`}>
+            Automatisch {matchenActief ? "aan" : "uit"}
+          </span>
+        </div>
+        <div className="flex items-center gap-3">
+          {laatstGevonden && <span className="text-[10.5px] text-ink/40">Laatst gevonden: {relatieveTijd(laatstGevonden)}</span>}
+          <button
+            type="button"
+            onClick={ververs}
+            disabled={ververst}
+            className="rounded-lg border border-ink/15 px-3 py-1.5 text-[10.5px] font-semibold text-ink/60 hover:bg-mist disabled:opacity-50"
+          >
+            {ververst ? "Bezig…" : "Ververs"}
+          </button>
+        </div>
+      </div>
+
+      {matches.length === 0 ? (
+        <p className="mt-4 text-[12px] text-ink/40">
+          Nog geen woningen gevonden die aan de zoekopdracht voldoen. Geen paniek -- als ze er niet zijn, zijn ze er niet; zodra er een
+          passende advertentie verschijnt, staat die hier.
+        </p>
+      ) : (
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {matches.map((m, i) => (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => setActieveMatch(m)}
+              className="flex flex-col overflow-hidden rounded-xl border border-ink/[0.06] text-left hover:border-accent/30 hover:shadow-sm"
+            >
+              <div className="h-32 w-full bg-mist">
+                <MatchThumbnail fotoUrl={m.fotoUrl} index={i} />
+              </div>
+              <div className="flex flex-1 flex-col gap-1 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="rounded-md bg-[#EAF3DE] px-1.5 py-0.5 text-[9px] font-bold text-[#3B6D11]">
+                    {BRON_LABEL[m.bron] ?? m.bron}
+                  </span>
+                  <span className="text-[10px] text-ink/40">{relatieveTijd(m.gevondenOp)}</span>
+                </div>
+                <p className="truncate text-[12.5px] font-semibold text-ink">{m.titel}</p>
+                {m.prijsLabel && <p className="text-[11.5px] text-ink/50">{m.prijsLabel}</p>}
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {actieveMatch && (
+        <MatchActieMenu
+          match={actieveMatch}
+          dossierId={dossierId}
+          gekoppeldRapport={vindGekoppeldRapport(actieveMatch.titel, rapporten)}
+          onSluiten={() => setActieveMatch(null)}
+        />
+      )}
     </div>
   );
 }

@@ -171,41 +171,38 @@ export default function ZoekopdrachtForm({ dossierId, huidig }: { dossierId: str
 
     return (
       <div className="rounded-2xl bg-white p-4 shadow-sm">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-[11px] font-bold uppercase tracking-wide text-ink/40">Zoekopdracht</p>
           <button type="button" onClick={() => setBewerken(true)} className="text-[10.5px] font-semibold text-accent hover:underline">
             {heeftData ? "Bewerken" : "+ Toevoegen"}
           </button>
         </div>
         {heeftData ? (
-          <div className="mt-2.5 flex flex-col gap-1.5">
-            {(huidig?.budgetMin || huidig?.budgetMax) && (
-              <p className="text-[11.5px] text-ink/70">
-                <span className="font-semibold text-ink">Budget:</span>{" "}
-                {huidig?.budgetMin ? euro(huidig.budgetMin) : "€0"} – {huidig?.budgetMax ? euro(huidig.budgetMax) : "onbekend"}
-              </p>
-            )}
+          <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
             {huidig?.locatie && (
-              <p className="flex items-center gap-1.5 text-[11.5px] text-ink/70">
+              <span className="flex items-center gap-1 rounded-full bg-mist px-2.5 py-1 text-[11px] font-semibold text-ink">
                 <MapPinIcon className="h-3 w-3 shrink-0 text-ink/40" />
-                <span className="font-semibold text-ink">Locatie:</span> {huidig.locatie.label}
-              </p>
-            )}
-            {actieveKenmerken.length > 0 && (
-              <div className="mt-1 flex flex-wrap gap-1.5">
-                {actieveKenmerken.map((label) => (
-                  <span key={label} className="rounded-full bg-[#EEF0FF] px-2 py-0.5 text-[10px] font-semibold text-accent">
-                    {label}
-                  </span>
-                ))}
-              </div>
-            )}
-            <p className="mt-1 flex items-center gap-1.5 text-[11px] font-semibold">
-              <BoltIcon className={`h-3 w-3 ${matchenActief ? "text-[#3B6D11]" : "text-ink/30"}`} />
-              <span className={matchenActief ? "text-[#3B6D11]" : "text-ink/40"}>
-                Automatische meldingen: {matchenActief ? "aan" : "uit"}
+                {huidig.locatie.label}
               </span>
-            </p>
+            )}
+            {(huidig?.budgetMin || huidig?.budgetMax) && (
+              <span className="rounded-full bg-mist px-2.5 py-1 text-[11px] font-semibold text-ink">
+                {huidig?.budgetMin ? euro(huidig.budgetMin) : "€0"} – {huidig?.budgetMax ? euro(huidig.budgetMax) : "onbekend"}
+              </span>
+            )}
+            {actieveKenmerken.map((label) => (
+              <span key={label} className="rounded-full bg-[#EEF0FF] px-2.5 py-1 text-[11px] font-semibold text-accent">
+                {label}
+              </span>
+            ))}
+            <span
+              className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                matchenActief ? "bg-[#EAF3DE] text-[#3B6D11]" : "bg-ink/5 text-ink/40"
+              }`}
+            >
+              <BoltIcon className="h-3 w-3" />
+              Automatisch {matchenActief ? "aan" : "uit"}
+            </span>
           </div>
         ) : (
           <p className="mt-2 text-[11.5px] text-ink/40">Nog geen zoekopdracht vastgelegd voor dit dossier.</p>
@@ -256,7 +253,7 @@ export default function ZoekopdrachtForm({ dossierId, huidig }: { dossierId: str
         <p className="text-[10.5px] font-semibold text-ink/40">Kies eisen uit de lijst -- vrije tekst wordt niet meegenomen bij het matchen</p>
 
         <p className="mt-3 text-[10.5px] font-bold uppercase tracking-wide text-ink/30">Woningtype</p>
-        <div className="mt-1.5 grid grid-cols-3 gap-1.5">
+        <div className="mt-1.5 grid grid-cols-3 gap-1.5 sm:grid-cols-5">
           {B2B_WONINGTYPES.map((w) => (
             <Tegel
               key={w.waarde}
@@ -269,7 +266,7 @@ export default function ZoekopdrachtForm({ dossierId, huidig }: { dossierId: str
         </div>
 
         <p className="mt-3.5 text-[10.5px] font-bold uppercase tracking-wide text-ink/30">Ruimte</p>
-        <div className="mt-1.5 grid grid-cols-3 gap-1.5">
+        <div className="mt-1.5 grid grid-cols-3 gap-1.5 sm:grid-cols-7">
           {KAMERS_OPTIES.map((n) => (
             <Tegel
               key={`kamers-${n}`}

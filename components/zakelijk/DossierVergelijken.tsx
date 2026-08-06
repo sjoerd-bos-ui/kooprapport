@@ -30,7 +30,7 @@ export default function DossierVergelijken({ rapporten }: { rapporten: B2bRappor
   const details = rapporten.filter((r) => geselecteerd.includes(r.id));
 
   return (
-    <div className="mt-6">
+    <div>
       <p className="text-[11px] font-bold uppercase tracking-wide text-ink/40">Rapporten vergelijken</p>
       <div className="mt-2.5 flex flex-wrap gap-2">
         {rapporten.map((r) => {
