@@ -185,6 +185,11 @@ export interface B2bWoningMatch {
   prijs: number | null; // ruwe waarde (voor budgetvergelijking) -- prijsLabel is alleen de weergavetekst
   prijsLabel: string | null;
   fotoUrl: string | null;
+  // Locatie (B2bLocatie.label) van de zoekopdracht op het moment dat deze
+  // match gevonden werd -- nodig om matches van een INMIDDELS GEWIJZIGDE
+  // locatie te kunnen herkennen en opruimen (zie ruimVerouderdeMatchenOp in
+  // b2bStore.ts), zelfde reden als het prijs-veld hierboven voor budget.
+  locatieLabel: string | null;
   gevondenOp: string; // ISO
 }
 

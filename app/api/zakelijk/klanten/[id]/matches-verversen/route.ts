@@ -45,7 +45,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const budgetMax = dossier.zoekopdracht?.budgetMax ?? null;
   const [bestaande, feedItems] = await Promise.all([
-    ruimVerouderdeMatchenOp(id, budgetMax),
+    ruimVerouderdeMatchenOp(id, budgetMax, locatie.label),
     haalFundaMatches(locatie, budgetMax, dossier.zoekopdracht?.kenmerken, MAX_DIRECT),
   ]);
   const bekendeUrls = new Set(bestaande.map((m) => m.url));
@@ -61,6 +61,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       prijs: item.prijs,
       prijsLabel: item.prijsLabel,
       fotoUrl: item.fotoUrl,
+      locatieLabel: locatie.label,
     });
   }
   await kapMatchenOpMax(id, MAX_ZICHTBARE_MATCHEN);

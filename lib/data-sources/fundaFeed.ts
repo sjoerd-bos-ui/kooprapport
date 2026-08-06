@@ -188,11 +188,44 @@ async function fetchMetTimeout(url: string, timeoutMs: number): Promise<Response
   }
 }
 
-// De zoekresultatenpagina is een gewone server-gerenderde pagina (geen
-// client-side rendering nodig) -- de detaillinks staan al in de ruwe HTML,
-// live geverifieerd. Dedupliceren omdat dezelfde advertentie soms meerdere
-// keren op één pagina linkt (bv. in een "topadvertentie"-blok bovenaan).
+// BUGFIX (live geverifieerd, zie het gesprek hierover -- "Burgwallen Oost"
+// in Amsterdam gaf ook woningen uit andere wijken/plaatsen terug): de oude
+// aanpak scrapete ALLE "/detail/koop/.../.../<id>/"-links los uit de ruwe
+// HTML, inclusief funda's eigen "Toppositie"-blok (data-testid=
+// "top-position-wrapper") bovenaan elke zoekresultatenpagina -- betaalde
+// plaatsingen die NIET aan het gekozen gebiedsfilter gebonden zijn en dus
+// van overal in Nederland kunnen komen. Dat blok staat op ELKE zoekpagina
+// (niet iets specifieks voor Amsterdam/wijken), wat verklaart waarom dit met
+// meerdere wijken gebeurde.
+//
+// Funda zet daarnaast standaard een schema.org ItemList (JSON-LD) op de
+// pagina met precies de daadwerkelijke, al door het gebiedsfilter beperkte
+// resultatenlijst (live geverifieerd: voor "amsterdam/burgwallen-oost" gaf
+// dit blok exact de 14 resultaten die de pagina zelf ook toont, ZONDER de 3
+// topposities) -- gestructureerde data i.p.v. ruwe anchor-tags scrapen, dus
+// robuuster tegen zowel de topposities-vervuiling als toekomstige opmaak-
+// wijzigingen. Bij het uitblijven van dit blok (paginastructuur gewijzigd)
+// valt dit terug op de oude anchor-regex, liever een kleine kans op
+// vervuilde resultaten dan helemaal niets.
 function extractDetailLinks(html: string, limiet: number): string[] {
+  const ldMatches = [...html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)];
+  for (const m of ldMatches) {
+    try {
+      const data = JSON.parse(m[1]);
+      const items: unknown = data?.itemListElement;
+      if (Array.isArray(items) && items.length > 0) {
+        const urls = items
+          .map((item) => (item as { url?: unknown })?.url)
+          .filter((url): url is string => typeof url === "string" && url.includes("/detail/koop/"));
+        if (urls.length > 0) return [...new Set(urls)].slice(0, limiet);
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  // Fallback: geen bruikbaar ItemList-blok gevonden -- oude aanpak, met het
+  // bekende risico dat het topposities-blok hier weer in mee kan komen.
   const matches = html.match(/\/detail\/koop\/[a-z0-9-]+\/[a-z0-9-]+\/\d+\//gi) ?? [];
   const uniek = [...new Set(matches)];
   return uniek.slice(0, limiet).map((pad) => `https://www.funda.nl${pad}`);

@@ -74,8 +74,9 @@ export async function GET(req: NextRequest) {
 
       try {
         const budgetMax = dossier.zoekopdracht.budgetMax ?? null;
+        const locatieLabel = dossier.zoekopdracht.locatie.label;
         const [bestaande, feedItems] = await Promise.all([
-          ruimVerouderdeMatchenOp(dossier.id, budgetMax),
+          ruimVerouderdeMatchenOp(dossier.id, budgetMax, locatieLabel),
           haalFundaMatches(dossier.zoekopdracht.locatie, budgetMax, dossier.zoekopdracht.kenmerken, MAX_ZICHTBARE_MATCHEN),
         ]);
         const bekendeUrls = new Set(bestaande.map((m) => m.url));
@@ -92,6 +93,7 @@ export async function GET(req: NextRequest) {
             prijs: item.prijs,
             prijsLabel: item.prijsLabel,
             fotoUrl: item.fotoUrl,
+            locatieLabel,
           });
         }
         await kapMatchenOpMax(dossier.id, MAX_ZICHTBARE_MATCHEN);

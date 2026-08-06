@@ -299,13 +299,28 @@ export async function verwijderMatch(match: Pick<B2bWoningMatch, "id" | "klantId
 // die niet meer aan het huidige budgetMax voldoen, en geeft de resterende
 // (nog wel passende) matches terug zodat de aanroeper daarna nog weet welke
 // URL's al bekend zijn (voor de dedupe-stap).
-export async function ruimVerouderdeMatchenOp(klantId: string, budgetMax: number | null): Promise<B2bWoningMatch[]> {
+//
+// TWEEDE BUGFIX (zelfde principe, andere melding): wijzigde je de LOCATIE
+// (andere plaats of wijk), dan bleven matches van de vorige locatie ook
+// gewoon staan -- er was nooit een locatie op de match zelf opgeslagen om ze
+// aan te kunnen toetsen. Elke match onthoudt nu (locatieLabel, zie
+// types/b2b.ts) onder welke locatie hij gevonden is; wijkt dat af van de
+// huidige zoekopdracht-locatie, dan is de match niet meer relevant en gaat
+// hij eruit -- ook matches zonder locatieLabel (opgeslagen vóór deze fix)
+// worden voor de zekerheid als verouderd behandeld, geen aanname dat ze nog
+// toevallig kloppen.
+export async function ruimVerouderdeMatchenOp(
+  klantId: string,
+  budgetMax: number | null,
+  locatieLabel: string | null
+): Promise<B2bWoningMatch[]> {
   const bestaande = await listMatchenVoorKlant(klantId);
-  if (budgetMax == null || budgetMax <= 0) return bestaande;
 
   const passend: B2bWoningMatch[] = [];
   for (const match of bestaande) {
-    if (match.prijs != null && match.prijs > budgetMax) {
+    const buitenBudget = budgetMax != null && budgetMax > 0 && match.prijs != null && match.prijs > budgetMax;
+    const andereLocatie = locatieLabel != null && match.locatieLabel !== locatieLabel;
+    if (buitenBudget || andereLocatie) {
       await verwijderMatch(match);
     } else {
       passend.push(match);
