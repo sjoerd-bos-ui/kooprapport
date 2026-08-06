@@ -1,17 +1,33 @@
 # Voortgang Kooprapport Zakelijk — overdracht naar nieuwe chat
 
-Laatste commit: `ae33446` (main). Nog niet bevestigd of dit al gepusht/gedeployed is —
-zie stap 1 hieronder.
+Laatste commit: `6313d43` (main), al gepusht en live (deployment
+`dpl_6FBd9EukN6NLjbrMkAKYGEQF2Pwu`, geverifieerd via Vercel-logs).
 
-## 1. Direct te doen
+## 0. BLOKKERT ALLES: Scrape.do-credits op (actie bij Sjoerd)
 
-1. **Pushen en deployen.**
-   ```
-   cd "/Users/sjoerdbos/Werkmap Kooprapport/woningrapport-app" && git push
-   ```
-   Wacht op de Vercel-deploy en ga dan pas verder met testen (stap 2+3).
+Na de matching-fixes bleek in productie dat élke live Funda-aanvraag een
+**HTTP 401** terugkrijgt van de Scrape.do-proxy (gezien in de Vercel
+runtime-logs, project `prj_fPZ56xnAsIHm2T8OVxqolCIyRnj0`, team
+`team_1qccbjVK1I0UyHydlwbbpfzi`). Dit is GEEN code-bug: de opgebouwde
+Funda-URL's kloppen precies (budget/locatie/type/filters allemaal correct),
+maar de proxy geeft niets terug. Scrape.do's eigen documentatie zegt
+expliciet: **401 = "You have no credits or your subscription has been
+suspended."**
 
-2. **Werkgebied-pagina controleren.** Recent herbouwd (variant 1: provincie-heatmap
+Kostenplaatje: elke zoekaanvraag EN elke individuele detailpagina (tot 15 per
+zoekopdracht) kost 10 credits via de proxy — één "Ververs"-klik kan dus
+100-160 credits kosten. Op het gratis niveau (1.000/maand) is dat na een
+handjevol keer verversen (plus al het testen deze sessie) al op.
+
+**Actie (kan alleen Sjoerd, is zijn account):** inloggen op het Scrape.do-
+dashboard, credit-saldo/abonnement checken, en indien nodig upgraden — het
+gratis niveau is met dit verbruik per zoekopdracht waarschijnlijk sowieso te
+krap voor structureel gebruik. Zodra er weer credits zijn hoeft er niets aan
+de code te veranderen.
+
+## 1. Direct te doen (ná het Scrape.do-issue)
+
+1. **Werkgebied-pagina controleren.** Recent herbouwd (variant 1: provincie-heatmap
    bovenaan + sorteerbare/doorzoekbare tabel met vinkjes per regio + rustig paneel
    onderaan voor de warmste regio). Dit was al één keer afgekeurd omdat het niet
    overeenkwam met de goedgekeurde mockup — de herbouwde versie zou nu wél moeten
@@ -20,7 +36,7 @@ zie stap 1 hieronder.
    "Drenthe") in het werkgebied zitten; die pas je aan via "Regio's beheren"
    bovenaan de pagina, niet los in de tabel.
 
-3. **Matching-fixes testen met een paar echte zoekopdrachten.** Vier bugs zijn
+2. **Matching-fixes testen met een paar echte zoekopdrachten.** Vier bugs zijn
    gevonden en gefixt (zie sectie 2), maar nog niet door Sjoerd zelf getest op de
    live site na deploy. Concreet testplan:
    - Zet een zoekopdracht met een duidelijke ondergrens (bv. €300k–€500k) en klik
