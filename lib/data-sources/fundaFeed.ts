@@ -1,5 +1,5 @@
 import { FUNDA_FEED_MODE, FUNDA_SEARCH_TIMEOUT_MS, FUNDA_DETAIL_TIMEOUT_MS } from "@/lib/config/fundaFeed";
-import type { B2bLocatie, B2bKenmerken, B2bWoningtype } from "@/types/b2b";
+import type { B2bLocatie, B2bKenmerken, B2bWoningtype, B2bEnergielabel } from "@/types/b2b";
 
 // -----------------------------------------------------------------------------
 // Directe adapter voor de publieke funda.nl-pagina's (zie de uitleg in
@@ -85,12 +85,42 @@ const WONINGTYPE_PARAMS: Record<B2bWoningtype, { objectType: string; orientation
   appartement: { objectType: "apartment" },
 };
 
-// exterior_space_type -- "garden" (tuin) en "balcony" (balkon) zijn live
-// geverifieerd (comma-separated in de URL). "roof_terrace" voor dakterras is
-// NIET los getest, is de meest voor de hand liggende waarde naar analogie.
-// garage/lift zijn bewust NIET meegenomen: geen filter hiervoor gevonden in
-// de Funda-UI binnen de tijd die daarvoor stond -- liever weglaten dan een
-// verkeerd geraden parameter die een zoekopdracht onterecht leegtrekt.
+// exterior_space_type -- "garden" (tuin) en "balcony" (balkon) waren al live
+// geverifieerd. BUGFIX (nieuwe diagnose-sessie, filterpaneel dit keer
+// uitgelezen via de checkbox-id's in de DOM i.p.v. alleen de resulterende
+// URL): dakterras bleek NIET "roof_terrace" te zijn zoals eerder aangenomen
+// -- de daadwerkelijke checkbox-waarde is "terrace" (bevestigd: 947
+// resultaten onder "Dakterras" in het filterpaneel, en de URL na aanvinken
+// werd exterior_space_type=terrace). Elke zoekopdracht met dakterras aan
+// werd dus stilzwijgend NIET gefilterd -- zelfde patroon als eerder bij
+// selected_area en de topposities.
+//
+// bedrooms/accessibility/garage_type/energy_label/floor_area zijn in
+// dezelfde sessie NIEUW live geverifieerd (checkbox- en veld-id's in het
+// filterpaneel gecontroleerd, daarna handmatig ingevuld/aangevinkt en de
+// resulterende URL afgelezen): "bedrooms=2-" voor minimum slaapkamers
+// (voorheen HELEMAAL niet meegegeven -- dit was de gemelde bug "filter op 2
+// slaapkamers geeft ook 1 slaapkamer terug"), "floor_area=80-" voor minimum
+// woonoppervlak, "accessibility=lift" voor lift, "energy_label=A,B,C" voor
+// energielabel (komma-lijst, meerdere waarden toegestaan -- zie
+// ENERGIELABEL_NAAR_FUNDA_WAARDEN hieronder voor de "X of beter"-vertaling).
+// garage_type kent losse subtypes (aangebouwd/garagebox/vrijstaand/
+// inpandig/ondergronds) zonder één generieke "heeft garage"-optie; voor ons
+// simpele garage-aan/uit-kenmerk vragen we ze allemaal op (comma-lijst) --
+// elke garage telt.
+const GARAGE_TYPE_WAARDEN = "lean_to,lock_up,garage_and_carport,built_in,underground";
+
+// Funda's eigen 12 energielabel-checkboxes, van beste naar slechtste (live
+// geverifieerd via het filterpaneel). Ons eigen B2bEnergielabel is bewust
+// een vereenvoudiging tot 7 waarden (A t/m G, zie types/b2b.ts) -- "A of
+// beter" dekt bij het filteren dus automatisch ook alle A+ t/m A+++++
+// mee, dat onderscheid is voor de meeste gebruikers niet zinvol.
+const ENERGIELABEL_VOLGORDE_FUNDA = ["A+++++", "A++++", "A+++", "A++", "A+", "A", "B", "C", "D", "E", "F", "G"];
+const ENERGIELABEL_AANTAL_FUNDA_WAARDEN: Record<B2bEnergielabel, number> = { A: 6, B: 7, C: 8, D: 9, E: 10, F: 11, G: 12 };
+function energielabelNaarFundaWaarden(label: B2bEnergielabel): string {
+  return ENERGIELABEL_VOLGORDE_FUNDA.slice(0, ENERGIELABEL_AANTAL_FUNDA_WAARDEN[label]).join(",");
+}
+
 function kenmerkenNaarParams(kenmerken: B2bKenmerken | undefined): URLSearchParams {
   const params = new URLSearchParams();
   if (!kenmerken) return params;
@@ -101,11 +131,16 @@ function kenmerkenNaarParams(kenmerken: B2bKenmerken | undefined): URLSearchPara
     if (w.orientation) params.set("object_type_house_orientation", w.orientation);
   }
   if (kenmerken.minKamers && kenmerken.minKamers > 0) params.set("rooms", `${kenmerken.minKamers}-`);
+  if (kenmerken.minSlaapkamers && kenmerken.minSlaapkamers > 0) params.set("bedrooms", `${kenmerken.minSlaapkamers}-`);
+  if (kenmerken.minWoonoppervlak && kenmerken.minWoonoppervlak > 0) params.set("floor_area", `${kenmerken.minWoonoppervlak}-`);
+  if (kenmerken.minEnergielabel) params.set("energy_label", energielabelNaarFundaWaarden(kenmerken.minEnergielabel));
+  if (kenmerken.lift) params.set("accessibility", "lift");
+  if (kenmerken.garage) params.set("garage_type", GARAGE_TYPE_WAARDEN);
 
   const buiten: string[] = [];
   if (kenmerken.tuin) buiten.push("garden");
   if (kenmerken.balkon) buiten.push("balcony");
-  if (kenmerken.dakterras) buiten.push("roof_terrace");
+  if (kenmerken.dakterras) buiten.push("terrace");
   if (buiten.length > 0) params.set("exterior_space_type", buiten.join(","));
 
   return params;

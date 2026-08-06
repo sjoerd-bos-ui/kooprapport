@@ -113,6 +113,17 @@ export const B2B_WONINGTYPES: { waarde: B2bWoningtype; label: string }[] = [
   { waarde: "appartement", label: "Appartement" },
 ];
 
+// Energielabel als "X of beter"-classificatie i.p.v. losse per-label
+// vinkjes -- Funda's eigen filter heeft 12 losse checkboxes
+// (A+++++ t/m G, live geverifieerd via het filterpaneel), maar niemand
+// filtert in de praktijk op dat niveau van precisie. Deze 7 waarden zijn
+// een bewuste, eigen vereenvoudiging: "A" dekt bij het opbouwen van de
+// Funda-zoekopdracht automatisch ook A+ t/m A+++++ mee (zie
+// ENERGIELABEL_NAAR_FUNDA_WAARDEN in lib/data-sources/fundaFeed.ts).
+export type B2bEnergielabel = "A" | "B" | "C" | "D" | "E" | "F" | "G";
+
+export const B2B_ENERGIELABELS: B2bEnergielabel[] = ["A", "B", "C", "D", "E", "F", "G"];
+
 // Vaste, gestructureerde kenmerken i.p.v. de eerdere vrije-tekst "moetHebben"
 // -- bewust, want vrije tekst ("min. 4 kamers, tuin op het zuiden") is voor
 // een mens leesbaar maar onbruikbaar als filter op de Funda-feed. Elk
@@ -122,12 +133,15 @@ export interface B2bKenmerken {
   woningtype: B2bWoningtype | null;
   minKamers: number | null;
   minSlaapkamers: number | null;
+  minWoonoppervlak: number | null; // in m²
   tuin: boolean;
   balkon: boolean;
   dakterras: boolean;
   garage: boolean;
   lift: boolean;
-  energielabelAB: boolean; // informatief kenmerk -- wordt NIET meegegeven als feed-filter (onzeker padsegment), alleen getoond/opgeslagen
+  // "geen voorkeur" is bewust ook een expliciete keuze (null), niet een
+  // afwezige/vergeten instelling -- zie het gesprek hierover.
+  minEnergielabel: B2bEnergielabel | null;
 }
 
 export function legeKenmerken(): B2bKenmerken {
@@ -135,12 +149,13 @@ export function legeKenmerken(): B2bKenmerken {
     woningtype: null,
     minKamers: null,
     minSlaapkamers: null,
+    minWoonoppervlak: null,
     tuin: false,
     balkon: false,
     dakterras: false,
     garage: false,
     lift: false,
-    energielabelAB: false,
+    minEnergielabel: null,
   };
 }
 

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { B2bZoekopdracht, B2bLocatie, B2bKenmerken, B2bWoningtype } from "@/types/b2b";
-import { B2B_WONINGTYPES, legeKenmerken } from "@/types/b2b";
+import { B2B_WONINGTYPES, B2B_ENERGIELABELS, legeKenmerken } from "@/types/b2b";
 import LocatieAutocomplete from "@/components/zakelijk/LocatieAutocomplete";
 import {
   MapPinIcon,
@@ -18,6 +18,7 @@ import {
   LiftIcon,
   BoltIcon,
   CheckIcon,
+  RulerIcon,
 } from "@/components/report/icons";
 
 function euro(bedrag: number | null): string {
@@ -25,11 +26,35 @@ function euro(bedrag: number | null): string {
   return new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(bedrag);
 }
 
-// Vaste stappen i.p.v. een vrij invoerveld voor kamers/slaapkamers -- dit
-// zijn de enige twee numerieke kenmerken die als tegel (aan/uit, net als de
-// rest van de checklist) blijven werken.
+// Duizendtal-scheidingstekens tijdens typen (bv. "450000" -> "450.000") --
+// BUGFIX: zonder deze opmaak was op het oog nauwelijks te zien hoeveel er
+// al ingevuld was in het budgetveld, zie het gesprek hierover. Intern blijft
+// alleen de kale cijferreeks (budgetMin/budgetMax state) de bron van
+// waarheid; dit is puur weergave-opmaak.
+function formatDuizendtal(ruweCijfers: string): string {
+  if (!ruweCijfers) return "";
+  return new Intl.NumberFormat("nl-NL").format(Number(ruweCijfers));
+}
+
+// Sneltoetsen voor het budget -- "makkelijker in te voeren" i.p.v. alleen
+// twee kale tekstvelden: één klik zet meteen een realistische bandbreedte.
+const BUDGET_PRESETS: { label: string; min: number | null; max: number | null }[] = [
+  { label: "Tot € 300.000", min: null, max: 300_000 },
+  { label: "€ 300k – € 500k", min: 300_000, max: 500_000 },
+  { label: "€ 500k – € 750k", min: 500_000, max: 750_000 },
+  { label: "€ 750.000+", min: 750_000, max: null },
+];
+
+// Vaste stappen i.p.v. een vrij invoerveld voor kamers/slaapkamers/m² -- dit
+// zijn de numerieke kenmerken die als tegel (aan/uit, net als de rest van de
+// checklist) blijven werken. Slaapkamers begint bewust bij 1 (was 2 t/m 4) --
+// zie ook de bugfix hieronder: minSlaapkamers werd voorheen HELEMAAL niet
+// aan Funda doorgegeven (zie lib/data-sources/fundaFeed.ts), dus "filter op
+// 2 slaapkamers" leverde ook 1-slaapkamerwoningen op. Nu écht een filter,
+// dus 1+ is een zinvolle (en veelgevraagde) ondergrens.
 const KAMERS_OPTIES = [3, 4, 5];
-const SLAAPKAMERS_OPTIES = [2, 3, 4];
+const SLAAPKAMERS_OPTIES = [1, 2, 3, 4];
+const M2_OPTIES = [50, 75, 100, 125, 150];
 
 const WONINGTYPE_ICOON: Record<B2bWoningtype, typeof HomeIcon> = {
   tussenwoning: HomeIcon,
@@ -106,7 +131,7 @@ export default function ZoekopdrachtForm({ dossierId, huidig }: { dossierId: str
     setKenmerken((k) => ({ ...k, [key]: !k[key] }));
   }
 
-  function zetGetal(key: "minKamers" | "minSlaapkamers", waarde: number) {
+  function zetGetal(key: "minKamers" | "minSlaapkamers" | "minWoonoppervlak", waarde: number) {
     setKenmerken((k) => ({ ...k, [key]: k[key] === waarde ? null : waarde }));
   }
 
@@ -161,12 +186,13 @@ export default function ZoekopdrachtForm({ dossierId, huidig }: { dossierId: str
       kenmerken.woningtype ? B2B_WONINGTYPES.find((w) => w.waarde === kenmerken.woningtype)?.label : null,
       kenmerken.minKamers ? `${kenmerken.minKamers}+ kamers` : null,
       kenmerken.minSlaapkamers ? `${kenmerken.minSlaapkamers}+ slaapkamers` : null,
+      kenmerken.minWoonoppervlak ? `${kenmerken.minWoonoppervlak}+ m²` : null,
       kenmerken.tuin ? "Tuin" : null,
       kenmerken.balkon ? "Balkon" : null,
       kenmerken.dakterras ? "Dakterras" : null,
       kenmerken.garage ? "Garage" : null,
       kenmerken.lift ? "Lift" : null,
-      kenmerken.energielabelAB ? "Label A of B" : null,
+      kenmerken.minEnergielabel ? `Label ${kenmerken.minEnergielabel} of hoger` : null,
     ].filter((x): x is string => Boolean(x));
 
     return (
@@ -218,29 +244,62 @@ export default function ZoekopdrachtForm({ dossierId, huidig }: { dossierId: str
 
         <p className="mt-3 text-[10.5px] font-semibold text-ink/40">Budget</p>
         <div className="mt-1.5 flex gap-2">
-          <input
-            value={budgetMin}
-            onChange={(e) => setBudgetMin(e.target.value.replace(/\D/g, ""))}
-            placeholder="Min. (€)"
-            inputMode="numeric"
-            className="w-1/2 rounded-lg border border-ink/15 px-2.5 py-2 text-[12px] text-ink focus:border-accent focus:outline-none"
-          />
-          <input
-            value={budgetMax}
-            onChange={(e) => setBudgetMax(e.target.value.replace(/\D/g, ""))}
-            placeholder="Max. (€)"
-            inputMode="numeric"
-            className="w-1/2 rounded-lg border border-ink/15 px-2.5 py-2 text-[12px] text-ink focus:border-accent focus:outline-none"
-          />
+          <div className="relative w-1/2">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[12.5px] font-semibold text-ink/30">€</span>
+            <input
+              value={formatDuizendtal(budgetMin)}
+              onChange={(e) => setBudgetMin(e.target.value.replace(/\D/g, ""))}
+              placeholder="Min."
+              inputMode="numeric"
+              className="w-full rounded-lg border border-ink/15 py-2.5 pl-6 pr-2.5 text-[13px] font-semibold text-ink focus:border-accent focus:outline-none"
+            />
+          </div>
+          <div className="relative w-1/2">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[12.5px] font-semibold text-ink/30">€</span>
+            <input
+              value={formatDuizendtal(budgetMax)}
+              onChange={(e) => setBudgetMax(e.target.value.replace(/\D/g, ""))}
+              placeholder="Max."
+              inputMode="numeric"
+              className="w-full rounded-lg border border-ink/15 py-2.5 pl-6 pr-2.5 text-[13px] font-semibold text-ink focus:border-accent focus:outline-none"
+            />
+          </div>
         </div>
-        <div className="relative mt-2.5 h-1 rounded-full bg-ink/[0.06]">
+
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {BUDGET_PRESETS.map((preset) => {
+            const actief = (preset.min?.toString() ?? "") === budgetMin && (preset.max?.toString() ?? "") === budgetMax;
+            return (
+              <button
+                key={preset.label}
+                type="button"
+                onClick={() => {
+                  setBudgetMin(preset.min ? preset.min.toString() : "");
+                  setBudgetMax(preset.max ? preset.max.toString() : "");
+                }}
+                className={`rounded-full border px-2.5 py-1 text-[10.5px] font-semibold transition-colors ${
+                  actief ? "border-accent bg-[#EEF0FF] text-accent" : "border-ink/10 bg-mist/50 text-ink/55 hover:bg-mist"
+                }`}
+              >
+                {preset.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="relative mt-3 h-2 rounded-full bg-ink/[0.06]">
           <div
-            className="absolute h-1 rounded-full bg-accent"
+            className="absolute h-2 rounded-full bg-accent"
             style={{
               left: `${Math.min(100, ((Number(budgetMin) || 0) / BUDGET_SCHAAL_MAX) * 100)}%`,
               right: `${Math.max(0, 100 - ((Number(budgetMax) || BUDGET_SCHAAL_MAX) / BUDGET_SCHAAL_MAX) * 100)}%`,
             }}
           />
+        </div>
+        <div className="mt-1 flex justify-between text-[9.5px] font-medium text-ink/30">
+          <span>€ 0</span>
+          <span>€ 750.000</span>
+          <span>€ 1,5 mln+</span>
         </div>
 
         <p className="mt-3.5 text-[10.5px] font-semibold text-ink/40">Locatie</p>
@@ -288,6 +347,19 @@ export default function ZoekopdrachtForm({ dossierId, huidig }: { dossierId: str
           <Tegel actief={kenmerken.lift} icoon={LiftIcon} label="Lift" onClick={() => zetBoolean("lift")} />
         </div>
 
+        <p className="mt-3.5 text-[10.5px] font-bold uppercase tracking-wide text-ink/30">Woonoppervlak</p>
+        <div className="mt-1.5 grid grid-cols-3 gap-1.5 sm:grid-cols-5">
+          {M2_OPTIES.map((n) => (
+            <Tegel
+              key={`m2-${n}`}
+              actief={kenmerken.minWoonoppervlak === n}
+              icoon={RulerIcon}
+              label={`${n}+ m²`}
+              onClick={() => zetGetal("minWoonoppervlak", n)}
+            />
+          ))}
+        </div>
+
         <p className="mt-3.5 text-[10.5px] font-bold uppercase tracking-wide text-ink/30">Buiten en parkeren</p>
         <div className="mt-1.5 grid grid-cols-3 gap-1.5">
           <Tegel actief={kenmerken.tuin} icoon={LeafIcon} label="Tuin" onClick={() => zetBoolean("tuin")} />
@@ -296,9 +368,32 @@ export default function ZoekopdrachtForm({ dossierId, huidig }: { dossierId: str
           <Tegel actief={kenmerken.garage} icoon={OpritIcon} label="Garage" onClick={() => zetBoolean("garage")} />
         </div>
 
-        <p className="mt-3.5 text-[10.5px] font-bold uppercase tracking-wide text-ink/30">Energie</p>
-        <div className="mt-1.5 grid grid-cols-3 gap-1.5">
-          <Tegel actief={kenmerken.energielabelAB} icoon={BoltIcon} label="Label A of B" onClick={() => zetBoolean("energielabelAB")} />
+        <p className="mt-3.5 text-[10.5px] font-bold uppercase tracking-wide text-ink/30">Energielabel</p>
+        <p className="mt-1 text-[10px] text-ink/35">Elke keuze is een ondergrens -- "C" betekent C of beter.</p>
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
+          <button
+            type="button"
+            onClick={() => setKenmerken((k) => ({ ...k, minEnergielabel: null }))}
+            className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-[11px] font-semibold transition-colors ${
+              kenmerken.minEnergielabel === null ? "border-accent bg-[#EEF0FF] text-accent" : "border-ink/10 bg-mist/50 text-ink/55 hover:bg-mist"
+            }`}
+          >
+            {kenmerken.minEnergielabel === null && <CheckIcon className="h-3 w-3" />}
+            Geen voorkeur
+          </button>
+          {B2B_ENERGIELABELS.map((label) => (
+            <button
+              key={label}
+              type="button"
+              onClick={() => setKenmerken((k) => ({ ...k, minEnergielabel: k.minEnergielabel === label ? null : label }))}
+              className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-[11px] font-semibold transition-colors ${
+                kenmerken.minEnergielabel === label ? "border-accent bg-[#EEF0FF] text-accent" : "border-ink/10 bg-mist/50 text-ink/55 hover:bg-mist"
+              }`}
+            >
+              <BoltIcon className={`h-3 w-3 ${kenmerken.minEnergielabel === label ? "text-accent" : "text-ink/30"}`} />
+              {label} of hoger
+            </button>
+          ))}
         </div>
       </div>
 

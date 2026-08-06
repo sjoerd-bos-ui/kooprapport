@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import type { B2bLocatie } from "@/types/b2b";
 import { fetchLiveLocatieSuggesties, zoekLocatieFallback } from "@/lib/services/plaatsLookup";
+import { MapPinIcon, CheckIcon } from "@/components/report/icons";
 
 // -----------------------------------------------------------------------------
 // Locatie-invoer voor de zoekopdracht (#3): plaatsen ÉN wijken, met live
@@ -17,7 +18,7 @@ export default function LocatieAutocomplete({
   onKiezen,
 }: {
   waarde: B2bLocatie | null;
-  onKiezen: (locatie: B2bLocatie) => void;
+  onKiezen: (locatie: B2bLocatie | null) => void;
 }) {
   const [query, setQuery] = useState(waarde?.label ?? "");
   const [open, setOpen] = useState(false);
@@ -63,6 +64,15 @@ export default function LocatieAutocomplete({
     setStatus(null);
   }
 
+  function wis() {
+    requestSeq.current++;
+    onKiezen(null);
+    setQuery("");
+    setOpen(false);
+    setSuggesties([]);
+    setStatus(null);
+  }
+
   function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -82,36 +92,65 @@ export default function LocatieAutocomplete({
     }
   }
 
+  const gekozen = Boolean(waarde && query === waarde.label);
+
   return (
     <div className="relative">
-      <i className="ti ti-map-pin pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[15px] text-ink/35" aria-hidden />
-      <input
-        value={query}
-        onChange={(e) => {
-          setQuery(e.target.value);
-          setOpen(true);
-          setHighlightIndex(-1);
-        }}
-        onKeyDown={handleKeyDown}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
-        placeholder="Plaats of wijk (bv. Rotterdam of Kralingen)"
-        className="w-full rounded-lg border border-ink/15 py-2 pl-9 pr-2.5 text-[12px] text-ink focus:border-accent focus:outline-none"
-      />
+      <div
+        className={`flex items-center rounded-xl border transition-colors ${
+          gekozen ? "border-accent/40 bg-[#EEF0FF]/60" : "border-ink/15 bg-white focus-within:border-accent"
+        }`}
+      >
+        <span className={`pointer-events-none pl-3.5 ${gekozen ? "text-accent" : "text-ink/35"}`}>
+          <MapPinIcon className="h-4 w-4" />
+        </span>
+        <input
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setOpen(true);
+            setHighlightIndex(-1);
+          }}
+          onKeyDown={handleKeyDown}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          placeholder="Typ een plaats of wijk (bv. Rotterdam of Kralingen)"
+          className="w-full bg-transparent py-3 pl-2.5 pr-2 text-[13px] font-medium text-ink placeholder:font-normal placeholder:text-ink/35 focus:outline-none"
+        />
+        {gekozen && (
+          <>
+            <CheckIcon className="mr-1 h-3.5 w-3.5 shrink-0 text-accent" />
+            <button
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={wis}
+              aria-label="Locatie wissen"
+              className="mr-2.5 shrink-0 rounded-full px-1.5 py-0.5 text-[13px] leading-none text-ink/30 hover:bg-ink/5 hover:text-ink/60"
+            >
+              ✕
+            </button>
+          </>
+        )}
+      </div>
       {open && suggesties.length > 0 && (
-        <ul className="absolute z-20 mt-1.5 w-full overflow-hidden rounded-lg border border-ink/10 bg-white shadow-overlay">
+        <ul className="absolute z-20 mt-1.5 w-full overflow-hidden rounded-xl border border-ink/10 bg-white shadow-overlay">
           {suggesties.map((s, i) => (
             <li key={`${s.plaatsSlug}/${s.wijkSlug ?? ""}`}>
               <button
                 type="button"
                 onMouseDown={() => kies(s)}
                 onMouseEnter={() => setHighlightIndex(i)}
-                className={`flex w-full items-center justify-between px-3.5 py-2.5 text-left text-[12px] text-ink transition-colors ${
+                className={`flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-[12.5px] text-ink transition-colors ${
                   i === highlightIndex ? "bg-[#EEF0FF]" : "hover:bg-[#EEF0FF]/60"
                 }`}
               >
-                <span className="font-medium">{s.label}</span>
-                <span className="rounded-full bg-ink/5 px-2 py-0.5 text-[9.5px] font-semibold text-ink/45">
+                <MapPinIcon className="h-3.5 w-3.5 shrink-0 text-ink/30" />
+                <span className="flex-1 font-medium">{s.label}</span>
+                <span
+                  className={`shrink-0 rounded-full px-2 py-0.5 text-[9.5px] font-semibold ${
+                    s.wijkSlug ? "bg-[#EEF0FF] text-accent" : "bg-ink/5 text-ink/45"
+                  }`}
+                >
                   {s.wijkSlug ? "Wijk" : "Plaats"}
                 </span>
               </button>

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2bSessieUitRequest } from "@/lib/services/b2bAuth";
 import { getKlantdossier, zetKlantdossierStatus, zetKlantdossierZoekopdracht, verwijderKlantdossier } from "@/lib/services/b2bStore";
-import { legeKenmerken, B2B_WONINGTYPES } from "@/types/b2b";
+import { legeKenmerken, B2B_WONINGTYPES, B2B_ENERGIELABELS } from "@/types/b2b";
 import type { B2bDossierStatus, B2bZoekopdracht, B2bLocatie, B2bKenmerken } from "@/types/b2b";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -58,12 +58,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       woningtype: kInput.woningtype && geldigeWoningtypes.includes(kInput.woningtype) ? kInput.woningtype : null,
       minKamers: typeof kInput.minKamers === "number" && kInput.minKamers > 0 ? Math.round(kInput.minKamers) : null,
       minSlaapkamers: typeof kInput.minSlaapkamers === "number" && kInput.minSlaapkamers > 0 ? Math.round(kInput.minSlaapkamers) : null,
+      minWoonoppervlak: typeof kInput.minWoonoppervlak === "number" && kInput.minWoonoppervlak > 0 ? Math.round(kInput.minWoonoppervlak) : null,
       tuin: Boolean(kInput.tuin),
       balkon: Boolean(kInput.balkon),
       dakterras: Boolean(kInput.dakterras),
       garage: Boolean(kInput.garage),
       lift: Boolean(kInput.lift),
-      energielabelAB: Boolean(kInput.energielabelAB),
+      minEnergielabel: kInput.minEnergielabel && B2B_ENERGIELABELS.includes(kInput.minEnergielabel) ? kInput.minEnergielabel : null,
     };
 
     const matchenActief = Boolean(z.matchenActief);
