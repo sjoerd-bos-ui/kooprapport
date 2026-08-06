@@ -1,6 +1,7 @@
 import { randomUUID, randomBytes } from "crypto";
 import { kvGet, kvSet, kvDel, kvZAdd, kvZRangeByScore, kvZRem, kvIncrWithTtl } from "@/lib/services/kvStore";
 import { slugify } from "@/lib/utils/slug";
+import { voldoetAanKenmerken } from "@/lib/data-sources/fundaFeed";
 import type {
   B2bOrganisatie,
   B2bGebruiker,
@@ -10,6 +11,7 @@ import type {
   B2bUitnodiging,
   B2bTierWijzigingsverzoek,
   B2bWoningMatch,
+  B2bKenmerken,
 } from "@/types/b2b";
 
 // -----------------------------------------------------------------------------
@@ -309,11 +311,29 @@ export async function verwijderMatch(match: Pick<B2bWoningMatch, "id" | "klantId
 // hij eruit -- ook matches zonder locatieLabel (opgeslagen vóór deze fix)
 // worden voor de zekerheid als verouderd behandeld, geen aanname dat ze nog
 // toevallig kloppen.
+//
+// DERDE BUGFIX (diagnose-sessie "het klopt gewoon allemaal niet", live
+// bevestigd: een energielabel-F-woning bleef zichtbaar bij een "A of
+// hoger"-zoekopdracht): budget en locatie waren de ENIGE dingen die ooit
+// opnieuw gecontroleerd werden nadat een match was opgeslagen. Woningtype,
+// slaapkamers, woonoppervlak en energielabel werden nooit herzien -- een
+// match die ooit (mogelijk zelfs vóór de kenmerken-verificatie in
+// fundaFeed.ts bestond, of vóór een van de eerdere bugfixes in deze sessie)
+// verkeerd werd opgeslagen, bleef voor altijd staan. Elke match bewaart nu
+// een verificatie-snapshot (B2bWoningMatch.verificatie, zie types/b2b.ts) en
+// wordt hier, net als bij budget/locatie, opnieuw getoetst via dezelfde
+// voldoetAanKenmerken() als bij het scrapen zelf (hergebruikt uit
+// fundaFeed.ts, geen dubbele logica). Matches zonder snapshot (opgeslagen
+// vóór dit veld bestond) worden -- net als bij een ontbrekend locatieLabel
+// hierboven -- voor de zekerheid als verouderd behandeld: we kunnen niet
+// vaststellen of ze nog kloppen, dus veiliger om ze opnieuw (correct) te
+// laten vinden dan een mogelijk foute match te laten staan.
 export async function ruimVerouderdeMatchenOp(
   klantId: string,
   budgetMin: number | null,
   budgetMax: number | null,
-  locatieLabel: string | null
+  locatieLabel: string | null,
+  kenmerken?: B2bKenmerken
 ): Promise<B2bWoningMatch[]> {
   const bestaande = await listMatchenVoorKlant(klantId);
 
@@ -325,7 +345,9 @@ export async function ruimVerouderdeMatchenOp(
     const onderBudget = budgetMin != null && budgetMin > 0 && match.prijs != null && match.prijs < budgetMin;
     const buitenBudget = budgetMax != null && budgetMax > 0 && match.prijs != null && match.prijs > budgetMax;
     const andereLocatie = locatieLabel != null && match.locatieLabel !== locatieLabel;
-    if (onderBudget || buitenBudget || andereLocatie) {
+    const voldoetNietMeerAanKenmerken =
+      kenmerken != null && (match.verificatie == null || !voldoetAanKenmerken(match.verificatie, kenmerken));
+    if (onderBudget || buitenBudget || andereLocatie || voldoetNietMeerAanKenmerken) {
       await verwijderMatch(match);
     } else {
       passend.push(match);

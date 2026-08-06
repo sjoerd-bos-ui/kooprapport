@@ -50,7 +50,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // bekende matchURL's worden meegegeven zodat haalFundaMatches geen
   // proxy-credits meer verspilt aan detailpagina's van woningen die al
   // bekend zijn.
-  const bestaande = await ruimVerouderdeMatchenOp(id, budgetMin, budgetMax, locatie.label);
+  // BUGFIX (diagnose-sessie "het klopt gewoon allemaal niet"): kenmerken
+  // erbij, zodat ruimVerouderdeMatchenOp ook BESTAANDE matches die niet meer
+  // aan woningtype/slaapkamers/m²/energielabel voldoen opruimt -- niet
+  // alleen budget/locatie zoals voorheen (zie b2bStore.ts).
+  const bestaande = await ruimVerouderdeMatchenOp(id, budgetMin, budgetMax, locatie.label, dossier.zoekopdracht?.kenmerken);
   const bekendeUrls = new Set(bestaande.map((m) => m.url));
   const feedItems = await haalFundaMatches(locatie, budgetMin, budgetMax, dossier.zoekopdracht?.kenmerken, MAX_DIRECT, bekendeUrls);
   const nieuweItems = feedItems.filter((item) => !bekendeUrls.has(item.url)).slice(0, MAX_DIRECT);
@@ -66,6 +70,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       prijsLabel: item.prijsLabel,
       fotoUrl: item.fotoUrl,
       locatieLabel: locatie.label,
+      verificatie: item.verificatie ?? null,
     });
   }
   await kapMatchenOpMax(id, MAX_ZICHTBARE_MATCHEN);

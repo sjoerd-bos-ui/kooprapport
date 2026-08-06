@@ -190,6 +190,17 @@ export interface B2bKlantdossier {
 // Jaap.nl) later zonder migratie toegevoegd kan worden.
 export type B2bMatchBron = "funda";
 
+// Snapshot van de lokale kenmerken-verificatie (zie leesLokaleVerificatieData/
+// voldoetAanKenmerken in lib/data-sources/fundaFeed.ts) op het moment dat een
+// match werd opgeslagen -- zie B2bWoningMatch.verificatie hieronder voor het
+// waarom.
+export interface B2bMatchVerificatie {
+  woningtypeFamilie: "huis" | "appartement" | null;
+  slaapkamers: number | null;
+  woonoppervlak: number | null;
+  energielabel: string | null;
+}
+
 export interface B2bWoningMatch {
   id: string;
   klantId: string;
@@ -205,6 +216,18 @@ export interface B2bWoningMatch {
   // locatie te kunnen herkennen en opruimen (zie ruimVerouderdeMatchenOp in
   // b2bStore.ts), zelfde reden als het prijs-veld hierboven voor budget.
   locatieLabel: string | null;
+  // BUGFIX (diagnose-sessie "het klopt gewoon allemaal niet"): een match werd
+  // tot nu toe NOOIT opnieuw tegen woningtype/slaapkamers/m²/energielabel
+  // gecontroleerd nadat hij eenmaal was opgeslagen -- alleen budget en
+  // locatie werden bij elke verversing herzien. Matches die vóór de
+  // kenmerken-verificatie (fundaFeed.ts) bestonden, of van een zoekopdracht
+  // die sindsdien is aangescherpt, konden dus voor altijd blijven staan,
+  // ook als ze allang niet meer klopten (bv. een energielabel F-woning bij
+  // een "A of hoger"-zoekopdracht). `null` = opgeslagen vóór dit veld
+  // bestond -- wordt bij de eerstvolgende verversing voor de zekerheid als
+  // verouderd behandeld (zie ruimVerouderdeMatchenOp), net als bij een
+  // ontbrekend locatieLabel.
+  verificatie: B2bMatchVerificatie | null;
   gevondenOp: string; // ISO
 }
 

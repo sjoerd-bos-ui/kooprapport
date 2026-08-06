@@ -1,5 +1,5 @@
 import { FUNDA_FEED_MODE, FUNDA_SEARCH_TIMEOUT_MS, FUNDA_DETAIL_TIMEOUT_MS } from "@/lib/config/fundaFeed";
-import type { B2bLocatie, B2bKenmerken, B2bWoningtype, B2bEnergielabel } from "@/types/b2b";
+import type { B2bLocatie, B2bKenmerken, B2bWoningtype, B2bEnergielabel, B2bMatchVerificatie } from "@/types/b2b";
 
 // -----------------------------------------------------------------------------
 // Directe adapter voor de publieke funda.nl-pagina's (zie de uitleg in
@@ -28,6 +28,12 @@ export interface FundaFeedItem {
   prijs: number | null; // ruwe waarde -- nodig om zelf nog eens hard tegen budgetMax te filteren
   prijsLabel: string | null;
   fotoUrl: string | null;
+  // Snapshot van de kenmerken-verificatie op scrapemoment (zie
+  // B2bMatchVerificatie in types/b2b.ts) -- de aanroeper slaat dit mee op
+  // zodat een BESTAANDE match later opnieuw getoetst kan worden. Optioneel
+  // (ontbreekt bij mock-items -- geen echte scrape, dus niets om vast te
+  // leggen; aanroepers vallen dan terug op `null`).
+  verificatie?: B2bMatchVerificatie | null;
 }
 
 // Vaste, kosteloze voorbeelddata voor mock-modus (standaard) -- zodat de
@@ -415,12 +421,12 @@ function extractJsonLd(html: string): FundaJsonLd | null {
 // vinden/parsen is, wordt dat NOOIT als afwijzingsgrond gebruikt (dat zou
 // onze eigen scrape-beperkingen afstraffen i.p.v. een echte mismatch) --
 // alleen een daadwerkelijk TEGENSTRIJDIGE waarde leidt tot afwijzing.
-interface LokaleVerificatie {
-  woningtypeFamilie: "huis" | "appartement" | null;
-  slaapkamers: number | null;
-  woonoppervlak: number | null;
-  energielabel: string | null;
-}
+// Geëxporteerd (i.p.v. alleen intern gebruikt): b2bStore.ts slaat dit als
+// snapshot op bij elke match (B2bWoningMatch.verificatie) en gebruikt
+// dezelfde voldoetAanKenmerken() hieronder om BESTAANDE matches bij een
+// volgende verversing opnieuw te toetsen -- zie de uitleg bij
+// B2bWoningMatch.verificatie in types/b2b.ts voor waarom dat nodig is.
+export type LokaleVerificatie = B2bMatchVerificatie;
 
 function leesLokaleVerificatieData(html: string, ld: FundaJsonLd): LokaleVerificatie {
   const types = Array.isArray(ld["@type"]) ? ld["@type"] : ld["@type"] ? [ld["@type"]] : [];
@@ -450,8 +456,10 @@ function leesLokaleVerificatieData(html: string, ld: FundaJsonLd): LokaleVerific
 
 // true = deze woning voldoet (of kon niet met zekerheid worden afgekeurd),
 // false = aantoonbaar in strijd met een expliciet ingestelde kenmerk, dus
-// wordt uit de matches gehouden.
-function voldoetAanKenmerken(verificatie: LokaleVerificatie, kenmerken: B2bKenmerken | undefined): boolean {
+// wordt uit de matches gehouden. Geëxporteerd: b2bStore.ts hergebruikt dit
+// om BESTAANDE, opgeslagen matches (via hun verificatie-snapshot) opnieuw te
+// toetsen, niet alleen nieuw gescrapete kandidaten.
+export function voldoetAanKenmerken(verificatie: LokaleVerificatie, kenmerken: B2bKenmerken | undefined): boolean {
   if (!kenmerken) return true;
 
   if (kenmerken.woningtype && verificatie.woningtypeFamilie) {
@@ -516,6 +524,7 @@ async function haalListingDetails(detailUrl: string, kenmerken: B2bKenmerken | u
       prijs,
       prijsLabel: formatPrijs(prijs),
       fotoUrl: ld.image ?? null,
+      verificatie,
     };
   } catch {
     return null;
@@ -549,7 +558,18 @@ export async function haalFundaMatches(
   bekendeUrls: Set<string> = new Set()
 ): Promise<FundaFeedItem[]> {
   console.log(
-    `[fundaFeed] modus=${FUNDA_FEED_MODE} proxy=${SCRAPEDO_TOKEN ? "scrape.do" : "geen (directe fetch, wordt vermoedelijk geblokkeerd vanaf Vercel)"} locatie=${locatie.plaatsSlug}${locatie.wijkSlug ? "/" + locatie.wijkSlug : ""}`
+    // BUGFIX (diagnose-sessie "het klopt allemaal niet"): deze regel liet
+    // altijd "scrape.do" zien zodra SCRAPEDO_TOKEN gezet was, ook nadat
+    // Bright Data er als voorkeursoptie bij kwam (fetchMetTimeout kiest
+    // Bright Data > Scrape.do > direct) -- de log klopte dus niet meer met
+    // wat er echt gebeurde, wat verder diagnosticeren onnodig lastig maakte.
+    `[fundaFeed] modus=${FUNDA_FEED_MODE} proxy=${
+      BRIGHTDATA_API_TOKEN && BRIGHTDATA_ZONE
+        ? "bright-data"
+        : SCRAPEDO_TOKEN
+          ? "scrape.do"
+          : "geen (directe fetch, wordt vermoedelijk geblokkeerd vanaf Vercel)"
+    } locatie=${locatie.plaatsSlug}${locatie.wijkSlug ? "/" + locatie.wijkSlug : ""}`
   );
 
   // BUGFIX: "budget verlaagd, maar oude/te dure resultaten bleven ertussen

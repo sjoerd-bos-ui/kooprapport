@@ -82,7 +82,12 @@ export async function GET(req: NextRequest) {
         // woningen die al bekend zijn. Dit is de dagelijkse cron, dus juist
         // hier (elke dag, voor elk actief dossier) levert dit verreweg de
         // grootste besparing op.
-        const bestaande = await ruimVerouderdeMatchenOp(dossier.id, budgetMin, budgetMax, locatieLabel);
+        // BUGFIX (diagnose-sessie "het klopt gewoon allemaal niet"): kenmerken
+        // erbij, zodat ook BESTAANDE matches die niet meer aan woningtype/
+        // slaapkamers/m²/energielabel voldoen hier worden opgeruimd -- dit is
+        // de dagelijkse cron, dus dit is ook de plek waar dat structureel
+        // gebeurt (zie b2bStore.ts).
+        const bestaande = await ruimVerouderdeMatchenOp(dossier.id, budgetMin, budgetMax, locatieLabel, dossier.zoekopdracht.kenmerken);
         const bekendeUrls = new Set(bestaande.map((m) => m.url));
         const feedItems = await haalFundaMatches(
           dossier.zoekopdracht.locatie,
@@ -106,6 +111,7 @@ export async function GET(req: NextRequest) {
             prijsLabel: item.prijsLabel,
             fotoUrl: item.fotoUrl,
             locatieLabel,
+            verificatie: item.verificatie ?? null,
           });
         }
         await kapMatchenOpMax(dossier.id, MAX_ZICHTBARE_MATCHEN);
