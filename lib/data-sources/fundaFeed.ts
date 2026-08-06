@@ -209,23 +209,47 @@ const BROWSER_HEADERS = {
   Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
 };
 
-// SCRAPEDO_TOKEN (optioneel): als deze env var gezet is, gaat elke fetch naar
-// funda.nl via Scrape.do's proxy. EERST ScraperAPI overwogen, maar die bleek
-// bij nader inzien alleen een 7-dagen-proef te zijn (geen blijvend gratis
-// niveau, live gecontroleerd op hun eigen pricing-pagina) -- Scrape.do heeft
-// wél een "gratis-voor-altijd" niveau (1.000 credits/mnd, geen kaart nodig,
-// live geverifieerd via hun documentatie/pricing).
+// PROXY-KEUZE (bijgewerkt na diagnose-sessie "gratis alternatief zoeken"):
+// Scrape.do's gratis niveau (1.000 credits/mnd, 10 credits/verzoek in
+// super=true-modus) bleek in de praktijk veel te krap -- elke zoekopdracht
+// kost 1 zoekpagina + tot 15 detailpagina's, dus ±100-160 credits per
+// "Ververs"-klik, en dat niveau raakte binnen een paar dagen normaal gebruik
+// (plus deze diagnose-sessies) al op (live bevestigd: HTTP 401, Scrape.do's
+// eigen documentatie noemt dat expliciet "you have no credits").
 //
-// super=true (Residential/mobile-proxynetwerk), GEEN render: onze eigen
-// diagnose liet zien dat een doodgewone fetch (geen JavaScript, geen browser)
-// vanaf een NIET-datacenter-IP gewoon 299 resultaten teruggaf -- dit is dus
-// een IP-reputatieblokkade, geen JS-uitdaging. super=true lost precies dát
-// op (10 credits/verzoek), en is goedkoper en sneller dan render=true erbij
-// zetten (25 credits/verzoek, spint een headless browser op die we hier niet
-// nodig hebben). Zonder deze env var blijft dit een directe fetch,
-// die vanaf Vercel dus altijd 0 resultaten oplevert (zie de diagnose-log
-// verderop) totdat het token is toegevoegd.
+// Bright Data's Web Unlocker API heeft een RUIMER gratis-voor-altijd niveau:
+// 5.000 verzoeken/maand, geen creditcard nodig (live geverifieerd zojuist op
+// brightdata.com/pricing/web-unlocker, niet gegokt) -- dat is >30x zoveel
+// verzoeken/maand als Scrape.do's gratis niveau in de praktijk opleverde.
+// Vereist een (gratis) account bij Bright Data en een Web Unlocker-zone; de
+// API-key + zone-naam komen als BRIGHTDATA_API_TOKEN / BRIGHTDATA_ZONE in de
+// Vercel-omgevingsvariabelen (aanmaken kan alleen de accounthouder zelf, zie
+// VOORTGANG.md).
+//
+// Voorkeursvolgorde: Bright Data (gratis, ruimste niveau) > Scrape.do (mocht
+// dat account nog gebruikt worden) > kale directe fetch (levert vanaf Vercel
+// zo goed als zeker 0 resultaten op, zie de IP-reputatie-uitleg hierboven --
+// blijft toch de laatste, nooit-crashende terugval).
+const BRIGHTDATA_API_TOKEN = process.env.BRIGHTDATA_API_TOKEN;
+const BRIGHTDATA_ZONE = process.env.BRIGHTDATA_ZONE;
 const SCRAPEDO_TOKEN = process.env.SCRAPEDO_TOKEN;
+
+// format:"raw" -- live geverifieerd via Bright Data's eigen documentatie
+// (docs.brightdata.com/scraping-automation/web-unlocker/send-your-first-
+// request): geeft de kale HTML van de doelpagina terug als response-body,
+// dus res.text() hieronder werkt ongewijzigd door voor de rest van dit
+// bestand (dezelfde regex-gebaseerde parsing als voorheen).
+async function viaBrightData(url: string, signal: AbortSignal): Promise<Response> {
+  return fetch("https://api.brightdata.com/request", {
+    method: "POST",
+    signal,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${BRIGHTDATA_API_TOKEN}`,
+    },
+    body: JSON.stringify({ zone: BRIGHTDATA_ZONE, url, format: "raw" }),
+  });
+}
 
 function viaScrapeDo(url: string): string {
   const params = new URLSearchParams({
@@ -240,6 +264,9 @@ async function fetchMetTimeout(url: string, timeoutMs: number): Promise<Response
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
+    if (BRIGHTDATA_API_TOKEN && BRIGHTDATA_ZONE) {
+      return await viaBrightData(url, controller.signal);
+    }
     const daadwerkelijkeUrl = SCRAPEDO_TOKEN ? viaScrapeDo(url) : url;
     return await fetch(daadwerkelijkeUrl, {
       signal: controller.signal,

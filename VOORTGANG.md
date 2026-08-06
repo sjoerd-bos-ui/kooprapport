@@ -19,11 +19,33 @@ zoekopdracht) kost 10 credits via de proxy — één "Ververs"-klik kan dus
 100-160 credits kosten. Op het gratis niveau (1.000/maand) is dat na een
 handjevol keer verversen (plus al het testen deze sessie) al op.
 
-**Actie (kan alleen Sjoerd, is zijn account):** inloggen op het Scrape.do-
-dashboard, credit-saldo/abonnement checken, en indien nodig upgraden — het
-gratis niveau is met dit verbruik per zoekopdracht waarschijnlijk sowieso te
-krap voor structureel gebruik. Zodra er weer credits zijn hoeft er niets aan
-de code te veranderen.
+**Actie (kan alleen Sjoerd, is zijn account) — overgestapt op een gratis
+alternatief in plaats van betalen bij Scrape.do:**
+
+De code (`lib/data-sources/fundaFeed.ts`) ondersteunt nu ook **Bright Data's
+Web Unlocker API** als proxy, naast Scrape.do. Bright Data heeft een
+gratis-voor-altijd niveau van **5.000 verzoeken/maand, geen creditcard nodig**
+(zojuist live geverifieerd op `brightdata.com/pricing/web-unlocker` en hun
+eigen documentatie) — dat is ruim 30x zoveel als wat Scrape.do's gratis
+niveau in de praktijk opleverde (die kostte 10 credits per verzoek, en één
+zoekopdracht doet al snel 10-16 verzoeken).
+
+Stappen om dit te activeren (moet Sjoerd zelf doen, ik kan geen account voor
+je aanmaken):
+1. Ga naar brightdata.com en maak een gratis account (geen kaart nodig).
+2. Maak een "Web Unlocker API"-zone aan in het control panel.
+3. Kopieer de **API key** en de **zone-naam** uit het Overview-tabblad van die zone.
+4. Zet in Vercel → project `kooprapport` → Settings → Environment Variables
+   twee nieuwe variabelen (Production): `BRIGHTDATA_API_TOKEN` (de API key) en
+   `BRIGHTDATA_ZONE` (de zone-naam). Daarna opnieuw deployen (of gewoon
+   wachten op de volgende deploy).
+5. `SCRAPEDO_TOKEN` mag blijven staan of verwijderd worden — als
+   `BRIGHTDATA_API_TOKEN`/`BRIGHTDATA_ZONE` beide gezet zijn, gebruikt de code
+   automatisch Bright Data en wordt Scrape.do genegeerd.
+
+Nog niet getest met een echte Bright Data-key (kan pas na stap 1-4 door
+Sjoerd) — als er na het instellen nog steeds HTTP 401/geen matches zijn,
+opnieuw de Vercel-runtime-logs op `[fundaFeed]` checken (zie hierboven hoe).
 
 ## 1. Direct te doen (ná het Scrape.do-issue)
 
