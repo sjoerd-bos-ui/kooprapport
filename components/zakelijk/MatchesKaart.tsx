@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import type { B2bWoningMatch } from "@/types/b2b";
 import { BoltIcon, ArrowRightIcon } from "@/components/report/icons";
 
@@ -43,6 +46,25 @@ function relatieveTijd(iso: string): string {
 
 const BRON_LABEL: Record<string, string> = { funda: "Funda" };
 
+// Losse subcomponent (i.p.v. inline in de map hieronder) omdat de
+// error-fallback per afbeelding zijn eigen state nodig heeft -- een foto-URL
+// die (nog) niet laadt (verlopen CDN-link, CSP-domein niet toegestaan, etc.)
+// mag nooit een kapot-afbeeldingicoon tonen, valt dan terug op dezelfde
+// neutrale illustratie als wanneer er helemaal geen fotoUrl is.
+function MatchThumbnail({ fotoUrl, index }: { fotoUrl: string | null; index: number }) {
+  const [fout, setFout] = useState(false);
+  if (!fotoUrl || fout) return <HuisIllustratie index={index} />;
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={fotoUrl}
+      alt=""
+      className="h-[72px] w-[88px] shrink-0 rounded-[10px] object-cover"
+      onError={() => setFout(true)}
+    />
+  );
+}
+
 export default function MatchesKaart({ matches }: { matches: B2bWoningMatch[] }) {
   if (matches.length === 0) return null;
 
@@ -63,12 +85,7 @@ export default function MatchesKaart({ matches }: { matches: B2bWoningMatch[] })
             rel="noopener noreferrer"
             className="flex gap-3 rounded-xl border border-ink/[0.06] p-2.5 hover:bg-mist/40"
           >
-            {m.fotoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={m.fotoUrl} alt="" className="h-[72px] w-[88px] shrink-0 rounded-[10px] object-cover" />
-            ) : (
-              <HuisIllustratie index={i} />
-            )}
+            <MatchThumbnail fotoUrl={m.fotoUrl} index={i} />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <span className="rounded-md bg-[#EAF3DE] px-1.5 py-0.5 text-[9px] font-bold text-[#3B6D11]">

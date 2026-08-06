@@ -105,15 +105,20 @@ function kenmerkenNaarParams(kenmerken: B2bKenmerken | undefined): URLSearchPara
   return params;
 }
 
-// selected_area -- LIVE geverifieerd voor een enkele plaats
-// (selected_area=["rotterdam"]). Voor een wijk is dit NIET los geverifieerd
-// -- de aanname (["plaatsSlug","wijkSlug"], zoals Funda's "Selecteer
-// buurten"-verfijning suggereert) is een educated guess. Faalt dit, dan
-// levert de zoekopdracht gewoon 0 resultaten op, nooit een crash.
+// selected_area -- BUGFIX (live geverifieerd door de "Selecteer buurten"-
+// verfijning zelf handmatig te bedienen en de resulterende URL af te lezen):
+// de eerdere aanname (["plaatsSlug","wijkSlug"], als JSON-array) bleek FOUT.
+// Funda negeert die tweede array-waarde stilzwijgend en zoekt gewoon in de
+// hele plaats -- geen crash, geen foutcode, maar ook geen wijkfilter (dit was
+// de oorzaak van "Kralingen Oost" die ook Overschie en de rest van Rotterdam
+// liet zien: elke zoekopdracht met een wijk viel feitelijk terug op de hele
+// stad). De echte, live geverifieerde vorm is één string met een slash:
+// selected_area=rotterdam/kralingen-oost (bevestigd: 47 resultaten, allemaal
+// in Kralingen Oost, i.p.v. de 3.388 van heel Rotterdam).
 function bouwZoekUrl(locatie: B2bLocatie, budgetMax: number | null, kenmerken: B2bKenmerken | undefined): string {
-  const gebieden = locatie.wijkSlug ? [locatie.plaatsSlug, locatie.wijkSlug] : [locatie.plaatsSlug];
+  const gebied = locatie.wijkSlug ? `${locatie.plaatsSlug}/${locatie.wijkSlug}` : locatie.plaatsSlug;
   const params = kenmerkenNaarParams(kenmerken);
-  params.set("selected_area", JSON.stringify(gebieden));
+  params.set("selected_area", gebied);
   if (budgetMax && budgetMax > 0) params.set("price", `0-${Math.round(budgetMax)}`);
   return `https://www.funda.nl/zoeken/koop?${params.toString()}`;
 }

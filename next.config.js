@@ -89,7 +89,12 @@ const CSP = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline' ${GOOGLE_ANALYTICS_SCRIPT_SRC} ${META_PIXEL_SCRIPT_SRC}${isDev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
-  `img-src 'self' data: blob: ${GOOGLE_ANALYTICS_IMG_SRC} ${META_PIXEL_IMG_SRC}`,
+  // cloud.funda.nl: CDN-host van de listingfoto's in de matchfunctie
+  // (components/zakelijk/MatchesKaart.tsx, <img src={m.fotoUrl}>) -- zonder
+  // dit domein hier blokkeerde de browser die afbeeldingen stil via CSP,
+  // ongeacht of de URL zelf klopte (live geverifieerd: de foto-URL zelf laadt
+  // prima los, alleen de CSP van onze eigen site hield 'm tegen).
+  `img-src 'self' data: blob: https://cloud.funda.nl ${GOOGLE_ANALYTICS_IMG_SRC} ${META_PIXEL_IMG_SRC}`,
   "font-src 'self' data:",
   `connect-src 'self' https://api.pdok.nl ${GOOGLE_ANALYTICS_CONNECT_SRC} ${GOOGLE_ADS_CONNECT_SRC} ${SENTRY_CONNECT_SRC} ${META_PIXEL_CONNECT_SRC}${isDev ? " ws://localhost:* http://localhost:*" : ""}`,
   "frame-src 'none'",
