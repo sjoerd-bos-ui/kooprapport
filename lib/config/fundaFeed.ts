@@ -22,3 +22,11 @@ function readMode(envVar: string): DataMode {
 export const FUNDA_FEED_MODE: DataMode = readMode("FUNDA_FEED_MODE");
 export const FUNDA_FEED_BASE_URL = process.env.FUNDA_FEED_BASE_URL ?? "http://partnerapi.funda.nl/feeds/Aanbod.svc/rss";
 export const FUNDA_FEED_TIMEOUT_MS = 10000;
+
+// Timeout voor het los ophalen van de og:image-foto per listingpagina (zie
+// haalOgAfbeelding in lib/data-sources/fundaFeed.ts) -- de RSS-feed zelf
+// levert vrijwel nooit een foto, maar de listingpagina's op funda.nl doen dat
+// wel via een standaard og:image-metatag (LIVE geverifieerd tegen een echte
+// Funda-detailpagina). Kort gehouden: dit gebeurt per gevonden woning, dus
+// een trage/hangende aanroep mag de rest van de batch niet vertragen.
+export const OG_IMAGE_TIMEOUT_MS = 5000;

@@ -1,4 +1,4 @@
-import { FUNDA_FEED_MODE, FUNDA_FEED_BASE_URL, FUNDA_FEED_TIMEOUT_MS } from "@/lib/config/fundaFeed";
+import { FUNDA_FEED_MODE, FUNDA_FEED_BASE_URL, FUNDA_FEED_TIMEOUT_MS, OG_IMAGE_TIMEOUT_MS } from "@/lib/config/fundaFeed";
 import type { B2bLocatie, B2bKenmerken } from "@/types/b2b";
 
 // -----------------------------------------------------------------------------
@@ -26,37 +26,41 @@ export interface FundaFeedItem {
 // Vaste, kosteloze voorbeelddata voor mock-modus (standaard) -- zodat de
 // matchfunctie in de UI en met demo-data te testen is zonder ooit een
 // aanroep naar Funda te doen. 5 stuks (i.p.v. eerder 2), zodat de "direct 3
-// tot 5 woningen"-weergave ook in mock-modus realistisch oogt.
+// tot 5 woningen"-weergave ook in mock-modus realistisch oogt. fotoUrl wijst
+// naar picsum.photos (stabiele, gratis foto-placeholder-dienst, vast seed per
+// adres) i.p.v. null -- zodat ook de mock-demo al met echte foto's oogt,
+// dezelfde reden waarom haalOgAfbeelding() hieronder in live-modus de echte
+// Funda-listingfoto ophaalt i.p.v. de neutrale huisillustratie te tonen.
 const MOCK_ITEMS: FundaFeedItem[] = [
   {
     titel: "Boezemsingel 24, Rotterdam",
     url: "https://www.funda.nl/koop/rotterdam/huis-00000001-boezemsingel-24/",
     prijsLabel: "€ 489.000 k.k.",
-    fotoUrl: null,
+    fotoUrl: "https://picsum.photos/seed/boezemsingel24/480/360",
   },
   {
     titel: "Zwart Janstraat 51, Rotterdam",
     url: "https://www.funda.nl/koop/rotterdam/huis-00000002-zwart-janstraat-51/",
     prijsLabel: "€ 525.000 k.k.",
-    fotoUrl: null,
+    fotoUrl: "https://picsum.photos/seed/zwartjanstraat51/480/360",
   },
   {
     titel: "Bergselaan 142, Rotterdam",
     url: "https://www.funda.nl/koop/rotterdam/huis-00000003-bergselaan-142/",
     prijsLabel: "€ 425.000 k.k.",
-    fotoUrl: null,
+    fotoUrl: "https://picsum.photos/seed/bergselaan142/480/360",
   },
   {
     titel: "Kralingse Plaslaan 88, Rotterdam",
     url: "https://www.funda.nl/koop/rotterdam/huis-00000004-kralingse-plaslaan-88/",
     prijsLabel: "€ 389.000 k.k.",
-    fotoUrl: null,
+    fotoUrl: "https://picsum.photos/seed/kralingseplaslaan88/480/360",
   },
   {
     titel: "Vroesenlaan 21, Rotterdam",
     url: "https://www.funda.nl/koop/rotterdam/huis-00000005-vroesenlaan-21/",
     prijsLabel: "€ 465.000 k.k.",
-    fotoUrl: null,
+    fotoUrl: "https://picsum.photos/seed/vroesenlaan21/480/360",
   },
 ];
 
@@ -155,6 +159,39 @@ async function fetchMetTimeout(url: string, timeoutMs: number): Promise<Response
   }
 }
 
+// De RSS-feed zelf levert vrijwel nooit een foto (zie parseRssItems
+// hierboven), maar elke Funda-listingpagina heeft een standaard
+// og:image-metatag met de hoofdfoto -- LIVE geverifieerd tegen een echte
+// Funda-detailpagina (zie het commentaar bij OG_IMAGE_TIMEOUT_MS in
+// lib/config/fundaFeed.ts). Dit is een gewone, publieke paginafetch (geen
+// aparte/verborgen API), vergelijkbaar met hoe elke linkpreview (Slack,
+// WhatsApp, social media) al werkt -- en net als de rest van deze feed:
+// faalt dit (timeout, layout-wijziging, blokkade), dan blijft fotoUrl
+// gewoon null en valt de UI terug op de neutrale huisillustratie.
+async function haalOgAfbeelding(listingUrl: string): Promise<string | null> {
+  try {
+    const res = await fetchMetTimeout(listingUrl, OG_IMAGE_TIMEOUT_MS);
+    if (!res.ok) return null;
+    const html = await res.text();
+    const match =
+      html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i) ??
+      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
+    return match?.[1] ? decodeEntities(match[1]) : null;
+  } catch {
+    return null;
+  }
+}
+
+async function verrijkMetFotos(items: FundaFeedItem[]): Promise<FundaFeedItem[]> {
+  return Promise.all(
+    items.map(async (item) => {
+      if (item.fotoUrl) return item;
+      const fotoUrl = await haalOgAfbeelding(item.url);
+      return fotoUrl ? { ...item, fotoUrl } : item;
+    })
+  );
+}
+
 export async function haalFundaMatches(
   locatie: B2bLocatie,
   budgetMax: number | null,
@@ -173,7 +210,8 @@ export async function haalFundaMatches(
       return [];
     }
     const xml = await res.text();
-    return parseRssItems(xml).slice(0, limiet);
+    const items = parseRssItems(xml).slice(0, limiet);
+    return await verrijkMetFotos(items);
   } catch (err) {
     console.error("[fundaFeed] ophalen/parsen mislukt (mogelijk is de niet-officiële feed niet meer bereikbaar):", err);
     return [];
