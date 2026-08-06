@@ -125,10 +125,10 @@ function bouwZoekUrl(locatie: B2bLocatie, budgetMax: number | null, kenmerken: B
 // vaak met een 200-status maar een lege/CAPTCHA-pagina in plaats van een
 // echte foutcode, dus zonder dat dit ooit als error werd gelogd. Een gewone
 // fetch vanaf een niet-datacenter-adres met dezelfde URL gaf wel gewoon 299
-// resultaten terug (live geverifieerd). Daarom nu een gangbare browser-UA +
-// Accept-Language, in de hoop dat dat door dezelfde bot-detectie komt --
-// geen garantie, vandaar ook de logging hieronder om dit voortaan meteen
-// zichtbaar te maken in plaats van stil te falen.
+// resultaten terug (live geverifieerd). Een gangbare browser-UA alleen bleek
+// NIET genoeg (live geverifieerd: nog steeds Funda's blokkadepagina "Je bent
+// bijna op de pagina die je zoekt") -- dit is dus een IP-reputatieblokkade,
+// geen UA-check, en dat los je met headers alleen niet op.
 const BROWSER_HEADERS = {
   "User-Agent":
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -136,11 +136,32 @@ const BROWSER_HEADERS = {
   Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
 };
 
+// SCRAPERAPI_KEY (optioneel): als deze env var gezet is, gaat elke fetch naar
+// funda.nl via ScraperAPI's proxy (render=true, dus met JS-rendering -- dat
+// is wat nodig is om langs Funda's DataDome-achtige botcheck te komen, een
+// gewone headless fetch met nette headers bleek niet genoeg). Zonder deze
+// env var valt dit terug op de directe fetch hierboven, die vanaf Vercel dus
+// altijd 0 resultaten oplevert (zie de diagnose-log verderop) totdat de
+// sleutel is toegevoegd. country_code=nl kost geen extra credits en helpt om
+// als Nederlandse bezoeker over te komen.
+const SCRAPERAPI_KEY = process.env.SCRAPERAPI_KEY;
+
+function viaScraperApi(url: string): string {
+  const params = new URLSearchParams({
+    api_key: SCRAPERAPI_KEY!,
+    url,
+    render: "true",
+    country_code: "nl",
+  });
+  return `https://api.scraperapi.com/?${params.toString()}`;
+}
+
 async function fetchMetTimeout(url: string, timeoutMs: number): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    return await fetch(url, {
+    const daadwerkelijkeUrl = SCRAPERAPI_KEY ? viaScraperApi(url) : url;
+    return await fetch(daadwerkelijkeUrl, {
       signal: controller.signal,
       headers: BROWSER_HEADERS,
     });
@@ -228,7 +249,9 @@ export async function haalFundaMatches(
   kenmerken?: B2bKenmerken,
   limiet = 15
 ): Promise<FundaFeedItem[]> {
-  console.log(`[fundaFeed] modus=${FUNDA_FEED_MODE} locatie=${locatie.plaatsSlug}${locatie.wijkSlug ? "/" + locatie.wijkSlug : ""}`);
+  console.log(
+    `[fundaFeed] modus=${FUNDA_FEED_MODE} proxy=${SCRAPERAPI_KEY ? "scraperapi" : "geen (directe fetch, wordt vermoedelijk geblokkeerd vanaf Vercel)"} locatie=${locatie.plaatsSlug}${locatie.wijkSlug ? "/" + locatie.wijkSlug : ""}`
+  );
 
   if (FUNDA_FEED_MODE !== "live") {
     return MOCK_ITEMS.slice(0, limiet);

@@ -28,9 +28,20 @@ import { APP_BASE_URL } from "@/lib/config/payment";
 // functionele limiet -- bij meer actieve dossiers dan dit pakt de volgende
 // geplande aanroep de rest gewoon weer op (zoekopdracht.matchenActief blijft
 // staan totdat iemand het uitzet).
+//
+// TIJDSBUDGET (diagnose-sessie, met ScraperAPI erbij): dossiers worden hier
+// serieel verwerkt, en één haalFundaMatches()-aanroep kan met render=true nu
+// tot ~55s duren (zie lib/config/fundaFeed.ts) -- DOSSIER_LIMIET=200 was dus
+// volstrekt onhaalbaar binnen de 60s maxDuration hieronder. In plaats van een
+// vast (en per definitie giswerk) aantal dossiers, stopt de loop nu zodra het
+// tijdsbudget bijna op is -- de rest wordt, net als voorheen bij te veel
+// dossiers, gewoon door de volgende geplande cron-aanroep opgepakt.
 // -----------------------------------------------------------------------------
 
 const DOSSIER_LIMIET = 200;
+const TIJDSBUDGET_MS = 50000; // marge onder maxDuration=60
+
+export const maxDuration = 60;
 
 export async function GET(req: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
@@ -43,6 +54,7 @@ export async function GET(req: NextRequest) {
   }
 
   const organisaties = await listAlleOrganisaties();
+  const startTijd = Date.now();
 
   let dossiersGecontroleerd = 0;
   let nieuweMatches = 0;
@@ -54,6 +66,7 @@ export async function GET(req: NextRequest) {
     for (const dossier of dossiers) {
       if (!dossier.zoekopdracht?.matchenActief || !dossier.zoekopdracht.locatie) continue;
       if (dossiersGecontroleerd >= DOSSIER_LIMIET) break outer;
+      if (Date.now() - startTijd > TIJDSBUDGET_MS) break outer;
       dossiersGecontroleerd++;
 
       try {

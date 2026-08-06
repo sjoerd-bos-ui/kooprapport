@@ -33,5 +33,16 @@ export const FUNDA_FEED_MODE: DataMode = readMode("FUNDA_FEED_MODE");
 // zoekpagina-aanroep is maar tot ~15 detailpagina-aanroepen -- die laatste
 // mogen individueel korter timeouten zodat één trage woning de rest van de
 // batch niet ophoudt.
-export const FUNDA_SEARCH_TIMEOUT_MS = 10000;
-export const FUNDA_DETAIL_TIMEOUT_MS = 6000;
+//
+// OPGEHOOGD (diagnose-sessie): met SCRAPERAPI_KEY ingesteld loopt elke fetch
+// via ScraperAPI's render=true-modus (nodig om langs Funda's botcheck te
+// komen), en dat is een echte browserpagina die renderen kost merkbaar meer
+// tijd dan een kale HTML-fetch -- ScraperAPI's eigen requests kunnen tot
+// zo'n 60-70s duren voor ze zelf afbreken. 10s/6s was daarom veel te kort en
+// zorgde ervoor dat elke live-poging altijd op de eigen AbortController
+// afliep, nog vóór ScraperAPI kon antwoorden.
+// Bewust onder de 60s maxDuration van de aanroepende routes gehouden (zie
+// matches-verversen/route.ts en cron/matches-controleren/route.ts): in het
+// ergste geval search(35s) + parallelle details(20s) ≈ 55s, met marge.
+export const FUNDA_SEARCH_TIMEOUT_MS = 35000;
+export const FUNDA_DETAIL_TIMEOUT_MS = 20000;
