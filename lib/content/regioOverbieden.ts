@@ -88,6 +88,17 @@ const MARKTUPDATE_NAAM_NAAR_COROP: Record<string, string[]> = {
   "Overig Groningen": ["Overig Groningen"],
 };
 
+// Omgekeerde richting van MARKTUPDATE_NAAM_NAAR_COROP hierboven -- gegeven
+// een officiële COROP-regionaam, welke redactionele Marktupdate-naam(en)
+// verwijzen ernaar? Gebruikt door de Werkgebied-pagina om de jaarvergelijking
+// (MarktupdateRegioRij.jaarVergelijking/richting, alleen beschikbaar voor een
+// handjevol regio's per kwartaal) aan de juiste COROP-regiokaart te koppelen.
+export function editorialeNamenVoorRegio(coropNaam: string): string[] {
+  return Object.entries(MARKTUPDATE_NAAM_NAAR_COROP)
+    .filter(([, coropLijst]) => coropLijst.includes(coropNaam))
+    .map(([naam]) => naam);
+}
+
 export function overbiedenVoorWerkgebied(werkgebiedRegios: string[] | undefined): RegioOverbiedCijfer[] {
   if (!werkgebiedRegios || werkgebiedRegios.length === 0) return [];
   const gezien = new Set<string>();
