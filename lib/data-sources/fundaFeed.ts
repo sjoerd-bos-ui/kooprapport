@@ -72,15 +72,25 @@ const MOCK_ITEMS: FundaFeedItem[] = [
   },
 ];
 
-// object_type + object_type_house_orientation -- "house"/"apartment" en
-// "terraced" (tussenwoning) zijn live geverifieerd. De overige oriëntaties
-// (hoekwoning/2-onder-1-kap/vrijstaand) zijn NIET los getest -- dit zijn de
-// meest voor de hand liggende Engelse tegenhangers naar analogie van
-// "terraced", maar geen garantie.
+// object_type + object_type_house_orientation -- ALLE waarden hieronder zijn
+// nu live geverifieerd (diagnose-sessie: "veel data komt niet overeen met
+// Funda") door in het filterpaneel op "Woonhuis" > "Specificeer" te klikken
+// en per oriëntatie-checkbox het daadwerkelijke id uit te lezen
+// (checkbox-object_type_house_orientation-<waarde>).
+//
+// BUGFIX: "2-onder-1-kapwoning" gebruikte tot nu toe "semi_detached" -- dat
+// bleek NIET 2-onder-1-kapwoning te zijn, maar Funda's aparte categorie
+// "Halfvrijstaande woning" (een woning met maar aan één kant een buurwoning,
+// wat iets anders is dan een 2-onder-1-kapwoning). De echte waarde voor
+// 2-onder-1-kapwoning is "double". Dit verklaart (samen met de
+// topposities-bugfix hieronder) de gemelde klacht "ik kies een woningtype en
+// krijg toch iets anders": met de foute waarde zocht de app feitelijk op een
+// compleet andere, veel zeldzamere categorie, wat al snel op 0 échte
+// resultaten uitkwam.
 const WONINGTYPE_PARAMS: Record<B2bWoningtype, { objectType: string; orientation?: string }> = {
   tussenwoning: { objectType: "house", orientation: "terraced" },
   hoekwoning: { objectType: "house", orientation: "corner" },
-  "2-onder-1-kapwoning": { objectType: "house", orientation: "semi_detached" },
+  "2-onder-1-kapwoning": { objectType: "house", orientation: "double" },
   "vrijstaande-woning": { objectType: "house", orientation: "detached" },
   appartement: { objectType: "apartment" },
 };
@@ -156,11 +166,28 @@ function kenmerkenNaarParams(kenmerken: B2bKenmerken | undefined): URLSearchPara
 // stad). De echte, live geverifieerde vorm is één string met een slash:
 // selected_area=rotterdam/kralingen-oost (bevestigd: 47 resultaten, allemaal
 // in Kralingen Oost, i.p.v. de 3.388 van heel Rotterdam).
-function bouwZoekUrl(locatie: B2bLocatie, budgetMax: number | null, kenmerken: B2bKenmerken | undefined): string {
+// BUGFIX (dezelfde diagnose-sessie): budgetMin werd HIER NOOIT meegegeven --
+// alleen budgetMax kwam in de price-parameter terecht ("0-<budgetMax>"), dus
+// een ondergrens (bv. "€300k - €500k") deed op Funda-niveau helemaal niets.
+// Dat is de directe verklaring voor de gemelde klacht "ik kies 300-500k en
+// krijg een woning van 289": die woning voldeed op Funda's eigen resultaten
+// gewoon aan "tot 500k" (het enige dat werd doorgegeven). Live geverifieerd
+// dat Funda's price-parameter een simpel "<min>-<max>"-bereik is, waarbij
+// beide kanten optioneel zijn (price=300000-500000, price=300000- en
+// price=0-500000 zijn alle drie handmatig getest en gaven exact de
+// verwachte, aftelbare resultaten).
+function bouwZoekUrl(
+  locatie: B2bLocatie,
+  budgetMin: number | null,
+  budgetMax: number | null,
+  kenmerken: B2bKenmerken | undefined
+): string {
   const gebied = locatie.wijkSlug ? `${locatie.plaatsSlug}/${locatie.wijkSlug}` : locatie.plaatsSlug;
   const params = kenmerkenNaarParams(kenmerken);
   params.set("selected_area", gebied);
-  if (budgetMax && budgetMax > 0) params.set("price", `0-${Math.round(budgetMax)}`);
+  const min = budgetMin && budgetMin > 0 ? Math.round(budgetMin) : null;
+  const max = budgetMax && budgetMax > 0 ? Math.round(budgetMax) : null;
+  if (min != null || max != null) params.set("price", `${min ?? 0}-${max ?? ""}`);
   return `https://www.funda.nl/zoeken/koop?${params.toString()}`;
 }
 
@@ -239,9 +266,59 @@ async function fetchMetTimeout(url: string, timeoutMs: number): Promise<Response
 // dit blok exact de 14 resultaten die de pagina zelf ook toont, ZONDER de 3
 // topposities) -- gestructureerde data i.p.v. ruwe anchor-tags scrapen, dus
 // robuuster tegen zowel de topposities-vervuiling als toekomstige opmaak-
-// wijzigingen. Bij het uitblijven van dit blok (paginastructuur gewijzigd)
-// valt dit terug op de oude anchor-regex, liever een kleine kans op
-// vervuilde resultaten dan helemaal niets.
+// wijzigingen.
+//
+// TWEEDE BUGFIX (diagnose-sessie "veel data komt niet overeen met Funda"):
+// het ItemList-blok ONTBREEKT VOLLEDIG zodra een zoekopdracht ECHT 0
+// resultaten heeft (live geverifieerd: elke combinatie van filters die op
+// Funda's eigen pagina "0 koopwoningen binnen jouw zoekwensen" oplevert,
+// heeft ook helemaal GEEN ld+json-scripts meer op de pagina staan). De oude
+// fallback greep dan terug op de kale anchor-regex over de VOLLEDIGE pagina
+// -- en die pikt dan het Toppositie-blok op (data-testid=
+// "top-position-wrapper", betaalde plaatsingen die NOOIT aan het gebieds-,
+// prijs- of ander filter gebonden zijn, live bevestigd: 3 appartementen van
+// overal in Nederland op een pagina met 0 échte, gefilterde resultaten).
+// Dat is de directe verklaring voor "ik kies vrijstaand en krijg toch
+// appartementen": een streng samengestelde zoekopdracht (locatie + budget +
+// woningtype + slaapkamers + energielabel samen) komt vaak op 0 échte
+// treffers uit, en dan werden stilzwijgend de 3 topposities als "match"
+// opgeslagen -- volledig losstaand van de opgegeven criteria.
+//
+// Fix: het topposities-blok wordt nu ALTIJD eerst uit de HTML geknipt
+// (verwijderTopposities hieronder) vóórdat de fallback-regex draait. Blijft
+// er na het knippen niets bruikbaars over (het echte, veelvoorkomende
+// 0-resultaten-geval), dan is de uitkomst nu terecht een lege lijst i.p.v.
+// verzonnen matches.
+function verwijderTopposities(html: string): string {
+  const marker = 'data-testid="top-position-wrapper"';
+  const markerIdx = html.indexOf(marker);
+  if (markerIdx === -1) return html;
+
+  const openStart = html.lastIndexOf("<div", markerIdx);
+  if (openStart === -1) return html;
+
+  // Simpele haakjes-teller over <div>/</div> om het complete, omvattende
+  // blok te vinden -- geen volledige HTML-parser nodig voor dit ene, aan de
+  // voorkant al bekende blok, en robuuster dan een vaste lengte gokken.
+  let i = openStart;
+  let diepte = 0;
+  while (i < html.length) {
+    if (html.startsWith("<div", i)) {
+      diepte++;
+      i += 4;
+    } else if (html.startsWith("</div>", i)) {
+      diepte--;
+      i += 6;
+      if (diepte === 0) break;
+    } else {
+      i++;
+    }
+  }
+  if (diepte !== 0) return html; // onverwachte structuur -- niet blind knippen
+
+  return html.slice(0, openStart) + html.slice(i);
+}
+
 function extractDetailLinks(html: string, limiet: number): string[] {
   const ldMatches = [...html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)];
   for (const m of ldMatches) {
@@ -259,14 +336,17 @@ function extractDetailLinks(html: string, limiet: number): string[] {
     }
   }
 
-  // Fallback: geen bruikbaar ItemList-blok gevonden -- oude aanpak, met het
-  // bekende risico dat het topposities-blok hier weer in mee kan komen.
-  const matches = html.match(/\/detail\/koop\/[a-z0-9-]+\/[a-z0-9-]+\/\d+\//gi) ?? [];
+  // Fallback: geen bruikbaar ItemList-blok gevonden. Topposities er eerst
+  // uit knippen (zie hierboven) -- als er dan niets meer over is, is dat
+  // hoogstwaarschijnlijk gewoon een oprechte 0-resultaten-pagina.
+  const schoneHtml = verwijderTopposities(html);
+  const matches = schoneHtml.match(/\/detail\/koop\/[a-z0-9-]+\/[a-z0-9-]+\/\d+\//gi) ?? [];
   const uniek = [...new Set(matches)];
   return uniek.slice(0, limiet).map((pad) => `https://www.funda.nl${pad}`);
 }
 
 interface FundaJsonLd {
+  "@type"?: string | string[];
   name?: string;
   address?: { streetAddress?: string; addressLocality?: string };
   offers?: { price?: number | string; priceCurrency?: string };
@@ -289,6 +369,87 @@ function extractJsonLd(html: string): FundaJsonLd | null {
   return null;
 }
 
+// -----------------------------------------------------------------------------
+// Lokale nafiltering ("vangnet") -- diagnose-sessie "veel data komt niet
+// overeen met Funda": tot nu toe werd alleen de prijs nog eens hard tegen
+// budgetMax gecontroleerd (zie bijBudget in haalFundaMatches). Woningtype,
+// slaapkamers, woonoppervlak en energielabel van de daadwerkelijk
+// gescrapete woning werden NOOIT teruggecontroleerd tegen de kenmerken van
+// de zoekopdracht -- als de Funda-URL (om welke reden dan ook: een verkeerde
+// parameterwaarde zoals de 2-onder-1-kap-bug hierboven, een gewijzigde
+// Funda-indeling, of de topposities-vervuiling) iets anders teruggaf dan
+// gevraagd, werd dat gewoon voor zoete koek aangenomen.
+//
+// Deze functie leest dezelfde weergavegegevens die een bezoeker ook gewoon
+// op de detailpagina ziet (live geverifieerd op meerdere woningen, zowel
+// appartement als huis): het iconenblokje direct onder de prijs
+// ("<n> slaapkamers", "<n> m² wonen", "<label> energielabel") en het @type-
+// veld uit de JSON-LD ("Huis" vs "Appartement"). Als een waarde niet te
+// vinden/parsen is, wordt dat NOOIT als afwijzingsgrond gebruikt (dat zou
+// onze eigen scrape-beperkingen afstraffen i.p.v. een echte mismatch) --
+// alleen een daadwerkelijk TEGENSTRIJDIGE waarde leidt tot afwijzing.
+interface LokaleVerificatie {
+  woningtypeFamilie: "huis" | "appartement" | null;
+  slaapkamers: number | null;
+  woonoppervlak: number | null;
+  energielabel: string | null;
+}
+
+function leesLokaleVerificatieData(html: string, ld: FundaJsonLd): LokaleVerificatie {
+  const types = Array.isArray(ld["@type"]) ? ld["@type"] : ld["@type"] ? [ld["@type"]] : [];
+  const woningtypeFamilie: LokaleVerificatie["woningtypeFamilie"] = types.includes("Huis")
+    ? "huis"
+    : types.includes("Appartement")
+      ? "appartement"
+      : null;
+
+  const slaapMatch = html.match(
+    /<span class="md:font-semibold">(\d+)<\/span><span class="ml-1 hidden text-neutral-50 md:inline-block">slaapkamers<\/span>/i
+  );
+  const m2Match = html.match(
+    /<span class="md:font-semibold">(\d+)\s*m²<\/span><span class="ml-1 hidden text-neutral-50 md:inline-block">wonen<\/span>/i
+  );
+  const labelMatch = html.match(
+    /<span class="md:font-semibold">([^<]*)<\/span><span class="ml-1 hidden text-neutral-50 md:inline-block">energielabel<\/span>/i
+  );
+
+  return {
+    woningtypeFamilie,
+    slaapkamers: slaapMatch ? Number(slaapMatch[1]) : null,
+    woonoppervlak: m2Match ? Number(m2Match[1]) : null,
+    energielabel: labelMatch ? labelMatch[1].trim() : null,
+  };
+}
+
+// true = deze woning voldoet (of kon niet met zekerheid worden afgekeurd),
+// false = aantoonbaar in strijd met een expliciet ingestelde kenmerk, dus
+// wordt uit de matches gehouden.
+function voldoetAanKenmerken(verificatie: LokaleVerificatie, kenmerken: B2bKenmerken | undefined): boolean {
+  if (!kenmerken) return true;
+
+  if (kenmerken.woningtype && verificatie.woningtypeFamilie) {
+    const verwacht = kenmerken.woningtype === "appartement" ? "appartement" : "huis";
+    if (verificatie.woningtypeFamilie !== verwacht) return false;
+  }
+
+  if (kenmerken.minSlaapkamers && verificatie.slaapkamers != null) {
+    if (verificatie.slaapkamers < kenmerken.minSlaapkamers) return false;
+  }
+
+  if (kenmerken.minWoonoppervlak && verificatie.woonoppervlak != null) {
+    if (verificatie.woonoppervlak < kenmerken.minWoonoppervlak) return false;
+  }
+
+  if (kenmerken.minEnergielabel && verificatie.energielabel) {
+    const rang = ENERGIELABEL_VOLGORDE_FUNDA.indexOf(verificatie.energielabel);
+    // Niet te herkennen label-tekst (onverwacht formaat) -- niet afwijzen,
+    // zie de uitleg hierboven.
+    if (rang !== -1 && rang >= ENERGIELABEL_AANTAL_FUNDA_WAARDEN[kenmerken.minEnergielabel]) return false;
+  }
+
+  return true;
+}
+
 function naarPrijsGetal(prijs: number | string | undefined): number | null {
   if (prijs == null) return null;
   const bedrag = typeof prijs === "string" ? Number(prijs) : prijs;
@@ -302,13 +463,20 @@ function formatPrijs(bedrag: number | null): string | null {
   return `${new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(bedrag)} k.k.`;
 }
 
-async function haalListingDetails(detailUrl: string): Promise<FundaFeedItem | null> {
+async function haalListingDetails(detailUrl: string, kenmerken: B2bKenmerken | undefined): Promise<FundaFeedItem | null> {
   try {
     const res = await fetchMetTimeout(detailUrl, FUNDA_DETAIL_TIMEOUT_MS);
     if (!res.ok) return null;
     const html = await res.text();
     const ld = extractJsonLd(html);
     if (!ld) return null;
+
+    // Vangnet: ongeacht wat de zoekpagina/URL-parameters al (zouden moeten)
+    // hebben gefilterd, wordt de daadwerkelijk gescrapete woning hier nog
+    // eens hard tegen de kenmerken van de zoekopdracht gehouden. Zie
+    // voldoetAanKenmerken() hierboven voor de precieze regels.
+    const verificatie = leesLokaleVerificatieData(html, ld);
+    if (!voldoetAanKenmerken(verificatie, kenmerken)) return null;
 
     const straat = ld.address?.streetAddress ?? ld.name ?? "";
     const plaats = ld.address?.addressLocality ?? "";
@@ -337,6 +505,7 @@ async function haalListingDetails(detailUrl: string): Promise<FundaFeedItem | nu
 // verwijderd/afgezwakt worden.
 export async function haalFundaMatches(
   locatie: B2bLocatie,
+  budgetMin: number | null,
   budgetMax: number | null,
   kenmerken?: B2bKenmerken,
   limiet = 15
@@ -349,16 +518,25 @@ export async function haalFundaMatches(
   // staan" bleek deels ook hier te zitten -- Funda's eigen price-URL-param
   // vertrouwen we niet blindelings (zie eerdere ontdekking dat selected_area
   // ook al eens stilzwijgend werd genegeerd). Daarom hard nafilteren op
-  // budgetMax, voor zowel mock- als live-modus, ongeacht wat de bron zelf al
-  // deed -- een woning boven budget hoort hier nooit uit te komen.
-  const bijBudget = (item: FundaFeedItem): boolean => budgetMax == null || budgetMax <= 0 || item.prijs == null || item.prijs <= budgetMax;
+  // zowel budgetMin als budgetMax, voor zowel mock- als live-modus, ongeacht
+  // wat de bron zelf al deed -- een woning buiten budget hoort hier nooit
+  // uit te komen. BUGFIX (diagnose-sessie "budget klopt niet"): budgetMin
+  // ontbrak hier eerder volledig, zowel in de Funda-URL (zie bouwZoekUrl)
+  // als in deze nafiltering -- dat was de directe oorzaak van "ik kies
+  // 300-500k en krijg een woning van 289".
+  const bijBudget = (item: FundaFeedItem): boolean => {
+    if (item.prijs == null) return true;
+    if (budgetMin && budgetMin > 0 && item.prijs < budgetMin) return false;
+    if (budgetMax && budgetMax > 0 && item.prijs > budgetMax) return false;
+    return true;
+  };
 
   if (FUNDA_FEED_MODE !== "live") {
     return MOCK_ITEMS.filter(bijBudget).slice(0, limiet);
   }
 
   try {
-    const zoekUrl = bouwZoekUrl(locatie, budgetMax, kenmerken);
+    const zoekUrl = bouwZoekUrl(locatie, budgetMin, budgetMax, kenmerken);
     const res = await fetchMetTimeout(zoekUrl, FUNDA_SEARCH_TIMEOUT_MS);
     console.log(`[fundaFeed] LIVE zoekaanvraag ${zoekUrl} -> HTTP ${res.status}`);
     if (!res.ok) {
@@ -369,17 +547,23 @@ export async function haalFundaMatches(
     const links = extractDetailLinks(html, limiet);
     console.log(`[fundaFeed] LIVE ${links.length} woninglink(s) gevonden op de zoekpagina (${html.length} tekens HTML)`);
     if (links.length === 0) {
-      // Waarschijnlijkste oorzaak van 0 links bij een 200-status: een
-      // bot-detectiepagina i.p.v. de echte zoekresultaten -- de eerste
-      // paar honderd tekens (zonder scripts/styles) laten meestal meteen
-      // zien of dat hier aan de hand is (bv. "Even geduld", "verify you
-      // are human", "Access Denied", een cookie-muur, etc.).
+      // Waarschijnlijkste oorzaak van 0 links bij een 200-status: ofwel een
+      // oprechte 0-resultaten-pagina (geen ld+json meer aanwezig, zie
+      // extractDetailLinks), ofwel een bot-detectiepagina i.p.v. de echte
+      // zoekresultaten -- de eerste paar honderd tekens (zonder
+      // scripts/styles) laten meestal meteen zien welke van de twee het is
+      // (bv. "Even geduld", "verify you are human", "Access Denied", een
+      // cookie-muur, etc.).
       const snippet = html.replace(/<script[\s\S]*?<\/script>/gi, "").replace(/\s+/g, " ").slice(0, 500);
-      console.error(`[fundaFeed] LIVE 0 links -- vermoedelijk bot-blokkade of gewijzigde paginastructuur. HTML-snippet: ${snippet}`);
+      console.log(`[fundaFeed] LIVE 0 links. HTML-snippet: ${snippet}`);
       return [];
     }
 
-    const resultaten = await Promise.all(links.map(haalListingDetails));
+    const resultaten = await Promise.all(links.map((url) => haalListingDetails(url, kenmerken)));
+    const afgekeurd = resultaten.filter((item) => item === null).length;
+    if (afgekeurd > 0) {
+      console.log(`[fundaFeed] LIVE ${afgekeurd}/${links.length} link(s) afgekeurd door lokale kenmerken-verificatie of prijs`);
+    }
     return resultaten.filter((item): item is FundaFeedItem => item !== null).filter(bijBudget);
   } catch (err) {
     console.error("[fundaFeed] ophalen/parsen mislukt (funda.nl is geen officiële, ondersteunde koppeling):", err);

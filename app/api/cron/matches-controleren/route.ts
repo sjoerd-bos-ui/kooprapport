@@ -73,11 +73,12 @@ export async function GET(req: NextRequest) {
       dossiersGecontroleerd++;
 
       try {
+        const budgetMin = dossier.zoekopdracht.budgetMin ?? null;
         const budgetMax = dossier.zoekopdracht.budgetMax ?? null;
         const locatieLabel = dossier.zoekopdracht.locatie.label;
         const [bestaande, feedItems] = await Promise.all([
-          ruimVerouderdeMatchenOp(dossier.id, budgetMax, locatieLabel),
-          haalFundaMatches(dossier.zoekopdracht.locatie, budgetMax, dossier.zoekopdracht.kenmerken, MAX_ZICHTBARE_MATCHEN),
+          ruimVerouderdeMatchenOp(dossier.id, budgetMin, budgetMax, locatieLabel),
+          haalFundaMatches(dossier.zoekopdracht.locatie, budgetMin, budgetMax, dossier.zoekopdracht.kenmerken, MAX_ZICHTBARE_MATCHEN),
         ]);
         const bekendeUrls = new Set(bestaande.map((m) => m.url));
         const nieuweItems = feedItems.filter((item) => !bekendeUrls.has(item.url));

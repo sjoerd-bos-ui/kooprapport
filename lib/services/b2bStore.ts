@@ -311,6 +311,7 @@ export async function verwijderMatch(match: Pick<B2bWoningMatch, "id" | "klantId
 // toevallig kloppen.
 export async function ruimVerouderdeMatchenOp(
   klantId: string,
+  budgetMin: number | null,
   budgetMax: number | null,
   locatieLabel: string | null
 ): Promise<B2bWoningMatch[]> {
@@ -318,9 +319,13 @@ export async function ruimVerouderdeMatchenOp(
 
   const passend: B2bWoningMatch[] = [];
   for (const match of bestaande) {
+    // BUGFIX (diagnose-sessie "budget klopt niet"): een verhoogde ondergrens
+    // liet oude, te goedkope matches eerder gewoon staan, om dezelfde reden
+    // als de al bestaande budgetMax-check hieronder.
+    const onderBudget = budgetMin != null && budgetMin > 0 && match.prijs != null && match.prijs < budgetMin;
     const buitenBudget = budgetMax != null && budgetMax > 0 && match.prijs != null && match.prijs > budgetMax;
     const andereLocatie = locatieLabel != null && match.locatieLabel !== locatieLabel;
-    if (buitenBudget || andereLocatie) {
+    if (onderBudget || buitenBudget || andereLocatie) {
       await verwijderMatch(match);
     } else {
       passend.push(match);

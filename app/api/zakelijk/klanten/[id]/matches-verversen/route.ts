@@ -43,10 +43,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Kies eerst een locatie in de zoekopdracht." }, { status: 400 });
   }
 
+  const budgetMin = dossier.zoekopdracht?.budgetMin ?? null;
   const budgetMax = dossier.zoekopdracht?.budgetMax ?? null;
   const [bestaande, feedItems] = await Promise.all([
-    ruimVerouderdeMatchenOp(id, budgetMax, locatie.label),
-    haalFundaMatches(locatie, budgetMax, dossier.zoekopdracht?.kenmerken, MAX_DIRECT),
+    ruimVerouderdeMatchenOp(id, budgetMin, budgetMax, locatie.label),
+    haalFundaMatches(locatie, budgetMin, budgetMax, dossier.zoekopdracht?.kenmerken, MAX_DIRECT),
   ]);
   const bekendeUrls = new Set(bestaande.map((m) => m.url));
   const nieuweItems = feedItems.filter((item) => !bekendeUrls.has(item.url)).slice(0, MAX_DIRECT);
