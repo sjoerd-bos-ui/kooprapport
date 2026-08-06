@@ -1,13 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2bSessieUitRequest } from "@/lib/services/b2bAuth";
-import {
-  getKlantdossier,
-  zetKlantdossierStatus,
-  zetKlantdossierZoekopdracht,
-  zetKlantdossierMatchInstelling,
-  verwijderKlantdossier,
-} from "@/lib/services/b2bStore";
-import type { B2bDossierStatus, B2bZoekopdracht, B2bMatchInstelling } from "@/types/b2b";
+import { getKlantdossier, zetKlantdossierStatus, zetKlantdossierZoekopdracht, verwijderKlantdossier } from "@/lib/services/b2bStore";
+import { legeKenmerken, B2B_WONINGTYPES } from "@/types/b2b";
+import type { B2bDossierStatus, B2bZoekopdracht, B2bLocatie, B2bKenmerken } from "@/types/b2b";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const context = await getB2bSessieUitRequest(req);
@@ -19,7 +14,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Onbekend klantdossier." }, { status: 404 });
   }
 
-  let body: { status?: B2bDossierStatus; zoekopdracht?: Partial<B2bZoekopdracht>; matchInstelling?: Partial<B2bMatchInstelling> };
+  let body: { status?: B2bDossierStatus; zoekopdracht?: Partial<B2bZoekopdracht> };
   try {
     body = await req.json();
   } catch {
@@ -38,19 +33,45 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const z = body.zoekopdracht;
     const budgetMin = typeof z.budgetMin === "number" && z.budgetMin > 0 ? z.budgetMin : null;
     const budgetMax = typeof z.budgetMax === "number" && z.budgetMax > 0 ? z.budgetMax : null;
-    const locatieVoorkeur = typeof z.locatieVoorkeur === "string" && z.locatieVoorkeur.trim() ? z.locatieVoorkeur.trim().slice(0, 300) : null;
-    const moetHebben = typeof z.moetHebben === "string" && z.moetHebben.trim() ? z.moetHebben.trim().slice(0, 500) : null;
-    const bijgewerkt = await zetKlantdossierZoekopdracht(id, { budgetMin, budgetMax, locatieVoorkeur, moetHebben });
-    return NextResponse.json({ ok: true, dossier: bijgewerkt });
-  }
 
-  if (body.matchInstelling !== undefined) {
-    const m = body.matchInstelling;
-    const plaats = typeof m.plaats === "string" ? m.plaats.trim().slice(0, 100) : "";
-    if (m.actief && !plaats) {
-      return NextResponse.json({ error: "Vul een plaatsnaam in om matching aan te zetten." }, { status: 400 });
+    // Locatie moet, als aanwezig, een complete, expliciet gekozen suggestie
+    // zijn (zie LocatieAutocomplete.tsx/plaatsLookup.ts) -- nooit vrije tekst
+    // die hier alsnog tot een plaatsSlug omgezet zou worden.
+    let locatie: B2bLocatie | null = null;
+    if (z.locatie && typeof z.locatie === "object") {
+      const l = z.locatie as Partial<B2bLocatie>;
+      if (typeof l.label === "string" && l.label.trim() && typeof l.plaatsSlug === "string" && l.plaatsSlug.trim()) {
+        locatie = {
+          label: l.label.trim().slice(0, 120),
+          plaatsSlug: l.plaatsSlug.trim().toLowerCase().slice(0, 80),
+          wijkSlug: typeof l.wijkSlug === "string" && l.wijkSlug.trim() ? l.wijkSlug.trim().toLowerCase().slice(0, 80) : null,
+        };
+      } else {
+        return NextResponse.json({ error: "Kies een locatie uit de suggesties." }, { status: 400 });
+      }
     }
-    const bijgewerkt = await zetKlantdossierMatchInstelling(id, { actief: Boolean(m.actief), plaats });
+
+    const geldigeWoningtypes = B2B_WONINGTYPES.map((w) => w.waarde);
+    const kInput = (z.kenmerken ?? {}) as Partial<B2bKenmerken>;
+    const kenmerken: B2bKenmerken = {
+      ...legeKenmerken(),
+      woningtype: kInput.woningtype && geldigeWoningtypes.includes(kInput.woningtype) ? kInput.woningtype : null,
+      minKamers: typeof kInput.minKamers === "number" && kInput.minKamers > 0 ? Math.round(kInput.minKamers) : null,
+      minSlaapkamers: typeof kInput.minSlaapkamers === "number" && kInput.minSlaapkamers > 0 ? Math.round(kInput.minSlaapkamers) : null,
+      tuin: Boolean(kInput.tuin),
+      balkon: Boolean(kInput.balkon),
+      dakterras: Boolean(kInput.dakterras),
+      garage: Boolean(kInput.garage),
+      lift: Boolean(kInput.lift),
+      energielabelAB: Boolean(kInput.energielabelAB),
+    };
+
+    const matchenActief = Boolean(z.matchenActief);
+    if (matchenActief && !locatie) {
+      return NextResponse.json({ error: "Kies eerst een locatie om automatische meldingen aan te zetten." }, { status: 400 });
+    }
+
+    const bijgewerkt = await zetKlantdossierZoekopdracht(id, { budgetMin, budgetMax, locatie, kenmerken, matchenActief });
     return NextResponse.json({ ok: true, dossier: bijgewerkt });
   }
 

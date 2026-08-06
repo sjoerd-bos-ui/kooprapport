@@ -8,7 +8,6 @@ import DossierStatusKnop from "@/components/zakelijk/DossierStatusKnop";
 import DossierVergelijken from "@/components/zakelijk/DossierVergelijken";
 import ZoekopdrachtForm from "@/components/zakelijk/ZoekopdrachtForm";
 import VerwijderDossierKnop from "@/components/zakelijk/VerwijderDossierKnop";
-import MatchInstellingForm from "@/components/zakelijk/MatchInstellingForm";
 import MatchesKaart from "@/components/zakelijk/MatchesKaart";
 import { FileCheckIcon, TrendingUpIcon } from "@/components/report/icons";
 
@@ -118,9 +117,6 @@ export default async function ZakelijkKlantDetailPagina({ params }: { params: Pr
         <div>
           <div className="mb-4">
             <ZoekopdrachtForm dossierId={dossier.id} huidig={dossier.zoekopdracht} />
-          </div>
-          <div className="mb-4">
-            <MatchInstellingForm dossierId={dossier.id} huidig={dossier.matchInstelling} />
           </div>
           {matches.length > 0 && (
             <div className="mb-4">

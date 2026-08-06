@@ -1,4 +1,5 @@
 import { FUNDA_FEED_MODE, FUNDA_FEED_BASE_URL, FUNDA_FEED_TIMEOUT_MS } from "@/lib/config/fundaFeed";
+import type { B2bLocatie, B2bKenmerken } from "@/types/b2b";
 
 // -----------------------------------------------------------------------------
 // Adapter voor de niet-officiële Funda partner-RSS-feed (zie de uitleg in
@@ -24,7 +25,8 @@ export interface FundaFeedItem {
 
 // Vaste, kosteloze voorbeelddata voor mock-modus (standaard) -- zodat de
 // matchfunctie in de UI en met demo-data te testen is zonder ooit een
-// aanroep naar Funda te doen.
+// aanroep naar Funda te doen. 5 stuks (i.p.v. eerder 2), zodat de "direct 3
+// tot 5 woningen"-weergave ook in mock-modus realistisch oogt.
 const MOCK_ITEMS: FundaFeedItem[] = [
   {
     titel: "Boezemsingel 24, Rotterdam",
@@ -38,16 +40,60 @@ const MOCK_ITEMS: FundaFeedItem[] = [
     prijsLabel: "€ 525.000 k.k.",
     fotoUrl: null,
   },
+  {
+    titel: "Bergselaan 142, Rotterdam",
+    url: "https://www.funda.nl/koop/rotterdam/huis-00000003-bergselaan-142/",
+    prijsLabel: "€ 425.000 k.k.",
+    fotoUrl: null,
+  },
+  {
+    titel: "Kralingse Plaslaan 88, Rotterdam",
+    url: "https://www.funda.nl/koop/rotterdam/huis-00000004-kralingse-plaslaan-88/",
+    prijsLabel: "€ 389.000 k.k.",
+    fotoUrl: null,
+  },
+  {
+    titel: "Vroesenlaan 21, Rotterdam",
+    url: "https://www.funda.nl/koop/rotterdam/huis-00000005-vroesenlaan-21/",
+    prijsLabel: "€ 465.000 k.k.",
+    fotoUrl: null,
+  },
 ];
 
-function bouwZoekpad(plaats: string, budgetMax: number | null): string {
-  const p = plaats.trim().toLowerCase().replace(/\s+/g, "-");
-  if (budgetMax && budgetMax > 0) return `/${p}/0-${Math.round(budgetMax)}/`;
-  return `/${p}/`;
+// Vertaalt de gestructureerde kenmerken (#3, zie types/b2b.ts) naar extra
+// pad-segmenten in dezelfde "zo="-padstructuur die Funda's publieke
+// zoek-URLs gebruiken (bv. /rotterdam/tussenwoning/tuin/). Dit is, net als de
+// rest van deze feed, EMPIRISCH NIET GEVERIFIEERD tegen de live feed -- het
+// is de meest plausibele aanname op basis van Funda's publieke URL-schema.
+// Faalt dit segment stil (verkeerde/genegeerde filter), dan levert de feed
+// gewoon bredere of geen resultaten op, nooit een crash (zie haalFundaMatches
+// hieronder). energielabelAB wordt bewust NIET meegegeven: geen betrouwbaar
+// vermoeden van het juiste padsegment, en een verkeerd segment kan een hele
+// zoekopdracht onterecht leeglaten.
+function kenmerkenSegmenten(kenmerken: B2bKenmerken | undefined): string[] {
+  if (!kenmerken) return [];
+  const segmenten: string[] = [];
+  if (kenmerken.woningtype) segmenten.push(kenmerken.woningtype);
+  if (kenmerken.minKamers && kenmerken.minKamers > 0) segmenten.push(`${kenmerken.minKamers}-kamers`);
+  if (kenmerken.minSlaapkamers && kenmerken.minSlaapkamers > 0) segmenten.push(`${kenmerken.minSlaapkamers}-slaapkamers`);
+  if (kenmerken.tuin) segmenten.push("tuin");
+  if (kenmerken.balkon) segmenten.push("balkon");
+  if (kenmerken.dakterras) segmenten.push("dakterras");
+  if (kenmerken.garage) segmenten.push("garage");
+  if (kenmerken.lift) segmenten.push("lift");
+  return segmenten;
 }
 
-function bouwFeedUrl(plaats: string, budgetMax: number | null): string {
-  const params = new URLSearchParams({ type: "koop", zo: bouwZoekpad(plaats, budgetMax) });
+function bouwZoekpad(locatie: B2bLocatie, budgetMax: number | null, kenmerken: B2bKenmerken | undefined): string {
+  const delen = [locatie.plaatsSlug];
+  if (locatie.wijkSlug) delen.push(locatie.wijkSlug);
+  if (budgetMax && budgetMax > 0) delen.push(`0-${Math.round(budgetMax)}`);
+  delen.push(...kenmerkenSegmenten(kenmerken));
+  return `/${delen.join("/")}/`;
+}
+
+function bouwFeedUrl(locatie: B2bLocatie, budgetMax: number | null, kenmerken: B2bKenmerken | undefined): string {
+  const params = new URLSearchParams({ type: "koop", zo: bouwZoekpad(locatie, budgetMax, kenmerken) });
   return `${FUNDA_FEED_BASE_URL}/?${params.toString()}`;
 }
 
@@ -109,20 +155,25 @@ async function fetchMetTimeout(url: string, timeoutMs: number): Promise<Response
   }
 }
 
-export async function haalFundaMatches(plaats: string, budgetMax: number | null): Promise<FundaFeedItem[]> {
+export async function haalFundaMatches(
+  locatie: B2bLocatie,
+  budgetMax: number | null,
+  kenmerken?: B2bKenmerken,
+  limiet = 15
+): Promise<FundaFeedItem[]> {
   if (FUNDA_FEED_MODE !== "live") {
-    return MOCK_ITEMS;
+    return MOCK_ITEMS.slice(0, limiet);
   }
 
   try {
-    const url = bouwFeedUrl(plaats, budgetMax);
+    const url = bouwFeedUrl(locatie, budgetMax, kenmerken);
     const res = await fetchMetTimeout(url, FUNDA_FEED_TIMEOUT_MS);
     if (!res.ok) {
       console.error(`[fundaFeed] HTTP ${res.status} bij ophalen van ${url}`);
       return [];
     }
     const xml = await res.text();
-    return parseRssItems(xml).slice(0, 15);
+    return parseRssItems(xml).slice(0, limiet);
   } catch (err) {
     console.error("[fundaFeed] ophalen/parsen mislukt (mogelijk is de niet-officiële feed niet meer bereikbaar):", err);
     return [];

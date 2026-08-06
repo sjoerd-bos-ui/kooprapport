@@ -232,17 +232,6 @@ export async function zetKlantdossierZoekopdracht(
   return bijgewerkt;
 }
 
-export async function zetKlantdossierMatchInstelling(
-  id: string,
-  matchInstelling: B2bKlantdossier["matchInstelling"]
-): Promise<B2bKlantdossier | null> {
-  const dossier = await getKlantdossier(id);
-  if (!dossier) return null;
-  const bijgewerkt: B2bKlantdossier = { ...dossier, matchInstelling };
-  await kvSet(klantKey(id), JSON.stringify(bijgewerkt));
-  return bijgewerkt;
-}
-
 // Verwijdert een klantdossier (#3). Rapportdata wordt NOOIT weggegooid (dat
 // zou onomkeerbaar historische Altum-data kosten die de organisatie al
 // betaald heeft) -- rapporten die aan dit dossier hingen blijven gewoon

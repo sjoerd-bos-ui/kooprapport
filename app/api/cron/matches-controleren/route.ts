@@ -12,7 +12,7 @@ import { APP_BASE_URL } from "@/lib/config/payment";
 
 // -----------------------------------------------------------------------------
 // Cron-endpoint (zie vercel.json) dat voor elk klantdossier met actieve
-// matching (B2bKlantdossier.matchInstelling.actief) de Funda-feed opnieuw
+// matching (B2bKlantdossier.zoekopdracht.matchenActief) de Funda-feed opnieuw
 // ophaalt, nieuwe advertenties (nog niet eerder opgeslagen URL) bewaart als
 // B2bWoningMatch en de makelaar die het dossier heeft aangemaakt per e-mail
 // informeert -- zelfde beveiligingspatroon als /api/cron/reminder-email
@@ -26,7 +26,7 @@ import { APP_BASE_URL } from "@/lib/config/payment";
 //
 // DOSSIER_LIMIET: puur een grens op hoe lang één cron-aanroep duurt, geen
 // functionele limiet -- bij meer actieve dossiers dan dit pakt de volgende
-// geplande aanroep de rest gewoon weer op (matchInstelling.actief blijft
+// geplande aanroep de rest gewoon weer op (zoekopdracht.matchenActief blijft
 // staan totdat iemand het uitzet).
 // -----------------------------------------------------------------------------
 
@@ -52,14 +52,14 @@ export async function GET(req: NextRequest) {
   outer: for (const org of organisaties) {
     const dossiers = await listKlantdossiersVoorOrg(org.id);
     for (const dossier of dossiers) {
-      if (!dossier.matchInstelling?.actief || !dossier.matchInstelling.plaats) continue;
+      if (!dossier.zoekopdracht?.matchenActief || !dossier.zoekopdracht.locatie) continue;
       if (dossiersGecontroleerd >= DOSSIER_LIMIET) break outer;
       dossiersGecontroleerd++;
 
       try {
         const [bestaande, feedItems] = await Promise.all([
           listMatchenVoorKlant(dossier.id),
-          haalFundaMatches(dossier.matchInstelling.plaats, dossier.zoekopdracht?.budgetMax ?? null),
+          haalFundaMatches(dossier.zoekopdracht.locatie, dossier.zoekopdracht.budgetMax ?? null, dossier.zoekopdracht.kenmerken),
         ]);
         const bekendeUrls = new Set(bestaande.map((m) => m.url));
         const nieuweItems = feedItems.filter((item) => !bekendeUrls.has(item.url));

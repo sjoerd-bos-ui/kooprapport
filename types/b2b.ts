@@ -90,29 +90,72 @@ export interface B2bGebruiker {
 export type B2bDossierType = "aankoop" | "verkoop";
 export type B2bDossierStatus = "lopend" | "afgerond";
 
-// Essentiële informatie uit de zoekopdracht (#3) -- bewust een klein, vast
-// setje vrije velden i.p.v. een los notitieveld: budget en locatie zijn de
-// twee dingen die een makelaar bij vrijwel elk aankooptraject nodig heeft om
-// snel een nieuw rapport te kunnen beoordelen ("past dit binnen het budget
-// van deze klant?"). Alles optioneel/nullable, want een dossier kan zonder
-// ingevulde zoekopdracht bestaan (bestaande dossiers hebben dit veld niet).
+// Structured locatie -- gekozen via de PDOK-gevoede autocomplete (plaatsen
+// EN wijken, zie lib/services/plaatsLookup.ts), i.p.v. de eerdere vrije-tekst
+// "locatieVoorkeur". `plaatsSlug`/`wijkSlug` zijn daardoor meteen ook de
+// exacte Funda-zoekslugs -- dezelfde "nooit fuzzy-matchen tussen twee losse
+// naamgevingen"-discipline als eerder bij werkgebiedRegios, maar nu opgelost
+// dóór het los te leggen als aparte, gestructureerde velden i.p.v. door een
+// los duplicaat-veld (het eerdere B2bMatchInstelling.plaats) te verplichten.
+export interface B2bLocatie {
+  label: string; // weergavetekst, bv. "Kralingen, Rotterdam" of "Rotterdam"
+  plaatsSlug: string; // exacte Funda-plaatsslug, bv. "rotterdam"
+  wijkSlug: string | null; // exacte Funda-wijkslug indien een wijk gekozen is, anders null (= hele plaats)
+}
+
+export type B2bWoningtype = "tussenwoning" | "hoekwoning" | "2-onder-1-kapwoning" | "vrijstaande-woning" | "appartement";
+
+export const B2B_WONINGTYPES: { waarde: B2bWoningtype; label: string }[] = [
+  { waarde: "tussenwoning", label: "Tussenwoning" },
+  { waarde: "hoekwoning", label: "Hoekwoning" },
+  { waarde: "2-onder-1-kapwoning", label: "2-onder-1-kapwoning" },
+  { waarde: "vrijstaande-woning", label: "Vrijstaand" },
+  { waarde: "appartement", label: "Appartement" },
+];
+
+// Vaste, gestructureerde kenmerken i.p.v. de eerdere vrije-tekst "moetHebben"
+// -- bewust, want vrije tekst ("min. 4 kamers, tuin op het zuiden") is voor
+// een mens leesbaar maar onbruikbaar als filter op de Funda-feed. Elk
+// kenmerk hier komt direct overeen met een (vermoedelijk) filter-padsegment
+// van de feed, zie bouwZoekpad() in lib/data-sources/fundaFeed.ts.
+export interface B2bKenmerken {
+  woningtype: B2bWoningtype | null;
+  minKamers: number | null;
+  minSlaapkamers: number | null;
+  tuin: boolean;
+  balkon: boolean;
+  dakterras: boolean;
+  garage: boolean;
+  lift: boolean;
+  energielabelAB: boolean; // informatief kenmerk -- wordt NIET meegegeven als feed-filter (onzeker padsegment), alleen getoond/opgeslagen
+}
+
+export function legeKenmerken(): B2bKenmerken {
+  return {
+    woningtype: null,
+    minKamers: null,
+    minSlaapkamers: null,
+    tuin: false,
+    balkon: false,
+    dakterras: false,
+    garage: false,
+    lift: false,
+    energielabelAB: false,
+  };
+}
+
+// Essentiële informatie uit de zoekopdracht (#3) -- budget, locatie en
+// kenmerken. `matchenActief` vervangt het eerdere losse
+// B2bMatchInstelling-veld: nu de locatie al gestructureerd/exact is, heeft
+// de matchfunctie (#2) geen eigen duplicaat-plaatsveld meer nodig en is het
+// gewoon een aan/uit-stand op dezelfde zoekopdracht. Alles optioneel/
+// nullable, want een dossier kan zonder ingevulde zoekopdracht bestaan.
 export interface B2bZoekopdracht {
   budgetMin: number | null;
   budgetMax: number | null;
-  locatieVoorkeur: string | null; // vrije tekst, bv. "Rotterdam-Zuid, max 20 min. naar centrum"
-  moetHebben: string | null; // vrije tekst, bv. "min. 4 kamers, tuin op het zuiden, geen begane grond"
-}
-
-// Matching op nieuwe woningaanbiedingen (Funda e.d.) die aan de zoekopdracht
-// voldoen. Bewust een APARTE, expliciet door de makelaar ingevulde `plaats`
-// i.p.v. deze af te leiden uit zoekopdracht.locatieVoorkeur (vrije tekst,
-// zie B2bZoekopdracht hierboven) -- dezelfde "nooit fuzzy-matchen tussen twee
-// losse naamgevingen"-discipline als bij werkgebiedRegios/REGIO_OVERBIEDEN:
-// een verkeerd geraden plaatsnaam zou een lege of verkeerde feed opleveren
-// zonder dat iemand dat meteen doorheeft.
-export interface B2bMatchInstelling {
-  actief: boolean;
-  plaats: string; // exacte Funda-plaatsnaam, bv. "rotterdam" (lowercase, geen spaties -- zie lib/data-sources/fundaFeed.ts)
+  locatie: B2bLocatie | null;
+  kenmerken: B2bKenmerken;
+  matchenActief: boolean;
 }
 
 export interface B2bKlantdossier {
@@ -124,7 +167,6 @@ export interface B2bKlantdossier {
   aangemaaktOp: string; // ISO
   aangemaaktDoorUserId: string;
   zoekopdracht?: B2bZoekopdracht;
-  matchInstelling?: B2bMatchInstelling;
 }
 
 // Eén gevonden woningadvertentie die aan de zoekopdracht van een klant

@@ -404,6 +404,17 @@ export function LinkIcon({ className }: { className?: string }) {
   );
 }
 
+// Lift/elevator — hoort bij de kenmerken-checklist van de zoekopdracht
+// (#3, zie ZoekopdrachtForm.tsx): op- en neerwijzende pijlen in een schacht.
+export function LiftIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} className={className}>
+      <rect x="6" y="3" width="12" height="18" rx="1.5" />
+      <path d="M10 10 12 7l2 3M10 14l2 3 2-3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 // Zonnepanelen — hoort bij een specifieke maatregel op het
 // Verduurzamingsadvies-tabblad.
 export function SunIcon({ className }: { className?: string }) {
