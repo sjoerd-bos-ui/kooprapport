@@ -76,11 +76,22 @@ export async function GET(req: NextRequest) {
         const budgetMin = dossier.zoekopdracht.budgetMin ?? null;
         const budgetMax = dossier.zoekopdracht.budgetMax ?? null;
         const locatieLabel = dossier.zoekopdracht.locatie.label;
-        const [bestaande, feedItems] = await Promise.all([
-          ruimVerouderdeMatchenOp(dossier.id, budgetMin, budgetMax, locatieLabel),
-          haalFundaMatches(dossier.zoekopdracht.locatie, budgetMin, budgetMax, dossier.zoekopdracht.kenmerken, MAX_ZICHTBARE_MATCHEN),
-        ]);
+        // BUGFIX (diagnose-sessie "wat hebben we maandelijks nodig"): niet meer
+        // parallel -- de bekende matchURL's moeten eerst bekend zijn zodat
+        // haalFundaMatches geen proxy-credits verspilt aan detailpagina's van
+        // woningen die al bekend zijn. Dit is de dagelijkse cron, dus juist
+        // hier (elke dag, voor elk actief dossier) levert dit verreweg de
+        // grootste besparing op.
+        const bestaande = await ruimVerouderdeMatchenOp(dossier.id, budgetMin, budgetMax, locatieLabel);
         const bekendeUrls = new Set(bestaande.map((m) => m.url));
+        const feedItems = await haalFundaMatches(
+          dossier.zoekopdracht.locatie,
+          budgetMin,
+          budgetMax,
+          dossier.zoekopdracht.kenmerken,
+          MAX_ZICHTBARE_MATCHEN,
+          bekendeUrls
+        );
         const nieuweItems = feedItems.filter((item) => !bekendeUrls.has(item.url));
         if (nieuweItems.length === 0) continue;
 

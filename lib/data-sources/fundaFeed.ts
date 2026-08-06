@@ -530,12 +530,23 @@ async function haalListingDetails(detailUrl: string, kenmerken: B2bKenmerken | u
 // de lopende deployment, en bij live-modus ook of de zoekpagina uberhaupt
 // echte woninglinks teruggeeft. Mag na de eerste geslaagde live-run weer
 // verwijderd/afgezwakt worden.
+//
+// BUGFIX (diagnose-sessie "wat hebben we maandelijks nodig"): dit haalde
+// voorheen de detailpagina van ELKE gevonden link op, ook van woningen die
+// al als match bekend waren van een vorige ronde (dedupe gebeurde pas
+// daarna, bij de aanroeper) -- bij de dagelijkse cron kostte dat élke dag
+// opnieuw proxy-verzoeken aan dezelfde, allang bekende woningen. `bekendeUrls`
+// laat de aanroeper de al opgeslagen matches meegeven zodat de detailpagina
+// van die links helemaal wordt overgeslagen -- de link blijft wel meetellen
+// voor `limiet` (zelfde resultatenselectie als voorheen), alleen het dure
+// detailpagina-verzoek wordt bespaard.
 export async function haalFundaMatches(
   locatie: B2bLocatie,
   budgetMin: number | null,
   budgetMax: number | null,
-  kenmerken?: B2bKenmerken,
-  limiet = 15
+  kenmerken: B2bKenmerken | undefined,
+  limiet = 15,
+  bekendeUrls: Set<string> = new Set()
 ): Promise<FundaFeedItem[]> {
   console.log(
     `[fundaFeed] modus=${FUNDA_FEED_MODE} proxy=${SCRAPEDO_TOKEN ? "scrape.do" : "geen (directe fetch, wordt vermoedelijk geblokkeerd vanaf Vercel)"} locatie=${locatie.plaatsSlug}${locatie.wijkSlug ? "/" + locatie.wijkSlug : ""}`
@@ -586,10 +597,17 @@ export async function haalFundaMatches(
       return [];
     }
 
-    const resultaten = await Promise.all(links.map((url) => haalListingDetails(url, kenmerken)));
+    const nieuweLinks = links.filter((url) => !bekendeUrls.has(url));
+    const overgeslagen = links.length - nieuweLinks.length;
+    if (overgeslagen > 0) {
+      console.log(`[fundaFeed] LIVE ${overgeslagen}/${links.length} link(s) al bekend -- detailpagina overgeslagen (credits bespaard)`);
+    }
+    if (nieuweLinks.length === 0) return [];
+
+    const resultaten = await Promise.all(nieuweLinks.map((url) => haalListingDetails(url, kenmerken)));
     const afgekeurd = resultaten.filter((item) => item === null).length;
     if (afgekeurd > 0) {
-      console.log(`[fundaFeed] LIVE ${afgekeurd}/${links.length} link(s) afgekeurd door lokale kenmerken-verificatie of prijs`);
+      console.log(`[fundaFeed] LIVE ${afgekeurd}/${nieuweLinks.length} link(s) afgekeurd door lokale kenmerken-verificatie of prijs`);
     }
     return resultaten.filter((item): item is FundaFeedItem => item !== null).filter(bijBudget);
   } catch (err) {

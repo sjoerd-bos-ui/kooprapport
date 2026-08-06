@@ -45,11 +45,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const budgetMin = dossier.zoekopdracht?.budgetMin ?? null;
   const budgetMax = dossier.zoekopdracht?.budgetMax ?? null;
-  const [bestaande, feedItems] = await Promise.all([
-    ruimVerouderdeMatchenOp(id, budgetMin, budgetMax, locatie.label),
-    haalFundaMatches(locatie, budgetMin, budgetMax, dossier.zoekopdracht?.kenmerken, MAX_DIRECT),
-  ]);
+  // BUGFIX (diagnose-sessie "wat hebben we maandelijks nodig"): ruimVerouderdeMatchenOp
+  // moet nu vóór haalFundaMatches klaar zijn (niet meer parallel) -- de al
+  // bekende matchURL's worden meegegeven zodat haalFundaMatches geen
+  // proxy-credits meer verspilt aan detailpagina's van woningen die al
+  // bekend zijn.
+  const bestaande = await ruimVerouderdeMatchenOp(id, budgetMin, budgetMax, locatie.label);
   const bekendeUrls = new Set(bestaande.map((m) => m.url));
+  const feedItems = await haalFundaMatches(locatie, budgetMin, budgetMax, dossier.zoekopdracht?.kenmerken, MAX_DIRECT, bekendeUrls);
   const nieuweItems = feedItems.filter((item) => !bekendeUrls.has(item.url)).slice(0, MAX_DIRECT);
 
   for (const item of nieuweItems) {
