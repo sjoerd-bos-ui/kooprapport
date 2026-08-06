@@ -12,6 +12,7 @@ import ReportTabs from "@/components/report/ReportTabs";
 import PreviewSummary from "@/components/report/PreviewSummary";
 import DataCard from "@/components/report/DataCard";
 import PaywallModal from "@/components/report/PaywallModal";
+import VraagHetRapport from "@/components/report/VraagHetRapport";
 import VeiligheidsScore from "@/components/report/VeiligheidsScore";
 import FunderingRedenering from "@/components/report/FunderingRedenering";
 import InfoTooltip from "@/components/report/InfoTooltip";
@@ -1798,6 +1799,8 @@ export default function ReportView({
             )}
           </div>
         )}
+
+        {isUnlocked && <VraagHetRapport report={report} />}
       </Container>
       {!naaktModus && <SiteFooter />}
 
