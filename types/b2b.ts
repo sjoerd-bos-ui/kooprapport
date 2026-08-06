@@ -182,10 +182,16 @@ export interface B2bWoningMatch {
   bron: B2bMatchBron;
   titel: string;
   url: string;
+  prijs: number | null; // ruwe waarde (voor budgetvergelijking) -- prijsLabel is alleen de weergavetekst
   prijsLabel: string | null;
   fotoUrl: string | null;
   gevondenOp: string; // ISO
 }
+
+// Harde grens op het aantal getoonde matches (zie b2bStore.ts#kapMatchenOpMax)
+// -- bewuste keuze: liever eerlijk "maximaal 10, en anders minder" dan een
+// lijst die blijft aangroeien met steeds oudere/marginale treffers.
+export const MAX_ZICHTBARE_MATCHEN = 10;
 
 export interface B2bRapportAanvraag {
   id: string;

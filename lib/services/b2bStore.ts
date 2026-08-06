@@ -286,6 +286,48 @@ export async function listMatchenVoorKlant(klantId: string): Promise<B2bWoningMa
   return matches.filter((m): m is B2bWoningMatch => m !== null).reverse();
 }
 
+export async function verwijderMatch(match: Pick<B2bWoningMatch, "id" | "klantId">): Promise<void> {
+  await kvDel(matchKey(match.id));
+  await kvZRem(klantMatchenIndexKey(match.klantId), match.id);
+}
+
+// BUGFIX: matches werden alleen ooit TOEGEVOEGD, nooit opgeruimd -- verlaagde
+// je het budget in de zoekopdracht (bv. van €650.000 naar €400.000), dan
+// bleven eerder gevonden woningen boven dat nieuwe budget gewoon zichtbaar
+// staan (ze waren immers al opgeslagen vóór de wijziging). Wordt aangeroepen
+// vóór een nieuwe matches-verversen/cron-ronde: verwijdert bestaande matches
+// die niet meer aan het huidige budgetMax voldoen, en geeft de resterende
+// (nog wel passende) matches terug zodat de aanroeper daarna nog weet welke
+// URL's al bekend zijn (voor de dedupe-stap).
+export async function ruimVerouderdeMatchenOp(klantId: string, budgetMax: number | null): Promise<B2bWoningMatch[]> {
+  const bestaande = await listMatchenVoorKlant(klantId);
+  if (budgetMax == null || budgetMax <= 0) return bestaande;
+
+  const passend: B2bWoningMatch[] = [];
+  for (const match of bestaande) {
+    if (match.prijs != null && match.prijs > budgetMax) {
+      await verwijderMatch(match);
+    } else {
+      passend.push(match);
+    }
+  }
+  return passend;
+}
+
+// Toont "maximaal 10 resultaten" is een bewuste, harde grens (zie het gesprek
+// hierover): een matchlijst die blijft aangroeien totdat hij half uit
+// verouderde/marginale treffers bestaat is erger dan gewoon eerlijk minder
+// tonen. Wordt aangeroepen NA het opslaan van nieuwe matches -- knipt de
+// oudste matches weg zodra het totaal boven maxAantal komt (listMatchenVoorKlant
+// geeft al nieuwste-eerst terug, dus "oudste" = alles ná index maxAantal).
+export async function kapMatchenOpMax(klantId: string, maxAantal: number): Promise<void> {
+  const huidige = await listMatchenVoorKlant(klantId);
+  const teVeel = huidige.slice(maxAantal);
+  for (const match of teVeel) {
+    await verwijderMatch(match);
+  }
+}
+
 // --- Rapportaanvragen -----------------------------------------------------------
 
 export async function maakRapportAanvraag(

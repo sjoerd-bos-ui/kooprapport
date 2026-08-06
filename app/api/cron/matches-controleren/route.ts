@@ -2,13 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   listAlleOrganisaties,
   listKlantdossiersVoorOrg,
-  listMatchenVoorKlant,
+  ruimVerouderdeMatchenOp,
+  kapMatchenOpMax,
   maakMatch,
   getGebruiker,
 } from "@/lib/services/b2bStore";
 import { haalFundaMatches } from "@/lib/data-sources/fundaFeed";
 import { stuurNieuweMatchesEmail } from "@/lib/services/email";
 import { APP_BASE_URL } from "@/lib/config/payment";
+import { MAX_ZICHTBARE_MATCHEN } from "@/types/b2b";
 
 // -----------------------------------------------------------------------------
 // Cron-endpoint (zie vercel.json) dat voor elk klantdossier met actieve
@@ -71,9 +73,10 @@ export async function GET(req: NextRequest) {
       dossiersGecontroleerd++;
 
       try {
+        const budgetMax = dossier.zoekopdracht.budgetMax ?? null;
         const [bestaande, feedItems] = await Promise.all([
-          listMatchenVoorKlant(dossier.id),
-          haalFundaMatches(dossier.zoekopdracht.locatie, dossier.zoekopdracht.budgetMax ?? null, dossier.zoekopdracht.kenmerken),
+          ruimVerouderdeMatchenOp(dossier.id, budgetMax),
+          haalFundaMatches(dossier.zoekopdracht.locatie, budgetMax, dossier.zoekopdracht.kenmerken, MAX_ZICHTBARE_MATCHEN),
         ]);
         const bekendeUrls = new Set(bestaande.map((m) => m.url));
         const nieuweItems = feedItems.filter((item) => !bekendeUrls.has(item.url));
@@ -86,10 +89,12 @@ export async function GET(req: NextRequest) {
             bron: "funda",
             titel: item.titel,
             url: item.url,
+            prijs: item.prijs,
             prijsLabel: item.prijsLabel,
             fotoUrl: item.fotoUrl,
           });
         }
+        await kapMatchenOpMax(dossier.id, MAX_ZICHTBARE_MATCHEN);
         nieuweMatches += nieuweItems.length;
 
         const makelaar = await getGebruiker(dossier.aangemaaktDoorUserId);

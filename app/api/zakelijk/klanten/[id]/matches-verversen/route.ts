@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2bSessieUitRequest } from "@/lib/services/b2bAuth";
-import { getKlantdossier, listMatchenVoorKlant, maakMatch } from "@/lib/services/b2bStore";
+import { getKlantdossier, ruimVerouderdeMatchenOp, kapMatchenOpMax, maakMatch } from "@/lib/services/b2bStore";
 import { haalFundaMatches } from "@/lib/data-sources/fundaFeed";
+import { MAX_ZICHTBARE_MATCHEN } from "@/types/b2b";
 
 // -----------------------------------------------------------------------------
 // Directe matchcontrole (#3-aanvulling): meteen na het opslaan van een
@@ -11,6 +12,13 @@ import { haalFundaMatches } from "@/lib/data-sources/fundaFeed";
 // opslaglogica als die cron (dedupe op URL, via maakMatch), alleen hier
 // synchroon voor één dossier en met een kleine limiet (MAX_DIRECT) zodat de
 // pagina niet te lang op een eerste resultaat hoeft te wachten.
+//
+// BUGFIX: eerst werden matches alleen ooit toegevoegd -- een verlaagd budget
+// liet oude, te dure matches gewoon staan, en er was geen bovengrens op het
+// totaal. ruimVerouderdeMatchenOp() verwijdert eerst wat niet meer bij het
+// huidige budget past, kapMatchenOpMax() knipt na het opslaan het totaal
+// terug tot MAX_ZICHTBARE_MATCHEN (10) -- "geen passende woningen? dan zijn
+// het er ook gewoon minder", zie het gesprek hierover.
 // -----------------------------------------------------------------------------
 
 const MAX_DIRECT = 5;
@@ -35,9 +43,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Kies eerst een locatie in de zoekopdracht." }, { status: 400 });
   }
 
+  const budgetMax = dossier.zoekopdracht?.budgetMax ?? null;
   const [bestaande, feedItems] = await Promise.all([
-    listMatchenVoorKlant(id),
-    haalFundaMatches(locatie, dossier.zoekopdracht?.budgetMax ?? null, dossier.zoekopdracht?.kenmerken, MAX_DIRECT),
+    ruimVerouderdeMatchenOp(id, budgetMax),
+    haalFundaMatches(locatie, budgetMax, dossier.zoekopdracht?.kenmerken, MAX_DIRECT),
   ]);
   const bekendeUrls = new Set(bestaande.map((m) => m.url));
   const nieuweItems = feedItems.filter((item) => !bekendeUrls.has(item.url)).slice(0, MAX_DIRECT);
@@ -49,10 +58,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       bron: "funda",
       titel: item.titel,
       url: item.url,
+      prijs: item.prijs,
       prijsLabel: item.prijsLabel,
       fotoUrl: item.fotoUrl,
     });
   }
+  await kapMatchenOpMax(id, MAX_ZICHTBARE_MATCHEN);
 
   return NextResponse.json({ ok: true, nieuweMatches: nieuweItems.length, totaalGevonden: feedItems.length });
 }

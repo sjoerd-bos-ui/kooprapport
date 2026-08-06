@@ -25,6 +25,7 @@ import type { B2bLocatie, B2bKenmerken, B2bWoningtype } from "@/types/b2b";
 export interface FundaFeedItem {
   titel: string;
   url: string;
+  prijs: number | null; // ruwe waarde -- nodig om zelf nog eens hard tegen budgetMax te filteren
   prijsLabel: string | null;
   fotoUrl: string | null;
 }
@@ -37,30 +38,35 @@ const MOCK_ITEMS: FundaFeedItem[] = [
   {
     titel: "Boezemsingel 24, Rotterdam",
     url: "https://www.funda.nl/detail/koop/rotterdam/huis-boezemsingel-24/00000001/",
+    prijs: 489000,
     prijsLabel: "€ 489.000 k.k.",
     fotoUrl: "https://picsum.photos/seed/boezemsingel24/480/360",
   },
   {
     titel: "Zwart Janstraat 51, Rotterdam",
     url: "https://www.funda.nl/detail/koop/rotterdam/huis-zwart-janstraat-51/00000002/",
+    prijs: 525000,
     prijsLabel: "€ 525.000 k.k.",
     fotoUrl: "https://picsum.photos/seed/zwartjanstraat51/480/360",
   },
   {
     titel: "Bergselaan 142, Rotterdam",
     url: "https://www.funda.nl/detail/koop/rotterdam/huis-bergselaan-142/00000003/",
+    prijs: 425000,
     prijsLabel: "€ 425.000 k.k.",
     fotoUrl: "https://picsum.photos/seed/bergselaan142/480/360",
   },
   {
     titel: "Kralingse Plaslaan 88, Rotterdam",
     url: "https://www.funda.nl/detail/koop/rotterdam/huis-kralingse-plaslaan-88/00000004/",
+    prijs: 389000,
     prijsLabel: "€ 389.000 k.k.",
     fotoUrl: "https://picsum.photos/seed/kralingseplaslaan88/480/360",
   },
   {
     titel: "Vroesenlaan 21, Rotterdam",
     url: "https://www.funda.nl/detail/koop/rotterdam/huis-vroesenlaan-21/00000005/",
+    prijs: 465000,
     prijsLabel: "€ 465.000 k.k.",
     fotoUrl: "https://picsum.photos/seed/vroesenlaan21/480/360",
   },
@@ -215,10 +221,14 @@ function extractJsonLd(html: string): FundaJsonLd | null {
   return null;
 }
 
-function formatPrijs(prijs: number | string | undefined): string | null {
+function naarPrijsGetal(prijs: number | string | undefined): number | null {
   if (prijs == null) return null;
   const bedrag = typeof prijs === "string" ? Number(prijs) : prijs;
-  if (!Number.isFinite(bedrag) || bedrag <= 0) return null;
+  return Number.isFinite(bedrag) && bedrag > 0 ? bedrag : null;
+}
+
+function formatPrijs(bedrag: number | null): string | null {
+  if (bedrag == null) return null;
   // "k.k." is een aanname (kosten koper is verreweg het gangbaarst bij
   // bestaande bouw) -- de JSON-LD zelf specificeert v.o.n./k.k. niet apart.
   return `${new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(bedrag)} k.k.`;
@@ -235,11 +245,13 @@ async function haalListingDetails(detailUrl: string): Promise<FundaFeedItem | nu
     const straat = ld.address?.streetAddress ?? ld.name ?? "";
     const plaats = ld.address?.addressLocality ?? "";
     const titel = [straat, plaats].filter(Boolean).join(", ") || ld.name || "Woning";
+    const prijs = naarPrijsGetal(ld.offers?.price);
 
     return {
       titel,
       url: detailUrl,
-      prijsLabel: formatPrijs(ld.offers?.price),
+      prijs,
+      prijsLabel: formatPrijs(prijs),
       fotoUrl: ld.image ?? null,
     };
   } catch {
@@ -265,8 +277,16 @@ export async function haalFundaMatches(
     `[fundaFeed] modus=${FUNDA_FEED_MODE} proxy=${SCRAPEDO_TOKEN ? "scrape.do" : "geen (directe fetch, wordt vermoedelijk geblokkeerd vanaf Vercel)"} locatie=${locatie.plaatsSlug}${locatie.wijkSlug ? "/" + locatie.wijkSlug : ""}`
   );
 
+  // BUGFIX: "budget verlaagd, maar oude/te dure resultaten bleven ertussen
+  // staan" bleek deels ook hier te zitten -- Funda's eigen price-URL-param
+  // vertrouwen we niet blindelings (zie eerdere ontdekking dat selected_area
+  // ook al eens stilzwijgend werd genegeerd). Daarom hard nafilteren op
+  // budgetMax, voor zowel mock- als live-modus, ongeacht wat de bron zelf al
+  // deed -- een woning boven budget hoort hier nooit uit te komen.
+  const bijBudget = (item: FundaFeedItem): boolean => budgetMax == null || budgetMax <= 0 || item.prijs == null || item.prijs <= budgetMax;
+
   if (FUNDA_FEED_MODE !== "live") {
-    return MOCK_ITEMS.slice(0, limiet);
+    return MOCK_ITEMS.filter(bijBudget).slice(0, limiet);
   }
 
   try {
@@ -292,7 +312,7 @@ export async function haalFundaMatches(
     }
 
     const resultaten = await Promise.all(links.map(haalListingDetails));
-    return resultaten.filter((item): item is FundaFeedItem => item !== null);
+    return resultaten.filter((item): item is FundaFeedItem => item !== null).filter(bijBudget);
   } catch (err) {
     console.error("[fundaFeed] ophalen/parsen mislukt (funda.nl is geen officiële, ondersteunde koppeling):", err);
     return [];
