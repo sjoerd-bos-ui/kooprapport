@@ -9,6 +9,7 @@ import type {
   B2bAbonnementTier,
   B2bUitnodiging,
   B2bTierWijzigingsverzoek,
+  B2bWoningMatch,
 } from "@/types/b2b";
 
 // -----------------------------------------------------------------------------
@@ -54,6 +55,12 @@ function orgRapportenIndexKey(orgId: string) {
 function klantRapportenIndexKey(klantId: string) {
   return `b2b-klant-rapporten:${klantId}`;
 }
+function matchKey(id: string) {
+  return `b2b-match:${id}`;
+}
+function klantMatchenIndexKey(klantId: string) {
+  return `b2b-klant-matches:${klantId}`;
+}
 // Gebruiksteller per organisatie + kalendermaand (bv. "2026-08"). Geen
 // TTL-loze counter mogelijk in deze kvStore (kvIncrWithTtl zet altijd een
 // EXPIRE), dus een ruime 60 dagen -- ruim genoeg om de hele maand + wat marge
@@ -69,6 +76,13 @@ export function huidigeJaarMaand(datum = new Date()): string {
 
 // --- Organisaties -----------------------------------------------------------
 
+// Index van ALLE organisatie-id's, ongeacht welke -- tot nu toe was er nooit
+// een plek nodig die over alle organisaties heen moest itereren (elke andere
+// query gaat via een bekende orgId). De matches-cron (app/api/cron/matches-
+// controleren/route.ts) moet wél elke organisatie met actieve matching
+// kunnen vinden zonder de id's vooraf te kennen, vandaar deze losse index.
+const ALLE_ORGS_INDEX_KEY = "b2b-alle-orgs";
+
 export async function maakOrganisatie(
   naam: string,
   tier: B2bAbonnementTier,
@@ -83,7 +97,25 @@ export async function maakOrganisatie(
     aangemaaktOp: new Date().toISOString(),
   };
   await kvSet(orgKey(org.id), JSON.stringify(org));
+  await kvZAdd(ALLE_ORGS_INDEX_KEY, Date.now(), org.id);
   return org;
+}
+
+export async function listAlleOrganisaties(): Promise<B2bOrganisatie[]> {
+  const ids = await kvZRangeByScore(ALLE_ORGS_INDEX_KEY, VER_IN_DE_TOEKOMST);
+  const orgs = await Promise.all(ids.map((id) => getOrganisatie(id)));
+  return orgs.filter((o): o is B2bOrganisatie => o !== null);
+}
+
+// Eenmalige backfill voor organisaties die vóór ALLE_ORGS_INDEX_KEY zijn
+// aangemaakt (dus nog niet in die index staan) -- zie app/api/admin/zakelijk/
+// organisaties/herindexeren/route.ts. Idempotent: kvZAdd op een member die er
+// al in staat overschrijft alleen de score, geen dubbele entry.
+export async function herindexeerOrganisatie(orgId: string): Promise<boolean> {
+  const org = await getOrganisatie(orgId);
+  if (!org) return false;
+  await kvZAdd(ALLE_ORGS_INDEX_KEY, Date.now(), orgId);
+  return true;
 }
 
 export async function getOrganisatie(id: string): Promise<B2bOrganisatie | null> {
@@ -200,12 +232,25 @@ export async function zetKlantdossierZoekopdracht(
   return bijgewerkt;
 }
 
+export async function zetKlantdossierMatchInstelling(
+  id: string,
+  matchInstelling: B2bKlantdossier["matchInstelling"]
+): Promise<B2bKlantdossier | null> {
+  const dossier = await getKlantdossier(id);
+  if (!dossier) return null;
+  const bijgewerkt: B2bKlantdossier = { ...dossier, matchInstelling };
+  await kvSet(klantKey(id), JSON.stringify(bijgewerkt));
+  return bijgewerkt;
+}
+
 // Verwijdert een klantdossier (#3). Rapportdata wordt NOOIT weggegooid (dat
 // zou onomkeerbaar historische Altum-data kosten die de organisatie al
 // betaald heeft) -- rapporten die aan dit dossier hingen blijven gewoon
 // bestaan in de organisatiebrede /rapporten-lijst, alleen ontkoppeld
 // (klantId -> null) zodat er nergens een rapport overblijft dat naar een
-// niet-bestaand dossier verwijst.
+// niet-bestaand dossier verwijst. Matches (hieronder) horen wél specifiek bij
+// dit dossier en hebben geen zelfstandige waarde -- die worden dus wel
+// meeverwijderd.
 export async function verwijderKlantdossier(id: string): Promise<boolean> {
   const dossier = await getKlantdossier(id);
   if (!dossier) return false;
@@ -218,10 +263,38 @@ export async function verwijderKlantdossier(id: string): Promise<boolean> {
     }
   }
 
+  const matchIds = await kvZRangeByScore(klantMatchenIndexKey(id), VER_IN_DE_TOEKOMST);
+  for (const matchId of matchIds) {
+    await kvDel(matchKey(matchId));
+  }
+  await kvDel(klantMatchenIndexKey(id));
+
   await kvDel(klantKey(id));
   await kvDel(klantRapportenIndexKey(id));
   await kvZRem(orgKlantenIndexKey(dossier.orgId), id);
   return true;
+}
+
+// --- Woning-matches (Funda e.d.) ---------------------------------------------
+
+export async function maakMatch(match: Omit<B2bWoningMatch, "id" | "gevondenOp">): Promise<B2bWoningMatch> {
+  const record: B2bWoningMatch = {
+    ...match,
+    id: randomUUID(),
+    gevondenOp: new Date().toISOString(),
+  };
+  await kvSet(matchKey(record.id), JSON.stringify(record));
+  await kvZAdd(klantMatchenIndexKey(record.klantId), Date.now(), record.id);
+  return record;
+}
+
+export async function listMatchenVoorKlant(klantId: string): Promise<B2bWoningMatch[]> {
+  const ids = await kvZRangeByScore(klantMatchenIndexKey(klantId), VER_IN_DE_TOEKOMST);
+  const matches = await Promise.all(ids.map(async (id) => {
+    const raw = await kvGet(matchKey(id));
+    return raw ? (JSON.parse(raw) as B2bWoningMatch) : null;
+  }));
+  return matches.filter((m): m is B2bWoningMatch => m !== null).reverse();
 }
 
 // --- Rapportaanvragen -----------------------------------------------------------

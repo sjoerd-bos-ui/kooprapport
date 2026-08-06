@@ -103,6 +103,18 @@ export interface B2bZoekopdracht {
   moetHebben: string | null; // vrije tekst, bv. "min. 4 kamers, tuin op het zuiden, geen begane grond"
 }
 
+// Matching op nieuwe woningaanbiedingen (Funda e.d.) die aan de zoekopdracht
+// voldoen. Bewust een APARTE, expliciet door de makelaar ingevulde `plaats`
+// i.p.v. deze af te leiden uit zoekopdracht.locatieVoorkeur (vrije tekst,
+// zie B2bZoekopdracht hierboven) -- dezelfde "nooit fuzzy-matchen tussen twee
+// losse naamgevingen"-discipline als bij werkgebiedRegios/REGIO_OVERBIEDEN:
+// een verkeerd geraden plaatsnaam zou een lege of verkeerde feed opleveren
+// zonder dat iemand dat meteen doorheeft.
+export interface B2bMatchInstelling {
+  actief: boolean;
+  plaats: string; // exacte Funda-plaatsnaam, bv. "rotterdam" (lowercase, geen spaties -- zie lib/data-sources/fundaFeed.ts)
+}
+
 export interface B2bKlantdossier {
   id: string;
   orgId: string;
@@ -112,6 +124,25 @@ export interface B2bKlantdossier {
   aangemaaktOp: string; // ISO
   aangemaaktDoorUserId: string;
   zoekopdracht?: B2bZoekopdracht;
+  matchInstelling?: B2bMatchInstelling;
+}
+
+// Eén gevonden woningadvertentie die aan de zoekopdracht van een klant
+// voldoet (zie app/api/cron/matches-controleren/route.ts). `bron` is bewust
+// een union (nu alleen "funda") zodat een volgende platform (Pararius,
+// Jaap.nl) later zonder migratie toegevoegd kan worden.
+export type B2bMatchBron = "funda";
+
+export interface B2bWoningMatch {
+  id: string;
+  klantId: string;
+  orgId: string;
+  bron: B2bMatchBron;
+  titel: string;
+  url: string;
+  prijsLabel: string | null;
+  fotoUrl: string | null;
+  gevondenOp: string; // ISO
 }
 
 export interface B2bRapportAanvraag {

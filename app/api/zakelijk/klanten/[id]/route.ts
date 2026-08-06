@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2bSessieUitRequest } from "@/lib/services/b2bAuth";
-import { getKlantdossier, zetKlantdossierStatus, zetKlantdossierZoekopdracht, verwijderKlantdossier } from "@/lib/services/b2bStore";
-import type { B2bDossierStatus, B2bZoekopdracht } from "@/types/b2b";
+import {
+  getKlantdossier,
+  zetKlantdossierStatus,
+  zetKlantdossierZoekopdracht,
+  zetKlantdossierMatchInstelling,
+  verwijderKlantdossier,
+} from "@/lib/services/b2bStore";
+import type { B2bDossierStatus, B2bZoekopdracht, B2bMatchInstelling } from "@/types/b2b";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const context = await getB2bSessieUitRequest(req);
@@ -13,7 +19,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Onbekend klantdossier." }, { status: 404 });
   }
 
-  let body: { status?: B2bDossierStatus; zoekopdracht?: Partial<B2bZoekopdracht> };
+  let body: { status?: B2bDossierStatus; zoekopdracht?: Partial<B2bZoekopdracht>; matchInstelling?: Partial<B2bMatchInstelling> };
   try {
     body = await req.json();
   } catch {
@@ -35,6 +41,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const locatieVoorkeur = typeof z.locatieVoorkeur === "string" && z.locatieVoorkeur.trim() ? z.locatieVoorkeur.trim().slice(0, 300) : null;
     const moetHebben = typeof z.moetHebben === "string" && z.moetHebben.trim() ? z.moetHebben.trim().slice(0, 500) : null;
     const bijgewerkt = await zetKlantdossierZoekopdracht(id, { budgetMin, budgetMax, locatieVoorkeur, moetHebben });
+    return NextResponse.json({ ok: true, dossier: bijgewerkt });
+  }
+
+  if (body.matchInstelling !== undefined) {
+    const m = body.matchInstelling;
+    const plaats = typeof m.plaats === "string" ? m.plaats.trim().slice(0, 100) : "";
+    if (m.actief && !plaats) {
+      return NextResponse.json({ error: "Vul een plaatsnaam in om matching aan te zetten." }, { status: 400 });
+    }
+    const bijgewerkt = await zetKlantdossierMatchInstelling(id, { actief: Boolean(m.actief), plaats });
     return NextResponse.json({ ok: true, dossier: bijgewerkt });
   }
 

@@ -1,13 +1,15 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getB2bSessieUitCookies } from "@/lib/services/b2bAuth";
-import { getKlantdossier, listRapportenVoorKlant } from "@/lib/services/b2bStore";
+import { getKlantdossier, listRapportenVoorKlant, listMatchenVoorKlant } from "@/lib/services/b2bStore";
 import { berekenBiedadvies } from "@/lib/services/biedadvies";
 import { heeftNieuweMarktcijfersSinds, laatsteMarktupdateSlug } from "@/lib/services/marktAlert";
 import DossierStatusKnop from "@/components/zakelijk/DossierStatusKnop";
 import DossierVergelijken from "@/components/zakelijk/DossierVergelijken";
 import ZoekopdrachtForm from "@/components/zakelijk/ZoekopdrachtForm";
 import VerwijderDossierKnop from "@/components/zakelijk/VerwijderDossierKnop";
+import MatchInstellingForm from "@/components/zakelijk/MatchInstellingForm";
+import MatchesKaart from "@/components/zakelijk/MatchesKaart";
 import { FileCheckIcon, TrendingUpIcon } from "@/components/report/icons";
 
 function euro(bedrag: number | null | undefined): string {
@@ -31,7 +33,7 @@ export default async function ZakelijkKlantDetailPagina({ params }: { params: Pr
   const dossier = await getKlantdossier(id);
   if (!dossier || dossier.orgId !== context.organisatie.id) notFound();
 
-  const rapporten = await listRapportenVoorKlant(id);
+  const [rapporten, matches] = await Promise.all([listRapportenVoorKlant(id), listMatchenVoorKlant(id)]);
   // Nieuwste rapport in dit dossier -- meest relevante bandbreedte om te tonen
   // zolang er geen apart per-dossier "huidig bod"-veld bestaat.
   const laatsteBiedadvies = rapporten[0]
@@ -117,6 +119,14 @@ export default async function ZakelijkKlantDetailPagina({ params }: { params: Pr
           <div className="mb-4">
             <ZoekopdrachtForm dossierId={dossier.id} huidig={dossier.zoekopdracht} />
           </div>
+          <div className="mb-4">
+            <MatchInstellingForm dossierId={dossier.id} huidig={dossier.matchInstelling} />
+          </div>
+          {matches.length > 0 && (
+            <div className="mb-4">
+              <MatchesKaart matches={matches} />
+            </div>
+          )}
           {laatsteBiedadvies && (
             <div className="mb-4 rounded-2xl bg-gradient-to-br from-accent to-accent-dark p-4">
               <p className="text-[10px] font-bold uppercase tracking-wide text-white/60">Actueel biedadvies</p>
