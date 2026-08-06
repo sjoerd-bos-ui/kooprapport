@@ -118,13 +118,31 @@ function bouwZoekUrl(locatie: B2bLocatie, budgetMax: number | null, kenmerken: B
   return `https://www.funda.nl/zoeken/koop?${params.toString()}`;
 }
 
+// LIVE GEVONDEN (diagnose-sessie): een custom UA ("Kooprapport/1.0") die
+// zichzelf als bot aankondigt, aangeroepen vanaf een Vercel-serverless-IP
+// (AWS-datacenterblok), is precies het patroon dat bot-bescherming (bv.
+// DataDome, veelgebruikt bij grote NL-vastgoedsites) het eerst blokkeert --
+// vaak met een 200-status maar een lege/CAPTCHA-pagina in plaats van een
+// echte foutcode, dus zonder dat dit ooit als error werd gelogd. Een gewone
+// fetch vanaf een niet-datacenter-adres met dezelfde URL gaf wel gewoon 299
+// resultaten terug (live geverifieerd). Daarom nu een gangbare browser-UA +
+// Accept-Language, in de hoop dat dat door dezelfde bot-detectie komt --
+// geen garantie, vandaar ook de logging hieronder om dit voortaan meteen
+// zichtbaar te maken in plaats van stil te falen.
+const BROWSER_HEADERS = {
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+  "Accept-Language": "nl-NL,nl;q=0.9,en;q=0.8",
+  Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+};
+
 async function fetchMetTimeout(url: string, timeoutMs: number): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     return await fetch(url, {
       signal: controller.signal,
-      headers: { "User-Agent": "Kooprapport/1.0 (+https://kooprapport.nl)" },
+      headers: BROWSER_HEADERS,
     });
   } finally {
     clearTimeout(timer);
@@ -196,12 +214,22 @@ async function haalListingDetails(detailUrl: string): Promise<FundaFeedItem | nu
   }
 }
 
+// TIJDELIJKE DIAGNOSE-LOGGING (bewust altijd aan, ook in mock-modus): tot nu
+// toe was "geen nieuwe matches" volledig stil in beide gevallen (mock-modus
+// EN live-modus-met-0-resultaten loggen namelijk geen van beide iets), dus
+// die twee waren via de runtime-logs niet van elkaar te onderscheiden. Dit
+// maakt in elk geval meteen zichtbaar welke modus daadwerkelijk actief is op
+// de lopende deployment, en bij live-modus ook of de zoekpagina uberhaupt
+// echte woninglinks teruggeeft. Mag na de eerste geslaagde live-run weer
+// verwijderd/afgezwakt worden.
 export async function haalFundaMatches(
   locatie: B2bLocatie,
   budgetMax: number | null,
   kenmerken?: B2bKenmerken,
   limiet = 15
 ): Promise<FundaFeedItem[]> {
+  console.log(`[fundaFeed] modus=${FUNDA_FEED_MODE} locatie=${locatie.plaatsSlug}${locatie.wijkSlug ? "/" + locatie.wijkSlug : ""}`);
+
   if (FUNDA_FEED_MODE !== "live") {
     return MOCK_ITEMS.slice(0, limiet);
   }
@@ -209,13 +237,24 @@ export async function haalFundaMatches(
   try {
     const zoekUrl = bouwZoekUrl(locatie, budgetMax, kenmerken);
     const res = await fetchMetTimeout(zoekUrl, FUNDA_SEARCH_TIMEOUT_MS);
+    console.log(`[fundaFeed] LIVE zoekaanvraag ${zoekUrl} -> HTTP ${res.status}`);
     if (!res.ok) {
       console.error(`[fundaFeed] HTTP ${res.status} bij ophalen van ${zoekUrl}`);
       return [];
     }
     const html = await res.text();
     const links = extractDetailLinks(html, limiet);
-    if (links.length === 0) return [];
+    console.log(`[fundaFeed] LIVE ${links.length} woninglink(s) gevonden op de zoekpagina (${html.length} tekens HTML)`);
+    if (links.length === 0) {
+      // Waarschijnlijkste oorzaak van 0 links bij een 200-status: een
+      // bot-detectiepagina i.p.v. de echte zoekresultaten -- de eerste
+      // paar honderd tekens (zonder scripts/styles) laten meestal meteen
+      // zien of dat hier aan de hand is (bv. "Even geduld", "verify you
+      // are human", "Access Denied", een cookie-muur, etc.).
+      const snippet = html.replace(/<script[\s\S]*?<\/script>/gi, "").replace(/\s+/g, " ").slice(0, 500);
+      console.error(`[fundaFeed] LIVE 0 links -- vermoedelijk bot-blokkade of gewijzigde paginastructuur. HTML-snippet: ${snippet}`);
+      return [];
+    }
 
     const resultaten = await Promise.all(links.map(haalListingDetails));
     return resultaten.filter((item): item is FundaFeedItem => item !== null);
