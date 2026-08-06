@@ -15,10 +15,10 @@ import { haalFundaMatches } from "@/lib/data-sources/fundaFeed";
 
 const MAX_DIRECT = 5;
 
-// ScraperAPI's render=true-fetches kunnen tientallen seconden duren (zie
-// lib/config/fundaFeed.ts) -- de Vercel-standaardlimiet van 10s is daar veel
-// te kort voor, vandaar expliciet opgehoogd.
-export const maxDuration = 60;
+// Fetches via de Scrape.do-proxy (zie lib/config/fundaFeed.ts) duren iets
+// langer dan een kale directe fetch -- de Vercel-standaardlimiet van 10s is
+// daar krap voor, vandaar expliciet opgehoogd.
+export const maxDuration = 30;
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const context = await getB2bSessieUitRequest(req);

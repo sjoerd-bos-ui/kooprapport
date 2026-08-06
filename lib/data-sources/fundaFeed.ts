@@ -136,31 +136,38 @@ const BROWSER_HEADERS = {
   Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
 };
 
-// SCRAPERAPI_KEY (optioneel): als deze env var gezet is, gaat elke fetch naar
-// funda.nl via ScraperAPI's proxy (render=true, dus met JS-rendering -- dat
-// is wat nodig is om langs Funda's DataDome-achtige botcheck te komen, een
-// gewone headless fetch met nette headers bleek niet genoeg). Zonder deze
-// env var valt dit terug op de directe fetch hierboven, die vanaf Vercel dus
-// altijd 0 resultaten oplevert (zie de diagnose-log verderop) totdat de
-// sleutel is toegevoegd. country_code=nl kost geen extra credits en helpt om
-// als Nederlandse bezoeker over te komen.
-const SCRAPERAPI_KEY = process.env.SCRAPERAPI_KEY;
+// SCRAPEDO_TOKEN (optioneel): als deze env var gezet is, gaat elke fetch naar
+// funda.nl via Scrape.do's proxy. EERST ScraperAPI overwogen, maar die bleek
+// bij nader inzien alleen een 7-dagen-proef te zijn (geen blijvend gratis
+// niveau, live gecontroleerd op hun eigen pricing-pagina) -- Scrape.do heeft
+// wél een "gratis-voor-altijd" niveau (1.000 credits/mnd, geen kaart nodig,
+// live geverifieerd via hun documentatie/pricing).
+//
+// super=true (Residential/mobile-proxynetwerk), GEEN render: onze eigen
+// diagnose liet zien dat een doodgewone fetch (geen JavaScript, geen browser)
+// vanaf een NIET-datacenter-IP gewoon 299 resultaten teruggaf -- dit is dus
+// een IP-reputatieblokkade, geen JS-uitdaging. super=true lost precies dát
+// op (10 credits/verzoek), en is goedkoper en sneller dan render=true erbij
+// zetten (25 credits/verzoek, spint een headless browser op die we hier niet
+// nodig hebben). Zonder deze env var blijft dit een directe fetch,
+// die vanaf Vercel dus altijd 0 resultaten oplevert (zie de diagnose-log
+// verderop) totdat het token is toegevoegd.
+const SCRAPEDO_TOKEN = process.env.SCRAPEDO_TOKEN;
 
-function viaScraperApi(url: string): string {
+function viaScrapeDo(url: string): string {
   const params = new URLSearchParams({
-    api_key: SCRAPERAPI_KEY!,
+    token: SCRAPEDO_TOKEN!,
     url,
-    render: "true",
-    country_code: "nl",
+    super: "true",
   });
-  return `https://api.scraperapi.com/?${params.toString()}`;
+  return `https://api.scrape.do/?${params.toString()}`;
 }
 
 async function fetchMetTimeout(url: string, timeoutMs: number): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const daadwerkelijkeUrl = SCRAPERAPI_KEY ? viaScraperApi(url) : url;
+    const daadwerkelijkeUrl = SCRAPEDO_TOKEN ? viaScrapeDo(url) : url;
     return await fetch(daadwerkelijkeUrl, {
       signal: controller.signal,
       headers: BROWSER_HEADERS,
@@ -250,7 +257,7 @@ export async function haalFundaMatches(
   limiet = 15
 ): Promise<FundaFeedItem[]> {
   console.log(
-    `[fundaFeed] modus=${FUNDA_FEED_MODE} proxy=${SCRAPERAPI_KEY ? "scraperapi" : "geen (directe fetch, wordt vermoedelijk geblokkeerd vanaf Vercel)"} locatie=${locatie.plaatsSlug}${locatie.wijkSlug ? "/" + locatie.wijkSlug : ""}`
+    `[fundaFeed] modus=${FUNDA_FEED_MODE} proxy=${SCRAPEDO_TOKEN ? "scrape.do" : "geen (directe fetch, wordt vermoedelijk geblokkeerd vanaf Vercel)"} locatie=${locatie.plaatsSlug}${locatie.wijkSlug ? "/" + locatie.wijkSlug : ""}`
   );
 
   if (FUNDA_FEED_MODE !== "live") {

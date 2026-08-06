@@ -29,19 +29,20 @@ import { APP_BASE_URL } from "@/lib/config/payment";
 // geplande aanroep de rest gewoon weer op (zoekopdracht.matchenActief blijft
 // staan totdat iemand het uitzet).
 //
-// TIJDSBUDGET (diagnose-sessie, met ScraperAPI erbij): dossiers worden hier
-// serieel verwerkt, en één haalFundaMatches()-aanroep kan met render=true nu
-// tot ~55s duren (zie lib/config/fundaFeed.ts) -- DOSSIER_LIMIET=200 was dus
-// volstrekt onhaalbaar binnen de 60s maxDuration hieronder. In plaats van een
-// vast (en per definitie giswerk) aantal dossiers, stopt de loop nu zodra het
-// tijdsbudget bijna op is -- de rest wordt, net als voorheen bij te veel
-// dossiers, gewoon door de volgende geplande cron-aanroep opgepakt.
+// TIJDSBUDGET (diagnose-sessie, met de Scrape.do-proxy erbij): dossiers
+// worden hier serieel verwerkt, en één haalFundaMatches()-aanroep via de
+// proxy duurt merkbaar langer dan een kale directe fetch (zie
+// lib/config/fundaFeed.ts) -- DOSSIER_LIMIET=200 was dus volstrekt onhaalbaar
+// binnen de 30s maxDuration hieronder. In plaats van een vast (en per
+// definitie giswerk) aantal dossiers, stopt de loop nu zodra het tijdsbudget
+// bijna op is -- de rest wordt, net als voorheen bij te veel dossiers, gewoon
+// door de volgende geplande cron-aanroep opgepakt.
 // -----------------------------------------------------------------------------
 
 const DOSSIER_LIMIET = 200;
-const TIJDSBUDGET_MS = 50000; // marge onder maxDuration=60
+const TIJDSBUDGET_MS = 22000; // marge onder maxDuration=30
 
-export const maxDuration = 60;
+export const maxDuration = 30;
 
 export async function GET(req: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
