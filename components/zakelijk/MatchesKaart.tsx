@@ -185,7 +185,19 @@ export default function MatchesKaart({
         </div>
       </div>
 
-      {matches.length === 0 ? (
+      {ververst && (
+        // Duidelijke, prominente melding i.p.v. alleen de subtiele
+        // knoptekst hierboven ("Bezig…") -- klacht was dat niet duidelijk
+        // genoeg te zien was dat het systeem daadwerkelijk aan het zoeken
+        // is (dit kan tot ~30s duren, zie maxDuration in matches-verversen/
+        // route.ts, want Funda wordt live doorzocht via de proxy).
+        <div className="mt-4 flex items-center gap-2.5 rounded-xl bg-[#EEF0FF] px-3.5 py-3 text-[12px] font-semibold text-accent">
+          <span className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-accent/25 border-t-accent" />
+          Bezig met zoeken naar nieuwe woningen op Funda…
+        </div>
+      )}
+
+      {matches.length === 0 && !ververst ? (
         <p className="mt-4 text-[12px] text-ink/40">
           Nog geen woningen gevonden die aan de zoekopdracht voldoen. Geen paniek -- als ze er niet zijn, zijn ze er niet; zodra er een
           passende advertentie verschijnt, staat die hier.

@@ -124,6 +124,12 @@ export default function ZoekopdrachtForm({ dossierId, huidig }: { dossierId: str
   const [matchenActief, setMatchenActief] = useState(huidig?.matchenActief ?? false);
   const [bezig, setBezig] = useState(false);
   const [melding, setMelding] = useState<string | null>(null);
+  // Los van `bezig` (dat dekt alleen het opslaan zelf) -- deze staat
+  // specifiek aan tijdens het live doorzoeken van Funda ná het opslaan, zo
+  // is precies te tonen WANNEER het "zoeken" (i.p.v. "opslaan") bezig is.
+  // Zie ook MatchesKaart.tsx voor dezelfde, duidelijkere melding bij de
+  // losse "Ververs"-knop.
+  const [zoekBezig, setZoekBezig] = useState(false);
 
   const heeftData = huidig && (huidig.budgetMin || huidig.budgetMax || huidig.locatie || huidig.matchenActief);
 
@@ -160,13 +166,16 @@ export default function ZoekopdrachtForm({ dossierId, huidig }: { dossierId: str
       }
 
       if (locatie) {
-        setMelding("Opgeslagen -- actuele woningen ophalen…");
+        setMelding("Opgeslagen. Bezig met zoeken naar woningen op Funda…");
+        setZoekBezig(true);
         try {
           const versRes = await fetch(`/api/zakelijk/klanten/${dossierId}/matches-verversen`, { method: "POST" });
           const versBody = await versRes.json();
           setMelding(versRes.ok ? `Opgeslagen -- ${versBody.nieuweMatches} nieuwe woning(en) gevonden.` : "Opgeslagen.");
         } catch {
           setMelding("Opgeslagen.");
+        } finally {
+          setZoekBezig(false);
         }
       } else {
         setMelding("Opgeslagen.");
@@ -429,7 +438,12 @@ export default function ZoekopdrachtForm({ dossierId, huidig }: { dossierId: str
           </button>
         </div>
       </div>
-      {melding && <p className="border-t border-ink/[0.06] px-4 py-2 text-[10.5px] font-semibold text-accent">{melding}</p>}
+      {melding && (
+        <p className="flex items-center gap-2 border-t border-ink/[0.06] px-4 py-2 text-[10.5px] font-semibold text-accent">
+          {zoekBezig && <span className="h-3 w-3 shrink-0 animate-spin rounded-full border-2 border-accent/25 border-t-accent" />}
+          {melding}
+        </p>
+      )}
     </div>
   );
 }

@@ -194,11 +194,29 @@ export type B2bMatchBron = "funda";
 // voldoetAanKenmerken in lib/data-sources/fundaFeed.ts) op het moment dat een
 // match werd opgeslagen -- zie B2bWoningMatch.verificatie hieronder voor het
 // waarom.
+// BUGFIX (klacht "ik switch van balkon naar tuin en oude matches blijven
+// staan"): tuin/balkon/dakterras zaten HELEMAAL NIET in deze snapshot en
+// werden dus ook nooit door voldoetAanKenmerken() gecontroleerd -- alleen
+// woningtype/slaapkamers/m²/energielabel. Een match die ooit (terecht) als
+// "heeft balkon" was gevonden, werd bij het wijzigen van de zoekopdracht naar
+// "moet tuin hebben" dus nooit opnieuw getoetst en bleef gewoon staan, exact
+// hetzelfde patroon als de eerdere DERDE BUGFIX hierboven (energielabel),
+// alleen dan voor deze drie kenmerken. Bewust wél `boolean` (niet
+// `boolean | null`) -- in tegenstelling tot slaapkamers/m²/energielabel (die
+// altijd op de pagina staan, dus "niet gevonden" = onze scrape schoot
+// tekort) is bij Funda's eigen "Buitenruimte"-blok de AFWEZIGHEID van de
+// "Tuin"- resp. "Balkon/dakterras"-rij live geverifieerd het signaal dat de
+// woning dat kenmerk simpelweg niet heeft (zie leesLokaleVerificatieData in
+// lib/data-sources/fundaFeed.ts) -- geen onzekerheid, dus geen `null`-geval
+// nodig.
 export interface B2bMatchVerificatie {
   woningtypeFamilie: "huis" | "appartement" | null;
   slaapkamers: number | null;
   woonoppervlak: number | null;
   energielabel: string | null;
+  heeftTuin: boolean;
+  heeftBalkon: boolean;
+  heeftDakterras: boolean;
 }
 
 export interface B2bWoningMatch {

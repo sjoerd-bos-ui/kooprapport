@@ -428,6 +428,38 @@ function extractJsonLd(html: string): FundaJsonLd | null {
 // B2bWoningMatch.verificatie in types/b2b.ts voor waarom dat nodig is.
 export type LokaleVerificatie = B2bMatchVerificatie;
 
+// Buitenruimte-detectie (tuin/balkon/dakterras) -- LIVE GEVERIFIEERD (klacht
+// "balkon naar tuin switchen laat oude matches staan"): Funda's "Kenmerken"-
+// tabel op de detailpagina heeft een dt/dd-paar per rij (bv.
+// `<dt ...>Tuin</dt><dd ...><span>Achtertuin en voortuin</span></dd>`),
+// gecontroleerd via de daadwerkelijke DOM op meerdere woningen. Twee dingen
+// live bevestigd, niet gegokt:
+//   1. De rij "Tuin" is alleen aanwezig als de woning ook echt een tuin
+//      heeft; ontbreekt hij, dan heeft de woning er geen (bevestigd op
+//      meerdere appartementen zonder tuin).
+//   2. Funda combineert balkon EN dakterras in één rij "Balkon/dakterras",
+//      met een tekstwaarde die het specifieke type noemt ("Balkon aanwezig",
+//      "Dakterras aanwezig") -- vandaar de losse balkon/dakterras-substring-
+//      check op dezelfde rij i.p.v. twee aparte dt's.
+// Regex i.p.v. exacte class-match (in tegenstelling tot de spans hieronder):
+// deze dt/dd-rijen hebben een langere, minder stabiele Tailwind-classlist, dus
+// alleen op de dt-teksten zelf gematcht en de dd-inhoud van omliggende tags
+// ontdaan -- robuuster tegen kleine opmaakwijzigingen.
+function leesBuitenruimte(html: string): { heeftTuin: boolean; heeftBalkon: boolean; heeftDakterras: boolean } {
+  const heeftTuin = /<dt[^>]*>\s*Tuin\s*<\/dt>/i.test(html);
+
+  const balkonDakterrasMatch = html.match(/<dt[^>]*>\s*Balkon\/dakterras\s*<\/dt>\s*<dd[^>]*>([\s\S]*?)<\/dd>/i);
+  const buitenTekst = balkonDakterrasMatch
+    ? balkonDakterrasMatch[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().toLowerCase()
+    : "";
+
+  return {
+    heeftTuin,
+    heeftBalkon: buitenTekst.includes("balkon"),
+    heeftDakterras: buitenTekst.includes("dakterras"),
+  };
+}
+
 function leesLokaleVerificatieData(html: string, ld: FundaJsonLd): LokaleVerificatie {
   const types = Array.isArray(ld["@type"]) ? ld["@type"] : ld["@type"] ? [ld["@type"]] : [];
   const woningtypeFamilie: LokaleVerificatie["woningtypeFamilie"] = types.includes("Huis")
@@ -451,6 +483,7 @@ function leesLokaleVerificatieData(html: string, ld: FundaJsonLd): LokaleVerific
     slaapkamers: slaapMatch ? Number(slaapMatch[1]) : null,
     woonoppervlak: m2Match ? Number(m2Match[1]) : null,
     energielabel: labelMatch ? labelMatch[1].trim() : null,
+    ...leesBuitenruimte(html),
   };
 }
 
@@ -481,6 +514,20 @@ export function voldoetAanKenmerken(verificatie: LokaleVerificatie, kenmerken: B
     // zie de uitleg hierboven.
     if (rang !== -1 && rang >= ENERGIELABEL_AANTAL_FUNDA_WAARDEN[kenmerken.minEnergielabel]) return false;
   }
+
+  // BUGFIX (klacht "balkon naar tuin switchen laat oude matches staan"):
+  // tuin/balkon/dakterras werden hier nooit gecontroleerd. Bewust `!== true`
+  // i.p.v. `=== false`: dat wijst ook BESTAANDE, VOOR deze fix opgeslagen
+  // matches af (hun verificatie-snapshot mist deze velden nog helemaal, dus
+  // `undefined`) -- exact dezelfde eenmalige "voor de zekerheid als
+  // verouderd behandelen"-aanpak als bij een volledig ontbrekende snapshot
+  // (zie ruimVerouderdeMatchenOp in b2bStore.ts). Voor NIEUW gescrapete
+  // matches is dit veld altijd een echte boolean (nooit undefined, zie
+  // leesBuitenruimte hierboven), dus daar betekent dit gewoon "heeft het
+  // kenmerk aantoonbaar niet".
+  if (kenmerken.tuin && verificatie.heeftTuin !== true) return false;
+  if (kenmerken.balkon && verificatie.heeftBalkon !== true) return false;
+  if (kenmerken.dakterras && verificatie.heeftDakterras !== true) return false;
 
   return true;
 }
