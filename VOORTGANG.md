@@ -1,11 +1,52 @@
 # Voortgang Kooprapport Zakelijk — overdracht naar nieuwe chat
 
-Laatste commit: `30bf239` (main) — **bevestigd live gedeployed** (deployment
-`dpl_9qdQjtG26n2ngZC3pNc6qKS3BDJQ`, status READY, geverifieerd via Vercel
-build logs). Niets hoeft nu meer gepusht te worden.
+Laatste commit lokaal: `cfca26b` (main) — **NOG NIET GEPUSHT**. Deze sandbox
+heeft geen netwerktoegang tot github.com (proxy-allowlist blokkeert het, geen
+opgeslagen GitHub-credentials) en kon dus niet zelf `git push` doen, in
+tegenstelling tot eerdere sessies. Sjoerd: run zelf `git push` vanuit een
+terminal in deze map (`woningrapport-app`) op je eigen Mac — de commit staat
+er al, dit is puur het delen ervan met GitHub/Vercel. Daarna pas opnieuw via
+de Vercel MCP verifiëren dat de deployment READY is (was er bij het begin van
+deze sessie nog niet, zie deployment `dpl_8zkxePNqmfeekm5ZwVuX9kBjtUEp` voor
+de vorige, WEL live bevestigde stand op commit `3b39b7c`).
 
 Project-ID's (voor wie de Vercel MCP gebruikt in de volgende chat):
 project `prj_fPZ56xnAsIHm2T8OVxqolCIyRnj0`, team `team_1qccbjVK1I0UyHydlwbbpfzi`.
+
+## 0. Deze sessie gefixt (commit `cfca26b`, wacht op push)
+
+1. **Klacht: filter switchen (bv. balkon → tuin) liet oude matches staan.**
+   Root cause: `voldoetAanKenmerken()` (`lib/data-sources/fundaFeed.ts`)
+   controleerde nog nooit tuin/balkon/dakterras — alleen woningtype/
+   slaapkamers/m²/energielabel (zie sectie 2 van de vorige sessie). Live
+   geverifieerd via de daadwerkelijke DOM op meerdere Funda-detailpagina's
+   (Chrome, niet gegokt): de "Kenmerken"-tabel heeft een dt/dd-rij "Tuin" die
+   alleen bestaat als de woning een tuin heeft, en één gecombineerde rij
+   "Balkon/dakterras" met een tekstwaarde ("Balkon aanwezig" / "Dakterras
+   aanwezig") — vandaar `leesBuitenruimte()` die op de dt-tekst matcht en de
+   dd-waarde op "balkon"/"dakterras" doorzoekt. `B2bMatchVerificatie` heeft nu
+   `heeftTuin`/`heeftBalkon`/`heeftDakterras` (bewust `boolean`, geen
+   `null` — afwezigheid van de rij is een betrouwbaar "heeft niet"-signaal,
+   in tegenstelling tot de andere velden die altijd op de pagina staan).
+   Belangrijk: `voldoetAanKenmerken` gebruikt `!== true` (niet `=== false`)
+   voor deze drie, zodat BESTAANDE matches van vóór deze fix (hun snapshot
+   mist deze velden, dus `undefined`) ook als verouderd worden behandeld en
+   opnieuw gezocht worden — zelfde eenmalige aanpak als de vorige
+   snapshot-loze-matches-fix.
+   - Nog niet opgepakt (geen actieve klacht, wel een mogelijk aanverwant
+     probleem gezien tijdens het live testen): de `garage_type`-parameter
+     in `bouwZoekUrl` lijkt op een paar steekproeven GEEN garages terug te
+     geven op Funda's eigen "Soort parkeergelegenheid"-veld — niet verder
+     uitgezocht, dit was buiten scope van de gemelde klacht. Bij een klacht
+     over garage-matches hier eerst kijken.
+2. **UX: duidelijkere "bezig met zoeken"-melding.** Voorheen alleen een
+   subtiele knoptekstwijziging ("Bezig…"). Nu een prominente banner met
+   spinner ("Bezig met zoeken naar (nieuwe) woningen op Funda…") zowel bij
+   het opslaan van een zoekopdracht (`ZoekopdrachtForm.tsx`) als bij de losse
+   "Ververs"-knop (`MatchesKaart.tsx`).
+   `npx tsc --noEmit` is schoon; geen `next build`/eslint gedraaid (eslint
+   niet lokaal geïnstalleerd, geen netwerktoegang om het te installeren in
+   deze sandbox).
 
 ## 1. Direct te doen
 
