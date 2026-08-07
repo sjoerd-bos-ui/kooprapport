@@ -1,6 +1,47 @@
 # Voortgang Kooprapport Zakelijk — overdracht naar nieuwe chat
 
-## -3. Nieuwste sessie: volledige-pool-bug, grotere zoek-indicator, koper-voorkeuren ook in de app
+## -4. Nieuwste sessie: kandidatenpool losgekoppeld van weergavelimiet ("Funda 196, wij 25")
+
+Vervolg op sectie -3 hieronder. Sjoerd testte opnieuw en meldde: "Kralingen
+Crooswijk vind Funda bijvoorbeeld 196 koopwoningen en wij vinden er maar 25" --
+expliciet aangemerkt als "dit is nu het belangrijkst".
+
+- **Root cause (via Vercel runtime-logs, niet gegokt):** na de vorige
+  bugfix (`MAX_DIRECT` gelijkgetrokken met `MAX_ZICHTBARE_MATCHEN` = 30) werd
+  diezelfde 30 gebruikt voor twéé verschillende dingen tegelijk: "hoeveel ruwe
+  Funda-links scannen" ÉN "hoeveel matches uiteindelijk bewaren/tonen". Het
+  matchingmodel (scoring, zie `matchScore.ts`) kreeg dus nooit de kans om uit
+  de volledige markt de béste 30 te kiezen -- het zag letterlijk nooit meer
+  dan de eerste ~30 Funda-resultaten, punt.
+- **Fix: twee aparte constanten, één per doel.**
+  - `lib/data-sources/fundaFeed.ts`: `MAX_PAGINAS` van 3 naar 8, zodat de
+    paginering ook echt meer dan ~30-45 links kan doorzoeken als de limiet dat
+    toelaat.
+  - `matches-verversen/route.ts` (handmatige "Ververs"-knop, één klik, één
+    dossier): nieuwe `KANDIDATENPOOL = 100` -- ruim meer kandidaten scannen en
+    scoren, maar nog steeds maar `MAX_ZICHTBARE_MATCHEN` (30) daadwerkelijk
+    bewaren via `kapMatchenOpMax()`, die op score kiest. `maxDuration` bewust
+    op 60 gelaten (al bewezen haalbaar; `haalFundaMatches` faalt niet hard bij
+    tijdsdruk, geeft gewoon terug wat er tot dan toe gevonden is).
+  - `cron/matches-controleren/route.ts` (dagelijkse cron, serieel over ALLE
+    actieve dossiers van ALLE organisaties binnen hetzelfde tijdsbudget):
+    nieuwe, bewust kleinere `CRON_KANDIDATENPOOL = 50` -- een grotere pool per
+    dossier gaat hier direct ten koste van hoeveel dossiers er per aanroep aan
+    de beurt komen, dus voorzichtiger dan de 100 van de handmatige knop.
+  - Nog geen garantie dat de VOLLEDIGE markt (196) gezien wordt -- dat zou 196
+    detailpagina-proxyverzoeken per refresh kosten, te duur/traag voor één
+    klik. Bewuste, ruimere tussenstap. Kost meer Bright Data-credits per
+    klik/cron-run dan voorheen -- bewuste keuze, Sjoerd gaf eerder al aan dat
+    volledigheid zwaarder weegt dan credit-besparing.
+  - Toekomstige verbetering (niet deze sessie geïmplementeerd, wel als
+    commentaar vastgelegd in `fundaFeed.ts`): kenmerken (prijs/m²/kamers/
+    energielabel) rechtstreeks van de zoekresultatenpagina lezen i.p.v. altijd
+    een detailpagina te moeten ophalen -- zou goedkoop screenen van veel meer
+    van de markt mogelijk maken, met dure detailpagina-fetches alleen nog voor
+    een al voorgeselecteerde shortlist.
+- `npx tsc --noEmit` schoon.
+
+## -3. Vorige sessie: volledige-pool-bug, grotere zoek-indicator, koper-voorkeuren ook in de app
 
 Vervolg op sectie -2 hieronder, na opnieuw live testen door Sjoerd:
 

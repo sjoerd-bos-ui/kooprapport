@@ -44,6 +44,18 @@ import { MAX_ZICHTBARE_MATCHEN } from "@/types/b2b";
 const DOSSIER_LIMIET = 200;
 const TIJDSBUDGET_MS = 22000; // marge onder maxDuration=30
 
+// BUGFIX (klacht "Funda vindt 196, wij maar 25", zie matches-verversen/route.ts
+// voor de volledige uitleg van het onderliggende probleem): ook hier deed
+// MAX_ZICHTBARE_MATCHEN dubbel dienst als kandidatenpool-grootte. Bewust een
+// kleinere pool dan de 100 van de handmatige "ververs nu"-knop -- deze cron
+// verwerkt serieel ALLE actieve dossiers van ALLE organisaties binnen hetzelfde
+// tijdsbudget (TIJDSBUDGET_MS/maxDuration hierboven), dus een grotere pool per
+// dossier gaat direct ten koste van hoeveel dossiers er per aanroep aan de
+// beurt komen. 50 is een bewuste tussenstap: ruim boven de oude 30 (dus de
+// dagelijkse cron vindt ook echt meer dan de eerste pagina), maar nog
+// beheersbaar qua proxytijd/-credits over mogelijk tientallen dossiers heen.
+const CRON_KANDIDATENPOOL = 50;
+
 export const maxDuration = 30;
 
 export async function GET(req: NextRequest) {
@@ -108,7 +120,7 @@ export async function GET(req: NextRequest) {
           budgetMin,
           budgetMax,
           dossier.zoekopdracht.kenmerken,
-          MAX_ZICHTBARE_MATCHEN,
+          CRON_KANDIDATENPOOL,
           bekendeUrls,
           koperVoorkeuren
         );

@@ -770,11 +770,25 @@ export async function haalFundaMatches(
   // `&page=3` werkt en daadwerkelijk nieuwe, andere woning-URL's teruggeeft
   // via hetzelfde ld+json ItemList-blok als pagina 1 (zie bouwZoekUrl) --
   // nodig om uit een grotere pool te kunnen kiezen dan de ±15 resultaten
-  // van pagina 1 alleen (zie MAX_ZICHTBARE_MATCHEN in types/b2b.ts). Elke
-  // pagina kost 1 proxy-verzoek ongeacht hoeveel links daarna al bekend
-  // blijken (dat wordt pas ná dit blok bepaald) -- MAX_PAGINAS is dus een
-  // bewuste, harde kostengrens.
-  const MAX_PAGINAS = 3;
+  // van pagina 1 alleen. Elke pagina kost 1 proxy-verzoek ongeacht hoeveel
+  // links daarna al bekend blijken (dat wordt pas ná dit blok bepaald) --
+  // MAX_PAGINAS is dus een bewuste, harde kostengrens.
+  //
+  // BUGFIX (klacht "Funda vindt 196 woningen, wij maar 25"): stond op 3,
+  // wat bij Funda's ~15 resultaten/pagina neerkwam op een harde grens van
+  // ±45 ruwe links, ongeacht hoe groot de daadwerkelijke markt in die wijk
+  // is. Opgehoogd naar 8 (±120 ruwe links) zodat de aanroeper (via een
+  // grotere `limiet`, zie matches-verversen/route.ts en
+  // cron/matches-controleren/route.ts) een substantieel groter deel van de
+  // markt kan laten scannen vóórdat het scoremodel de beste selectie maakt
+  // -- scannen (dit getal) is bewust losgekoppeld van tonen
+  // (MAX_ZICHTBARE_MATCHEN in types/b2b.ts, toegepast via kapMatchenOpMax
+  // op score). Nog steeds geen garantie dat ALLE beschikbare woningen
+  // gezien worden bij een echt grote markt (196 zou zelf al 196
+  // detailpagina-proxyverzoeken kosten in één refresh) -- zie VOORTGANG.md
+  // voor een efficiëntere vervolgstap (kenmerken al van de zoekpagina zelf
+  // aflezen i.p.v. altijd een detailpagina nodig te hebben).
+  const MAX_PAGINAS = 8;
   const links: string[] = [];
   let paginasOpgehaald = 0;
   // BUGFIX (klacht "Kralingen Crooswijk geeft nog steeds 0 matches zonder

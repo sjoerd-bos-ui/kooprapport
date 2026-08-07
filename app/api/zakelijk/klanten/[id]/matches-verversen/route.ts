@@ -19,27 +19,40 @@ import { MAX_ZICHTBARE_MATCHEN } from "@/types/b2b";
 // terug tot MAX_ZICHTBARE_MATCHEN -- "geen passende woningen? dan zijn het er
 // ook gewoon minder", zie het gesprek hierover.
 //
-// BUGFIX (klacht "Kralingen Crooswijk geeft maar 2 matches terwijl er zonder
-// filter veel meer zijn"): MAX_DIRECT stond op 5 -- omdat Funda's
+// BUGFIX 1 (klacht "Kralingen Crooswijk geeft maar 2 matches terwijl er
+// zonder filter veel meer zijn"): stond op 5 -- omdat Funda's
 // zoekresultatenpagina doorgaans al ~15 links per pagina teruggeeft, werd de
-// paginering in haalFundaMatches() (MAX_PAGINAS=3, zie fundaFeed.ts) hierdoor
-// in de praktijk NOOIT gebruikt: pagina 1 alleen leverde al genoeg links op
-// om de lage limiet van 5 te halen, dus pagina 2/3 werden letterlijk nooit
-// opgevraagd. MAX_DIRECT gelijkgetrokken met MAX_ZICHTBARE_MATCHEN zodat een
-// handmatige "Ververs" ook echt de volledige kandidatenpool doorzoekt, net
-// als de dagelijkse cron al deed. Kost meer Bright Data-credits per klik
-// (tot MAX_ZICHTBARE_MATCHEN detailpagina's i.p.v. 5) -- bewuste keuze,
-// volledigheid weegt hier zwaarder dan credit-besparing.
-const MAX_DIRECT = MAX_ZICHTBARE_MATCHEN;
+// paginering in haalFundaMatches() hierdoor in de praktijk NOOIT gebruikt:
+// pagina 1 alleen leverde al genoeg links op om de lage limiet te halen.
+//
+// BUGFIX 2 (vervolgklacht, na het gelijktrekken met MAX_ZICHTBARE_MATCHEN:
+// "Funda vindt 196 woningen, wij maar 25"): dit getal deed dubbel dienst als
+// zowel "hoeveel ruwe links scannen" ALS "hoeveel tonen" -- daardoor keek het
+// systeem letterlijk nooit verder dan de eerste ~30 Funda-resultaten,
+// ongeacht hoe groot de wijk werkelijk is. KANDIDATENPOOL is nu bewust
+// losgekoppeld van MAX_ZICHTBARE_MATCHEN: veel meer ruwe kandidaten scannen
+// (en detailpagina's ophalen om te scoren), maar nog steeds maar
+// MAX_ZICHTBARE_MATCHEN daarvan daadwerkelijk BEWAREN -- kapMatchenOpMax()
+// kiest daaruit al op score (lib/services/matchScore.ts), dat is precies het
+// hele punt van het matchingmodel: een grotere kandidatenpool om de beste 30
+// uit te kunnen kiezen, i.p.v. zomaar de eerste 30 die Funda toevallig als
+// eerste toont.
+// Nog steeds geen garantie dat de VOLLEDIGE markt gezien wordt (196 zou zelf
+// 196 detailpagina-proxyverzoeken kosten in één refresh, te duur/traag voor
+// één klik) -- 100 is een bewust gekozen, ruimere maar nog beheersbare
+// tussenstap. Kost aanzienlijk meer Bright Data-credits per klik dan
+// voorheen -- bewuste keuze, Sjoerd gaf aan dat volledigheid nu zwaarder
+// weegt dan credit-besparing.
+const KANDIDATENPOOL = 100;
 
 // Fetches via de Bright Data-proxy (zie lib/config/fundaFeed.ts) duren iets
-// langer dan een kale directe fetch. Opgehoogd van 30 naar 60: met
-// MAX_DIRECT nu op MAX_ZICHTBARE_MATCHEN kan de paginering (tot 3
-// zoekpagina's, zie fundaFeed.ts) daadwerkelijk in werking treden -- dat kost
-// meer tijd dan de vorige, altijd-1-pagina situatie. Dit is een bewust
-// door de makelaar geïnitieerde, zichtbare actie (spinner staat al aan), dus
-// een paar seconden langer wachten is acceptabel; de dagelijkse cron
-// (meerdere dossiers per aanroep) blijft bewust op 30 staan.
+// langer dan een kale directe fetch. Op 60 gehouden (bewezen haalbaar, zie
+// eerdere deployment) ondanks de grotere kandidatenpool -- haalFundaMatches()
+// stopt de paginering zelf zodra de tijd/pagina's op zijn en geeft dan
+// gewoon terug wat er tot dan toe gevonden is (zie fundaFeed.ts), dus een
+// eventueel niet-volledig doorlopen scan faalt niet hard, hij levert alleen
+// iets minder op dan de volle 100. De dagelijkse cron (meerdere dossiers per
+// aanroep) blijft bewust op een kleinere pool en 30s staan, zie de cron-route.
 export const maxDuration = 60;
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -85,11 +98,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     budgetMin,
     budgetMax,
     dossier.zoekopdracht?.kenmerken,
-    MAX_DIRECT,
+    KANDIDATENPOOL,
     bekendeUrls,
     koperVoorkeuren
   );
-  const nieuweItems = feedItems.filter((item) => !bekendeUrls.has(item.url)).slice(0, MAX_DIRECT);
+  const nieuweItems = feedItems.filter((item) => !bekendeUrls.has(item.url)).slice(0, KANDIDATENPOOL);
 
   for (const item of nieuweItems) {
     await maakMatch({
