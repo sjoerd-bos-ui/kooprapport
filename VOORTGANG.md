@@ -1,6 +1,40 @@
 # Voortgang Kooprapport Zakelijk — overdracht naar nieuwe chat
 
-## -2. Nieuwste sessie: MatchesKaart-herontwerp + zoekfout-bug (na live feedback op het matchingmodel)
+## -3. Nieuwste sessie: volledige-pool-bug, grotere zoek-indicator, koper-voorkeuren ook in de app
+
+Vervolg op sectie -2 hieronder, na opnieuw live testen door Sjoerd:
+
+- **BUGFIX (het belangrijkste punt): "Ververs" haalde maar een handjevol
+  woningen op, terwijl een wijk zonder enig filter er honderden heeft.**
+  Root cause: `MAX_DIRECT` in `matches-verversen/route.ts` stond op 5. Omdat
+  Funda's zoekresultatenpagina standaard ~15 links per pagina teruggeeft,
+  werd de paginering in `haalFundaMatches()` (tot 3 pagina's, zie
+  `fundaFeed.ts`) hierdoor in de praktijk NOOIT gebruikt -- pagina 1 alleen
+  leverde al genoeg links op om de lage limiet van 5 te halen, dus pagina
+  2/3 werden letterlijk nooit opgevraagd. `MAX_DIRECT` gelijkgetrokken met
+  `MAX_ZICHTBARE_MATCHEN` (30), zodat een handmatige "Ververs" nu ook echt de
+  volledige kandidatenpool doorzoekt (zoals de dagelijkse cron al deed).
+  `maxDuration` van `matches-verversen` opgehoogd van 30 naar 60 (de cron
+  blijft op 30) omdat de paginering nu ook echt tijd kost. Kost meer Bright
+  Data-credits per klik -- bewuste keuze, Sjoerd gaf aan dat volledigheid nu
+  zwaarder weegt dan credit-besparing.
+- **"Bezig met zoeken"-indicator vergroot.** Was een dun, makkelijk te missen
+  regeltje -- nu een groot, gecentreerd kader met spinner, in zowel
+  `ZoekopdrachtForm.tsx` (na opslaan) als `MatchesKaart.tsx` (bij "Ververs").
+- **Koper-voorkeuren nu ook rechtstreeks in de app invulbaar.** Voorheen kon
+  dat alleen via de publieke link. `ZoekopdrachtForm.tsx` heeft nu een eigen
+  "Voorkeuren van de koper"-sectie met een Ja/Nee-standje ("Nog niet bekend"
+  / "Nu invullen") en dezelfde 4 vragen als de publieke vragenlijst. De
+  PATCH-route (`app/api/zakelijk/klanten/[id]/route.ts`) onderscheidt nu
+  bewust "veld ontbreekt in de request" (koperVoorkeuren blijft ongewijzigd)
+  van "veld is expliciet `null`" (bewust wissen) -- zodat drie standen
+  mogelijk zijn: via de link, rechtstreeks door de makelaar, of geen van
+  beide. Wie het laatst opslaat (koper via link, of makelaar in de app)
+  wint -- geen samenvoeglogica, bewust simpel gehouden.
+- `npx tsc --noEmit` schoon na elke stap. Nog steeds niet als ingelogde
+  makelaar in de browser getest (geen inloggegevens in deze sandbox).
+
+## -2. Vorige sessie: MatchesKaart-herontwerp + zoekfout-bug (na live feedback op het matchingmodel)
 
 Sjoerd testte het matchingmodel (hieronder, `b84c7ff` + `2800409`) live en was
 niet tevreden: geen zichtbaar effect van de koper-voorkeuren-antwoorden, geen

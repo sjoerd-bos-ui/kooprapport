@@ -390,14 +390,17 @@ export default function MatchesKaart({
       )}
 
       {ververst && (
-        // Duidelijke, prominente melding i.p.v. alleen de subtiele
-        // knoptekst hierboven ("Bezig…") -- klacht was dat niet duidelijk
-        // genoeg te zien was dat het systeem daadwerkelijk aan het zoeken
-        // is (dit kan tot ~30s duren, zie maxDuration in matches-verversen/
-        // route.ts, want Funda wordt live doorzocht via de proxy).
-        <div className="mt-4 flex items-center gap-2.5 rounded-xl bg-[#EEF0FF] px-3.5 py-3 text-[12px] font-semibold text-accent">
-          <span className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-accent/25 border-t-accent" />
-          Bezig met zoeken naar nieuwe woningen op Funda…
+        // BUGFIX (klacht "dit staat er erg klein, ik wil een mooi kadertje"):
+        // was een smalle eenregelige balk -- nu een groot, centraal kader dat
+        // niet te missen is (kan tot ~60s duren, zie maxDuration in
+        // matches-verversen/route.ts, want Funda wordt over meerdere
+        // pagina's live doorzocht via de proxy).
+        <div className="mt-4 flex flex-col items-center justify-center gap-3 rounded-2xl border border-accent/20 bg-[#EEF0FF] px-6 py-10 text-center">
+          <span className="h-8 w-8 shrink-0 animate-spin rounded-full border-[3px] border-accent/25 border-t-accent" />
+          <div>
+            <p className="text-[14px] font-bold text-accent">Bezig met zoeken naar nieuwe woningen op Funda…</p>
+            <p className="mt-1 text-[11.5px] text-accent/70">Dit kan tot een minuut duren -- we doorzoeken meerdere pagina's voor de volledige lijst.</p>
+          </div>
         </div>
       )}
 

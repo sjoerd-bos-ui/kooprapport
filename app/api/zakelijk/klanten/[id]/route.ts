@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getB2bSessieUitRequest } from "@/lib/services/b2bAuth";
 import { getKlantdossier, zetKlantdossierStatus, zetKlantdossierZoekopdracht, verwijderKlantdossier } from "@/lib/services/b2bStore";
 import { legeKenmerken, B2B_WONINGTYPES, B2B_ENERGIELABELS } from "@/types/b2b";
-import type { B2bDossierStatus, B2bZoekopdracht, B2bLocatie, B2bKenmerken } from "@/types/b2b";
+import type { B2bDossierStatus, B2bZoekopdracht, B2bLocatie, B2bKenmerken, B2bKoperVoorkeuren, B2bPrioriteit, B2bBouwstijlVoorkeur } from "@/types/b2b";
+
+const GELDIGE_PRIORITEIT: B2bPrioriteit[] = ["prijs", "kenmerken", "gelijk"];
+const GELDIGE_BOUWSTIJL: B2bBouwstijlVoorkeur[] = ["nieuw", "karakter", "geen_voorkeur"];
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const context = await getB2bSessieUitRequest(req);
@@ -14,7 +17,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Onbekend klantdossier." }, { status: 404 });
   }
 
-  let body: { status?: B2bDossierStatus; zoekopdracht?: Partial<B2bZoekopdracht> };
+  let body: { status?: B2bDossierStatus; zoekopdracht?: Partial<B2bZoekopdracht> & { koperVoorkeuren?: Partial<B2bKoperVoorkeuren> | null } };
   try {
     body = await req.json();
   } catch {
@@ -72,19 +75,49 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ error: "Kies eerst een locatie om automatische meldingen aan te zetten." }, { status: 400 });
     }
 
-    // koperVoorkeuren/koperVoorkeurenToken lopen via een apart endpoint (de
-    // publieke vragenlijst-link, zie app/api/zakelijk/klanten/[id]/koper-
-    // voorkeuren-link/route.ts en app/koper-voorkeuren/[token]/route.ts) --
-    // hier gewoon ongewijzigd overnemen zodat een makelaar die alleen budget/
-    // locatie/kenmerken bijwerkt nooit per ongeluk al ingevulde voorkeuren
-    // van de koper wist.
+    // koperVoorkeuren: BEWUST drie standen mogelijk (zie het gesprek hierover
+    // -- "moeten op deze manier ingevuld kunnen worden (via de link), maar
+    // ook niet ingevuld worden, of via de applicatie zelf"):
+    //   1. via de publieke vragenlijst-link (ongewijzigd, zie
+    //      app/api/koper-voorkeuren/[token]/route.ts) -- die route roept
+    //      zetKoperVoorkeuren rechtstreeks aan, buiten dit PATCH-endpoint om.
+    //   2. rechtstreeks door de makelaar in het dashboard (ZoekopdrachtForm.tsx)
+    //      -- dat stuurt hier nu een volledig `koperVoorkeuren`-object mee.
+    //   3. helemaal niet ingevuld -- ZoekopdrachtForm stuurt dan expliciet
+    //      `koperVoorkeuren: null` mee (het "Nog niet bekend"-standje).
+    // Als het veld in de request-body ONTBREEKT (niet hetzelfde als `null`)
+    // wordt de al opgeslagen waarde ongewijzigd overgenomen -- zodat een
+    // eventuele toekomstige aanroeper die dit veld nog niet kent nooit per
+    // ongeluk al ingevulde koper-voorkeuren wist.
+    let koperVoorkeuren = dossier.zoekopdracht?.koperVoorkeuren ?? null;
+    if ("koperVoorkeuren" in z) {
+      if (z.koperVoorkeuren === null) {
+        koperVoorkeuren = null;
+      } else if (z.koperVoorkeuren && typeof z.koperVoorkeuren === "object") {
+        const kv = z.koperVoorkeuren;
+        if (!kv.prioriteit || !GELDIGE_PRIORITEIT.includes(kv.prioriteit as B2bPrioriteit)) {
+          return NextResponse.json({ error: "Ongeldige of ontbrekende prioriteit bij de koper-voorkeuren." }, { status: 400 });
+        }
+        if (!kv.bouwstijl || !GELDIGE_BOUWSTIJL.includes(kv.bouwstijl as B2bBouwstijlVoorkeur)) {
+          return NextResponse.json({ error: "Ongeldige of ontbrekende bouwstijl bij de koper-voorkeuren." }, { status: 400 });
+        }
+        koperVoorkeuren = {
+          prioriteit: kv.prioriteit as B2bPrioriteit,
+          bouwstijl: kv.bouwstijl as B2bBouwstijlVoorkeur,
+          budgetFlexibel: Boolean(kv.budgetFlexibel),
+          kenmerkenFlexibel: Boolean(kv.kenmerkenFlexibel),
+          ingevuldOp: new Date().toISOString(),
+        };
+      }
+    }
+
     const bijgewerkt = await zetKlantdossierZoekopdracht(id, {
       budgetMin,
       budgetMax,
       locatie,
       kenmerken,
       matchenActief,
-      koperVoorkeuren: dossier.zoekopdracht?.koperVoorkeuren ?? null,
+      koperVoorkeuren,
       koperVoorkeurenToken: dossier.zoekopdracht?.koperVoorkeurenToken ?? null,
     });
     return NextResponse.json({ ok: true, dossier: bijgewerkt });

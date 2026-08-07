@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { B2bZoekopdracht, B2bLocatie, B2bKenmerken, B2bWoningtype } from "@/types/b2b";
+import type { B2bZoekopdracht, B2bLocatie, B2bKenmerken, B2bWoningtype, B2bPrioriteit, B2bBouwstijlVoorkeur } from "@/types/b2b";
 import { B2B_WONINGTYPES, B2B_ENERGIELABELS, legeKenmerken } from "@/types/b2b";
 import LocatieAutocomplete from "@/components/zakelijk/LocatieAutocomplete";
 import {
@@ -101,6 +101,26 @@ function Tegel({
   );
 }
 
+// Kleine pil-knop, zelfde stijl als de Keuze-knoppen in de publieke
+// koper-voorkeuren-vragenlijst (KoperVoorkeurenForm.tsx) -- hier hergebruikt
+// zodat de makelaar exact dezelfde 4 vragen ook rechtstreeks in het
+// dashboard kan beantwoorden (zie het gesprek hierover: "moeten op deze
+// manier ingevuld kunnen worden (via de link), maar ook niet ingevuld
+// worden, of via de applicatie zelf").
+function Keuze({ actief, label, onClick }: { actief: boolean; label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-full border px-3 py-1.5 text-[11.5px] font-semibold transition-colors ${
+        actief ? "border-accent bg-[#EEF0FF] text-accent" : "border-ink/10 bg-mist/50 text-ink/55 hover:bg-mist"
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
+
 // -----------------------------------------------------------------------------
 // Zoekopdracht bewerken (#3), volledig herontworpen:
 //   - locatie is nu een gestructureerde, via PDOK-autocomplete gekozen plaats
@@ -109,10 +129,14 @@ function Tegel({
 //   - "moet hebben" is een vaste, aanvinkbare checklist i.p.v. een tekstvlak:
 //     vrije tekst is voor een mens leesbaar maar onbruikbaar als filter op de
 //     Funda-feed (zie kenmerkenSegmenten() in lib/data-sources/fundaFeed.ts).
-//   - opslaan met een gekozen locatie haalt DIRECT (matches-verversen) tot 5
-//     actueel te koop staande woningen op die aan de criteria voldoen, zodat
-//     de makelaar niet hoeft te wachten op de eerstvolgende dagelijkse cron
-//     (die daarna wél gewoon actief blijft zolang matchenActief aan staat).
+//   - opslaan met een gekozen locatie haalt DIRECT (matches-verversen) de
+//     volledige kandidatenpool op (tot MAX_ZICHTBARE_MATCHEN, zie
+//     matches-verversen/route.ts) zodat de makelaar niet hoeft te wachten op
+//     de eerstvolgende dagelijkse cron (die daarna wél gewoon actief blijft
+//     zolang matchenActief aan staat).
+//   - koper-voorkeuren zijn op drie manieren te vullen: via de publieke link
+//     (koperVoorkeuren-link-knop hieronder), hier rechtstreeks door de
+//     makelaar, of helemaal niet -- zie het gesprek hierover.
 // -----------------------------------------------------------------------------
 export default function ZoekopdrachtForm({ dossierId, huidig }: { dossierId: string; huidig: B2bZoekopdracht | undefined }) {
   const router = useRouter();
@@ -135,6 +159,18 @@ export default function ZoekopdrachtForm({ dossierId, huidig }: { dossierId: str
   // het klembord, zodat de makelaar hem meteen kan doorsturen.
   const [linkBezig, setLinkBezig] = useState(false);
   const [linkMelding, setLinkMelding] = useState<string | null>(null);
+  // Koper-voorkeuren rechtstreeks in het dashboard invulbaar (derde stand
+  // naast "via de link" en "nog niet ingevuld", zie het gesprek hierover) --
+  // `voorkeurenBekend` is het expliciete Ja/Nee-standje: alleen bij "Ja"
+  // wordt er bij het opslaan daadwerkelijk een koperVoorkeuren-object
+  // meegestuurd, anders expliciet `null` (zie opslaan() hieronder) zodat
+  // "nog niet bekend" een bewuste, aparte stand blijft i.p.v. per ongeluk
+  // ingevulde voorkeuren van de koper te overschrijven met standaardwaarden.
+  const [voorkeurenBekend, setVoorkeurenBekend] = useState(Boolean(huidig?.koperVoorkeuren));
+  const [prioriteit, setPrioriteit] = useState<B2bPrioriteit>(huidig?.koperVoorkeuren?.prioriteit ?? "gelijk");
+  const [bouwstijl, setBouwstijl] = useState<B2bBouwstijlVoorkeur>(huidig?.koperVoorkeuren?.bouwstijl ?? "geen_voorkeur");
+  const [budgetFlexibel, setBudgetFlexibel] = useState(huidig?.koperVoorkeuren?.budgetFlexibel ?? false);
+  const [kenmerkenFlexibel, setKenmerkenFlexibel] = useState(huidig?.koperVoorkeuren?.kenmerkenFlexibel ?? false);
 
   async function kopieerVoorkeurenLink() {
     setLinkBezig(true);
@@ -183,6 +219,13 @@ export default function ZoekopdrachtForm({ dossierId, huidig }: { dossierId: str
             locatie,
             kenmerken,
             matchenActief: matchenActief && Boolean(locatie),
+            // Expliciet `null` bij "nog niet bekend" (i.p.v. het veld gewoon
+            // weglaten) -- de PATCH-route onderscheidt "veld ontbreekt" (blijft
+            // ongewijzigd, voor toekomstige aanroepers) van "veld is null"
+            // (bewust wissen), zie app/api/zakelijk/klanten/[id]/route.ts.
+            koperVoorkeuren: voorkeurenBekend
+              ? { prioriteit, bouwstijl, budgetFlexibel, kenmerkenFlexibel }
+              : null,
           },
         }),
       });
@@ -458,6 +501,55 @@ export default function ZoekopdrachtForm({ dossierId, huidig }: { dossierId: str
         </div>
       </div>
 
+      <div className="border-t border-ink/[0.06] p-4">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[10.5px] font-bold uppercase tracking-wide text-ink/30">Voorkeuren van de koper</p>
+          <div className="flex gap-1.5">
+            <Keuze actief={!voorkeurenBekend} label="Nog niet bekend" onClick={() => setVoorkeurenBekend(false)} />
+            <Keuze actief={voorkeurenBekend} label="Nu invullen" onClick={() => setVoorkeurenBekend(true)} />
+          </div>
+        </div>
+        <p className="mt-1 text-[10px] text-ink/35">
+          Beantwoord je deze zelf (bv. na een gesprek met de koper), dan hoeft de voorkeuren-link niet meer. Beide kan ook: wie het laatst
+          opslaat, telt.
+        </p>
+
+        {voorkeurenBekend && (
+          <div className="mt-3 flex flex-col gap-3">
+            <div>
+              <p className="text-[11.5px] font-semibold text-ink">Wat weegt het zwaarst als we moeten kiezen?</p>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                <Keuze actief={prioriteit === "prijs"} label="Scherpe prijs" onClick={() => setPrioriteit("prijs")} />
+                <Keuze actief={prioriteit === "kenmerken"} label="Ruimte en kenmerken" onClick={() => setPrioriteit("kenmerken")} />
+                <Keuze actief={prioriteit === "gelijk"} label="Beide even belangrijk" onClick={() => setPrioriteit("gelijk")} />
+              </div>
+            </div>
+            <div>
+              <p className="text-[11.5px] font-semibold text-ink">Nieuwbouw, modern, of juist karakter?</p>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                <Keuze actief={bouwstijl === "nieuw"} label="Nieuwbouw of modern" onClick={() => setBouwstijl("nieuw")} />
+                <Keuze actief={bouwstijl === "karakter"} label="Karakter, ook als het ouder is" onClick={() => setBouwstijl("karakter")} />
+                <Keuze actief={bouwstijl === "geen_voorkeur"} label="Maakt niet uit" onClick={() => setBouwstijl("geen_voorkeur")} />
+              </div>
+            </div>
+            <div>
+              <p className="text-[11.5px] font-semibold text-ink">Maximale budget: hard, of net erboven bespreekbaar?</p>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                <Keuze actief={!budgetFlexibel} label="Hard maximum" onClick={() => setBudgetFlexibel(false)} />
+                <Keuze actief={budgetFlexibel} label="Iets erboven bespreekbaar" onClick={() => setBudgetFlexibel(true)} />
+              </div>
+            </div>
+            <div>
+              <p className="text-[11.5px] font-semibold text-ink">Mist een woning één gevraagd kenmerk -- nog interessant?</p>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                <Keuze actief={kenmerkenFlexibel} label="Ja, toon 'm alsnog" onClick={() => setKenmerkenFlexibel(true)} />
+                <Keuze actief={!kenmerkenFlexibel} label="Nee, alleen complete matches" onClick={() => setKenmerkenFlexibel(false)} />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className="flex items-center justify-between border-t border-ink/[0.06] bg-mist/40 px-4 py-3">
         <button
           type="button"
@@ -490,12 +582,21 @@ export default function ZoekopdrachtForm({ dossierId, huidig }: { dossierId: str
           </button>
         </div>
       </div>
-      {melding && (
-        <p className="flex items-center gap-2 border-t border-ink/[0.06] px-4 py-2 text-[10.5px] font-semibold text-accent">
-          {zoekBezig && <span className="h-3 w-3 shrink-0 animate-spin rounded-full border-2 border-accent/25 border-t-accent" />}
-          {melding}
-        </p>
-      )}
+      {melding &&
+        (zoekBezig ? (
+          // BUGFIX (klacht "dit staat er erg klein, ik wil een mooi kadertje"):
+          // was een dun regeltje met een piepklein spinnertje -- nu een groot,
+          // niet te missen kader zolang er daadwerkelijk gezocht wordt.
+          <div className="flex flex-col items-center justify-center gap-3 border-t border-ink/[0.06] px-4 py-8 text-center">
+            <span className="h-8 w-8 shrink-0 animate-spin rounded-full border-[3px] border-accent/25 border-t-accent" />
+            <div>
+              <p className="text-[14px] font-bold text-accent">Bezig met zoeken naar woningen op Funda…</p>
+              <p className="mt-1 text-[11.5px] text-accent/70">Dit kan tot een minuut duren -- we doorzoeken meerdere pagina's voor de volledige lijst.</p>
+            </div>
+          </div>
+        ) : (
+          <p className="border-t border-ink/[0.06] px-4 py-2 text-[10.5px] font-semibold text-accent">{melding}</p>
+        ))}
     </div>
   );
 }
