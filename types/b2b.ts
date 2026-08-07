@@ -171,6 +171,13 @@ export interface B2bZoekopdracht {
   locatie: B2bLocatie | null;
   kenmerken: B2bKenmerken;
   matchenActief: boolean;
+  // Matching-model: koperVoorkeuren = ingevulde antwoorden (of null, nog niet
+  // ingevuld), koperVoorkeurenToken = het token voor de publieke
+  // vragenlijst-link (zie maakOfVernieuwKoperVoorkeurenToken in
+  // lib/services/b2bStore.ts) -- pas aangemaakt zodra de makelaar de link
+  // voor het eerst genereert, dus ook hier `null` totdat dat gebeurt.
+  koperVoorkeuren: B2bKoperVoorkeuren | null;
+  koperVoorkeurenToken: string | null;
 }
 
 export interface B2bKlantdossier {
@@ -217,6 +224,42 @@ export interface B2bMatchVerificatie {
   heeftTuin: boolean;
   heeftBalkon: boolean;
   heeftDakterras: boolean;
+  // Uitbreiding voor het matching-scoremodel (zie lib/services/matchScore.ts)
+  // -- live geverifieerd op meerdere Funda-detailpagina's (Chrome-DOM, dt/dd-
+  // rijen "Bouwjaar", "Perceel", "Vraagprijs per m²", "Gem. vraagprijs / m²").
+  // Alle vier `null` als de rij ontbreekt (bv. Perceel bestaat niet bij
+  // appartementen, die hebben geen eigen grond) -- dat leidt in de score
+  // nooit tot afwijzing, alleen tot 0 punten op dat ene onderdeel.
+  bouwjaar: number | null;
+  perceeloppervlak: number | null; // in m², alleen bij huizen
+  vraagprijsPerM2: number | null;
+  buurtgemiddeldePrijsPerM2: number | null;
+}
+
+// -----------------------------------------------------------------------------
+// Koper-voorkeuren (matching-model, zie het Cowork-gesprek hierover): een
+// korte, publieke vragenlijst (geen login, zelfde tokenpatroon als
+// B2bRapportAanvraag.deelToken) waarmee de koper zelf een paar knoppen
+// aanklikt. De antwoorden sturen de gewichten in het scoremodel
+// (lib/services/matchScore.ts) en bepalen of budget/kenmerken een harde grens
+// blijven of een zachte (met strafpunten in plaats van uitsluiting).
+// `null` op B2bZoekopdracht.koperVoorkeuren = nog niet ingevuld -> het model
+// valt dan terug op de neutrale standaardverdeling en de bestaande harde
+// filters, precies zoals vóór dit model bestond.
+// -----------------------------------------------------------------------------
+export type B2bPrioriteit = "prijs" | "kenmerken" | "gelijk";
+export type B2bBouwstijlVoorkeur = "nieuw" | "karakter" | "geen_voorkeur";
+
+export interface B2bKoperVoorkeuren {
+  prioriteit: B2bPrioriteit;
+  bouwstijl: B2bBouwstijlVoorkeur;
+  // "Is je maximale budget een harde grens, of zou een woning er net iets
+  // boven nog interessant kunnen zijn?" -- true = bespreekbaar.
+  budgetFlexibel: boolean;
+  // "Een woning voldoet aan bijna alles, maar mist net één ding -- nog
+  // laten zien?" -- true = ja, toon 'm alsnog (met strafpunten).
+  kenmerkenFlexibel: boolean;
+  ingevuldOp: string; // ISO
 }
 
 export interface B2bWoningMatch {
@@ -252,7 +295,15 @@ export interface B2bWoningMatch {
 // Harde grens op het aantal getoonde matches (zie b2bStore.ts#kapMatchenOpMax)
 // -- bewuste keuze: liever eerlijk "maximaal 10, en anders minder" dan een
 // lijst die blijft aangroeien met steeds oudere/marginale treffers.
-export const MAX_ZICHTBARE_MATCHEN = 10;
+// Was 10, opgehoogd naar 30 (zie het Cowork-gesprek hierover) nu de
+// eviction niet meer FIFO is maar op score (zie kapMatchenOpMax in
+// b2bStore.ts) -- 30 heeft alleen zin met een matchingsmodel dat ook
+// daadwerkelijk kiest wélke 30 het beste zijn, anders toont dit gewoon meer
+// willekeur. Live geverifieerd dat Funda's paginering (`&page=2`, `&page=3`)
+// gewoon werkt (zie haalFundaMatches in fundaFeed.ts), dus er is nu ook een
+// grotere kandidatenpool om uit te kiezen dan alleen de eerste
+// zoekresultatenpagina.
+export const MAX_ZICHTBARE_MATCHEN = 30;
 
 export interface B2bRapportAanvraag {
   id: string;

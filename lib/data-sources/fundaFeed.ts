@@ -131,13 +131,28 @@ const GARAGE_TYPE_WAARDEN = "lean_to,lock_up,garage_and_carport,built_in,undergr
 // een vereenvoudiging tot 7 waarden (A t/m G, zie types/b2b.ts) -- "A of
 // beter" dekt bij het filteren dus automatisch ook alle A+ t/m A+++++
 // mee, dat onderscheid is voor de meeste gebruikers niet zinvol.
-const ENERGIELABEL_VOLGORDE_FUNDA = ["A+++++", "A++++", "A+++", "A++", "A+", "A", "B", "C", "D", "E", "F", "G"];
-const ENERGIELABEL_AANTAL_FUNDA_WAARDEN: Record<B2bEnergielabel, number> = { A: 6, B: 7, C: 8, D: 9, E: 10, F: 11, G: 12 };
+// Geëxporteerd (i.p.v. alleen intern gebruikt): lib/services/matchScore.ts
+// hergebruikt dezelfde volgorde/drempels om te bepalen of een woning het
+// gevraagde energielabel niet alleen haalt maar ook overtreft.
+export const ENERGIELABEL_VOLGORDE_FUNDA = ["A+++++", "A++++", "A+++", "A++", "A+", "A", "B", "C", "D", "E", "F", "G"];
+export const ENERGIELABEL_AANTAL_FUNDA_WAARDEN: Record<B2bEnergielabel, number> = { A: 6, B: 7, C: 8, D: 9, E: 10, F: 11, G: 12 };
 function energielabelNaarFundaWaarden(label: B2bEnergielabel): string {
   return ENERGIELABEL_VOLGORDE_FUNDA.slice(0, ENERGIELABEL_AANTAL_FUNDA_WAARDEN[label]).join(",");
 }
 
-function kenmerkenNaarParams(kenmerken: B2bKenmerken | undefined): URLSearchParams {
+// `kenmerkenFlexibel` (matching-model, koperVoorkeuren.kenmerkenFlexibel):
+// als de koper heeft aangegeven dat een woning die op één punt net niet
+// voldoet nog steeds interessant is, laten we de buitenruimte-filter
+// (tuin/balkon/dakterras) hier bewust WEG i.p.v. hem gewoon mee te sturen --
+// Funda's eigen filter is een harde uitsluiting, dus als we die erin laten
+// staan komt een net-niet-match nooit eens in de resultatenlijst terecht om
+// lokaal te kunnen scoren/toetsen. voldoetAanKenmerken() hieronder blijft
+// wél lokaal controleren en telt hoeveel van tuin/balkon/dakterras
+// daadwerkelijk ontbreken -- bij "flexibel" wordt hooguit ÉÉN ontbrekend
+// kenmerk getolereerd (zie voldoetAanKenmerken), niet allemaal.
+// Overige kenmerken (woningtype, slaapkamers, energielabel, garage, lift)
+// blijven altijd hard -- daar is nooit over "een puntje minder" gesproken.
+function kenmerkenNaarParams(kenmerken: B2bKenmerken | undefined, kenmerkenFlexibel = false): URLSearchParams {
   const params = new URLSearchParams();
   if (!kenmerken) return params;
 
@@ -153,11 +168,13 @@ function kenmerkenNaarParams(kenmerken: B2bKenmerken | undefined): URLSearchPara
   if (kenmerken.lift) params.set("accessibility", "lift");
   if (kenmerken.garage) params.set("garage_type", GARAGE_TYPE_WAARDEN);
 
-  const buiten: string[] = [];
-  if (kenmerken.tuin) buiten.push("garden");
-  if (kenmerken.balkon) buiten.push("balcony");
-  if (kenmerken.dakterras) buiten.push("terrace");
-  if (buiten.length > 0) params.set("exterior_space_type", buiten.join(","));
+  if (!kenmerkenFlexibel) {
+    const buiten: string[] = [];
+    if (kenmerken.tuin) buiten.push("garden");
+    if (kenmerken.balkon) buiten.push("balcony");
+    if (kenmerken.dakterras) buiten.push("terrace");
+    if (buiten.length > 0) params.set("exterior_space_type", buiten.join(","));
+  }
 
   return params;
 }
@@ -182,18 +199,37 @@ function kenmerkenNaarParams(kenmerken: B2bKenmerken | undefined): URLSearchPara
 // beide kanten optioneel zijn (price=300000-500000, price=300000- en
 // price=0-500000 zijn alle drie handmatig getest en gaven exact de
 // verwachte, aftelbare resultaten).
+// `pagina` -- LIVE GEVERIFIEERD (matching-model-sessie, Chrome): Funda's
+// eigen paginaknoppen linken naar `?...&page=2`, `&page=3` enz. (pagina 1 is
+// gewoon de URL zonder page-parameter); `page=2` gaf ook daadwerkelijk 15
+// nieuwe, andere woning-URL's terug via hetzelfde ld+json ItemList-blok.
+// Nodig om een grotere kandidatenpool te kunnen scoren/kiezen dan de ±15
+// resultaten van de eerste pagina alleen (zie MAX_ZICHTBARE_MATCHEN).
+// Vaste marge (10%) voor "budget is bespreekbaar" (koperVoorkeuren.
+// budgetFlexibel, zie types/b2b.ts) -- toegepast op zowel de Funda-URL zelf
+// (anders komt een net-boven-budget-woning nooit in de resultatenlijst
+// terecht) als de lokale nafiltering (bijBudget) en de herverificatie van
+// bestaande matches (ruimVerouderdeMatchenOp in b2bStore.ts), zodat alle drie
+// dezelfde marge hanteren. Geëxporteerd om die laatste twee consistent te
+// houden i.p.v. het getal op drie plekken te dupliceren.
+export const BUDGET_FLEXIBEL_MARGE = 0.1;
+
 function bouwZoekUrl(
   locatie: B2bLocatie,
   budgetMin: number | null,
   budgetMax: number | null,
-  kenmerken: B2bKenmerken | undefined
+  kenmerken: B2bKenmerken | undefined,
+  pagina = 1,
+  opties: { budgetFlexibel?: boolean; kenmerkenFlexibel?: boolean } = {}
 ): string {
   const gebied = locatie.wijkSlug ? `${locatie.plaatsSlug}/${locatie.wijkSlug}` : locatie.plaatsSlug;
-  const params = kenmerkenNaarParams(kenmerken);
+  const params = kenmerkenNaarParams(kenmerken, opties.kenmerkenFlexibel);
   params.set("selected_area", gebied);
   const min = budgetMin && budgetMin > 0 ? Math.round(budgetMin) : null;
-  const max = budgetMax && budgetMax > 0 ? Math.round(budgetMax) : null;
+  let max = budgetMax && budgetMax > 0 ? Math.round(budgetMax) : null;
+  if (max != null && opties.budgetFlexibel) max = Math.round(max * (1 + BUDGET_FLEXIBEL_MARGE));
   if (min != null || max != null) params.set("price", `${min ?? 0}-${max ?? ""}`);
+  if (pagina > 1) params.set("page", String(pagina));
   return `https://www.funda.nl/zoeken/koop?${params.toString()}`;
 }
 
@@ -460,6 +496,41 @@ function leesBuitenruimte(html: string): { heeftTuin: boolean; heeftBalkon: bool
   };
 }
 
+// LIVE GEVERIFIEERD (Chrome-DOM, matching-model-sessie) op zowel een huis als
+// een appartement: "Bouwjaar", "Perceel" (ontbreekt bij appartementen -- geen
+// eigen grond, dus terecht geen dt-rij), "Vraagprijs per m²" en de
+// buurtvergelijking "Gem. vraagprijs / m²" zijn allemaal dt/dd-rijen van
+// hetzelfde type als Tuin/Balkon-dakterras hierboven. Prijs-per-m² komt als
+// "€ 4.643" terug, vandaar dezelfde eurotekst-opschoning als naarPrijsGetal.
+function leesDtWaarde(html: string, label: string): string | null {
+  const match = html.match(new RegExp(`<dt[^>]*>\\s*${label}\\s*<\\/dt>\\s*<dd[^>]*>([\\s\\S]*?)<\\/dd>`, "i"));
+  if (!match) return null;
+  const tekst = match[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  return tekst || null;
+}
+
+function leesGetal(tekst: string | null): number | null {
+  if (!tekst) return null;
+  const cijfers = tekst.replace(/[^\d]/g, "");
+  if (!cijfers) return null;
+  const getal = Number(cijfers);
+  return Number.isFinite(getal) && getal > 0 ? getal : null;
+}
+
+function leesExtraKenmerken(html: string): {
+  bouwjaar: number | null;
+  perceeloppervlak: number | null;
+  vraagprijsPerM2: number | null;
+  buurtgemiddeldePrijsPerM2: number | null;
+} {
+  return {
+    bouwjaar: leesGetal(leesDtWaarde(html, "Bouwjaar")),
+    perceeloppervlak: leesGetal(leesDtWaarde(html, "Perceel")),
+    vraagprijsPerM2: leesGetal(leesDtWaarde(html, "Vraagprijs per m²")),
+    buurtgemiddeldePrijsPerM2: leesGetal(leesDtWaarde(html, "Gem\\. vraagprijs \\/ m²")),
+  };
+}
+
 function leesLokaleVerificatieData(html: string, ld: FundaJsonLd): LokaleVerificatie {
   const types = Array.isArray(ld["@type"]) ? ld["@type"] : ld["@type"] ? [ld["@type"]] : [];
   const woningtypeFamilie: LokaleVerificatie["woningtypeFamilie"] = types.includes("Huis")
@@ -484,6 +555,7 @@ function leesLokaleVerificatieData(html: string, ld: FundaJsonLd): LokaleVerific
     woonoppervlak: m2Match ? Number(m2Match[1]) : null,
     energielabel: labelMatch ? labelMatch[1].trim() : null,
     ...leesBuitenruimte(html),
+    ...leesExtraKenmerken(html),
   };
 }
 
@@ -492,7 +564,7 @@ function leesLokaleVerificatieData(html: string, ld: FundaJsonLd): LokaleVerific
 // wordt uit de matches gehouden. Geëxporteerd: b2bStore.ts hergebruikt dit
 // om BESTAANDE, opgeslagen matches (via hun verificatie-snapshot) opnieuw te
 // toetsen, niet alleen nieuw gescrapete kandidaten.
-export function voldoetAanKenmerken(verificatie: LokaleVerificatie, kenmerken: B2bKenmerken | undefined): boolean {
+export function voldoetAanKenmerken(verificatie: LokaleVerificatie, kenmerken: B2bKenmerken | undefined, kenmerkenFlexibel = false): boolean {
   if (!kenmerken) return true;
 
   if (kenmerken.woningtype && verificatie.woningtypeFamilie) {
@@ -525,9 +597,22 @@ export function voldoetAanKenmerken(verificatie: LokaleVerificatie, kenmerken: B
   // matches is dit veld altijd een echte boolean (nooit undefined, zie
   // leesBuitenruimte hierboven), dus daar betekent dit gewoon "heeft het
   // kenmerk aantoonbaar niet".
-  if (kenmerken.tuin && verificatie.heeftTuin !== true) return false;
-  if (kenmerken.balkon && verificatie.heeftBalkon !== true) return false;
-  if (kenmerken.dakterras && verificatie.heeftDakterras !== true) return false;
+  //
+  // MATCHING-MODEL: bij kenmerkenFlexibel (koperVoorkeuren, "op één puntje
+  // na nog interessant?") wordt maximaal ÉÉN ontbrekend buitenruimte-kenmerk
+  // getolereerd i.p.v. meteen afgewezen -- de bijbehorende strafpunten komen
+  // van berekenMatchScore() in lib/services/matchScore.ts, niet hier. Twee of
+  // meer ontbrekende kenmerken blijft altijd een afwijzing, ook flexibel.
+  const ontbrekend = [
+    kenmerken.tuin && verificatie.heeftTuin !== true,
+    kenmerken.balkon && verificatie.heeftBalkon !== true,
+    kenmerken.dakterras && verificatie.heeftDakterras !== true,
+  ].filter(Boolean).length;
+  if (kenmerkenFlexibel) {
+    if (ontbrekend > 1) return false;
+  } else if (ontbrekend > 0) {
+    return false;
+  }
 
   return true;
 }
@@ -545,7 +630,11 @@ function formatPrijs(bedrag: number | null): string | null {
   return `${new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(bedrag)} k.k.`;
 }
 
-async function haalListingDetails(detailUrl: string, kenmerken: B2bKenmerken | undefined): Promise<FundaFeedItem | null> {
+async function haalListingDetails(
+  detailUrl: string,
+  kenmerken: B2bKenmerken | undefined,
+  kenmerkenFlexibel = false
+): Promise<FundaFeedItem | null> {
   try {
     const res = await fetchMetTimeout(detailUrl, FUNDA_DETAIL_TIMEOUT_MS);
     if (!res.ok) return null;
@@ -558,7 +647,7 @@ async function haalListingDetails(detailUrl: string, kenmerken: B2bKenmerken | u
     // eens hard tegen de kenmerken van de zoekopdracht gehouden. Zie
     // voldoetAanKenmerken() hierboven voor de precieze regels.
     const verificatie = leesLokaleVerificatieData(html, ld);
-    if (!voldoetAanKenmerken(verificatie, kenmerken)) return null;
+    if (!voldoetAanKenmerken(verificatie, kenmerken, kenmerkenFlexibel)) return null;
 
     const straat = ld.address?.streetAddress ?? ld.name ?? "";
     const plaats = ld.address?.addressLocality ?? "";
@@ -596,14 +685,23 @@ async function haalListingDetails(detailUrl: string, kenmerken: B2bKenmerken | u
 // van die links helemaal wordt overgeslagen -- de link blijft wel meetellen
 // voor `limiet` (zelfde resultatenselectie als voorheen), alleen het dure
 // detailpagina-verzoek wordt bespaard.
+export interface KoperVoorkeurenVoorZoeken {
+  budgetFlexibel?: boolean;
+  kenmerkenFlexibel?: boolean;
+}
+
 export async function haalFundaMatches(
   locatie: B2bLocatie,
   budgetMin: number | null,
   budgetMax: number | null,
   kenmerken: B2bKenmerken | undefined,
   limiet = 15,
-  bekendeUrls: Set<string> = new Set()
+  bekendeUrls: Set<string> = new Set(),
+  koperVoorkeuren?: KoperVoorkeurenVoorZoeken | null
 ): Promise<FundaFeedItem[]> {
+  const budgetFlexibel = Boolean(koperVoorkeuren?.budgetFlexibel);
+  const kenmerkenFlexibel = Boolean(koperVoorkeuren?.kenmerkenFlexibel);
+
   console.log(
     // BUGFIX (diagnose-sessie "het klopt allemaal niet"): deze regel liet
     // altijd "scrape.do" zien zodra SCRAPEDO_TOKEN gezet was, ook nadat
@@ -616,7 +714,11 @@ export async function haalFundaMatches(
         : SCRAPEDO_TOKEN
           ? "scrape.do"
           : "geen (directe fetch, wordt vermoedelijk geblokkeerd vanaf Vercel)"
-    } locatie=${locatie.plaatsSlug}${locatie.wijkSlug ? "/" + locatie.wijkSlug : ""}`
+    } locatie=${locatie.plaatsSlug}${locatie.wijkSlug ? "/" + locatie.wijkSlug : ""}${
+      budgetFlexibel || kenmerkenFlexibel
+        ? ` flexibel=${[budgetFlexibel && "budget", kenmerkenFlexibel && "kenmerken"].filter(Boolean).join("+")}`
+        : ""
+    }`
   );
 
   // BUGFIX: "budget verlaagd, maar oude/te dure resultaten bleven ertussen
@@ -629,10 +731,19 @@ export async function haalFundaMatches(
   // ontbrak hier eerder volledig, zowel in de Funda-URL (zie bouwZoekUrl)
   // als in deze nafiltering -- dat was de directe oorzaak van "ik kies
   // 300-500k en krijg een woning van 289".
+  //
+  // MATCHING-MODEL: bij budgetFlexibel wordt dezelfde marge (10%,
+  // BUDGET_FLEXIBEL_MARGE) toegepast als in de Funda-URL zelf (zie
+  // bouwZoekUrl) -- anders zou een net-boven-budget-woning wel door Funda's
+  // eigen filter komen, maar hier alsnog stilzwijgend worden weggegooid.
+  // berekenMatchScore() in lib/services/matchScore.ts telt de daadwerkelijke
+  // overschrijding later als strafpunten mee, dus dit is geen vrijbrief --
+  // gewoon niet meer een harde uitsluiting.
+  const budgetMaxMetMarge = budgetMax && budgetMax > 0 && budgetFlexibel ? Math.round(budgetMax * (1 + BUDGET_FLEXIBEL_MARGE)) : budgetMax;
   const bijBudget = (item: FundaFeedItem): boolean => {
     if (item.prijs == null) return true;
     if (budgetMin && budgetMin > 0 && item.prijs < budgetMin) return false;
-    if (budgetMax && budgetMax > 0 && item.prijs > budgetMax) return false;
+    if (budgetMaxMetMarge && budgetMaxMetMarge > 0 && item.prijs > budgetMaxMetMarge) return false;
     return true;
   };
 
@@ -641,28 +752,47 @@ export async function haalFundaMatches(
   }
 
   try {
-    const zoekUrl = bouwZoekUrl(locatie, budgetMin, budgetMax, kenmerken);
-    const res = await fetchMetTimeout(zoekUrl, FUNDA_SEARCH_TIMEOUT_MS);
-    console.log(`[fundaFeed] LIVE zoekaanvraag ${zoekUrl} -> HTTP ${res.status}`);
-    if (!res.ok) {
-      console.error(`[fundaFeed] HTTP ${res.status} bij ophalen van ${zoekUrl}`);
-      return [];
+    // Paginering (matching-model): LIVE GEVERIFIEERD dat Funda's `&page=2`,
+    // `&page=3` werkt en daadwerkelijk nieuwe, andere woning-URL's teruggeeft
+    // via hetzelfde ld+json ItemList-blok als pagina 1 (zie bouwZoekUrl) --
+    // nodig om uit een grotere pool te kunnen kiezen dan de ±15 resultaten
+    // van pagina 1 alleen (zie MAX_ZICHTBARE_MATCHEN in types/b2b.ts). Elke
+    // pagina kost 1 proxy-verzoek ongeacht hoeveel links daarna al bekend
+    // blijken (dat wordt pas ná dit blok bepaald) -- MAX_PAGINAS is dus een
+    // bewuste, harde kostengrens.
+    const MAX_PAGINAS = 3;
+    const links: string[] = [];
+    let paginasOpgehaald = 0;
+    for (let pagina = 1; pagina <= MAX_PAGINAS && links.length < limiet; pagina++) {
+      const zoekUrl = bouwZoekUrl(locatie, budgetMin, budgetMax, kenmerken, pagina, { budgetFlexibel, kenmerkenFlexibel });
+      const res = await fetchMetTimeout(zoekUrl, FUNDA_SEARCH_TIMEOUT_MS);
+      console.log(`[fundaFeed] LIVE zoekaanvraag (pagina ${pagina}) ${zoekUrl} -> HTTP ${res.status}`);
+      if (!res.ok) {
+        console.error(`[fundaFeed] HTTP ${res.status} bij ophalen van ${zoekUrl}`);
+        break;
+      }
+      paginasOpgehaald++;
+      const html = await res.text();
+      const paginaLinks = extractDetailLinks(html, limiet - links.length);
+      if (paginaLinks.length === 0) {
+        if (pagina === 1) {
+          // Waarschijnlijkste oorzaak van 0 links bij een 200-status: ofwel
+          // een oprechte 0-resultaten-pagina (geen ld+json meer aanwezig,
+          // zie extractDetailLinks), ofwel een bot-detectiepagina i.p.v. de
+          // echte zoekresultaten -- de eerste paar honderd tekens (zonder
+          // scripts/styles) laten meestal meteen zien welke van de twee het
+          // is (bv. "Even geduld", "verify you are human", "Access Denied",
+          // een cookie-muur, etc.).
+          const snippet = html.replace(/<script[\s\S]*?<\/script>/gi, "").replace(/\s+/g, " ").slice(0, 500);
+          console.log(`[fundaFeed] LIVE 0 links op pagina 1. HTML-snippet: ${snippet}`);
+        }
+        break; // geen (verdere) resultaten -- volgende pagina's leveren dan ook niets op
+      }
+      for (const link of paginaLinks) if (!links.includes(link)) links.push(link);
     }
-    const html = await res.text();
-    const links = extractDetailLinks(html, limiet);
-    console.log(`[fundaFeed] LIVE ${links.length} woninglink(s) gevonden op de zoekpagina (${html.length} tekens HTML)`);
-    if (links.length === 0) {
-      // Waarschijnlijkste oorzaak van 0 links bij een 200-status: ofwel een
-      // oprechte 0-resultaten-pagina (geen ld+json meer aanwezig, zie
-      // extractDetailLinks), ofwel een bot-detectiepagina i.p.v. de echte
-      // zoekresultaten -- de eerste paar honderd tekens (zonder
-      // scripts/styles) laten meestal meteen zien welke van de twee het is
-      // (bv. "Even geduld", "verify you are human", "Access Denied", een
-      // cookie-muur, etc.).
-      const snippet = html.replace(/<script[\s\S]*?<\/script>/gi, "").replace(/\s+/g, " ").slice(0, 500);
-      console.log(`[fundaFeed] LIVE 0 links. HTML-snippet: ${snippet}`);
-      return [];
-    }
+
+    console.log(`[fundaFeed] LIVE ${links.length} woninglink(s) gevonden over ${paginasOpgehaald} pagina('s)`);
+    if (links.length === 0) return [];
 
     const nieuweLinks = links.filter((url) => !bekendeUrls.has(url));
     const overgeslagen = links.length - nieuweLinks.length;
@@ -671,7 +801,7 @@ export async function haalFundaMatches(
     }
     if (nieuweLinks.length === 0) return [];
 
-    const resultaten = await Promise.all(nieuweLinks.map((url) => haalListingDetails(url, kenmerken)));
+    const resultaten = await Promise.all(nieuweLinks.map((url) => haalListingDetails(url, kenmerken, kenmerkenFlexibel)));
     const afgekeurd = resultaten.filter((item) => item === null).length;
     if (afgekeurd > 0) {
       console.log(`[fundaFeed] LIVE ${afgekeurd}/${nieuweLinks.length} link(s) afgekeurd door lokale kenmerken-verificatie of prijs`);

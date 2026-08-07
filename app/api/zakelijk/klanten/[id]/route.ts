@@ -72,7 +72,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ error: "Kies eerst een locatie om automatische meldingen aan te zetten." }, { status: 400 });
     }
 
-    const bijgewerkt = await zetKlantdossierZoekopdracht(id, { budgetMin, budgetMax, locatie, kenmerken, matchenActief });
+    // koperVoorkeuren/koperVoorkeurenToken lopen via een apart endpoint (de
+    // publieke vragenlijst-link, zie app/api/zakelijk/klanten/[id]/koper-
+    // voorkeuren-link/route.ts en app/koper-voorkeuren/[token]/route.ts) --
+    // hier gewoon ongewijzigd overnemen zodat een makelaar die alleen budget/
+    // locatie/kenmerken bijwerkt nooit per ongeluk al ingevulde voorkeuren
+    // van de koper wist.
+    const bijgewerkt = await zetKlantdossierZoekopdracht(id, {
+      budgetMin,
+      budgetMax,
+      locatie,
+      kenmerken,
+      matchenActief,
+      koperVoorkeuren: dossier.zoekopdracht?.koperVoorkeuren ?? null,
+      koperVoorkeurenToken: dossier.zoekopdracht?.koperVoorkeurenToken ?? null,
+    });
     return NextResponse.json({ ok: true, dossier: bijgewerkt });
   }
 

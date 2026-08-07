@@ -1,7 +1,10 @@
 import { randomUUID, randomBytes } from "crypto";
 import { kvGet, kvSet, kvDel, kvZAdd, kvZRangeByScore, kvZRem, kvIncrWithTtl } from "@/lib/services/kvStore";
 import { slugify } from "@/lib/utils/slug";
-import { voldoetAanKenmerken } from "@/lib/data-sources/fundaFeed";
+import { voldoetAanKenmerken, BUDGET_FLEXIBEL_MARGE } from "@/lib/data-sources/fundaFeed";
+import { berekenMatchScore } from "@/lib/services/matchScore";
+import { vindGekoppeldRapport } from "@/lib/services/matchRapportKoppeling";
+import { legeKenmerken } from "@/types/b2b";
 import type {
   B2bOrganisatie,
   B2bGebruiker,
@@ -12,6 +15,7 @@ import type {
   B2bTierWijzigingsverzoek,
   B2bWoningMatch,
   B2bKenmerken,
+  B2bKoperVoorkeuren,
 } from "@/types/b2b";
 
 // -----------------------------------------------------------------------------
@@ -62,6 +66,12 @@ function matchKey(id: string) {
 }
 function klantMatchenIndexKey(klantId: string) {
   return `b2b-klant-matches:${klantId}`;
+}
+// Reverse lookup voor de publieke koper-voorkeuren-vragenlijst (matching-
+// model) -- zelfde eenvoudige patroon als deelTokenKey verderop in dit
+// bestand (los token-record i.p.v. de klant-id zelf publiek bruikbaar maken).
+function koperVoorkeurenTokenKey(token: string) {
+  return `b2b-koperVoorkeurenToken:${token}`;
 }
 // Gebruiksteller per organisatie + kalendermaand (bv. "2026-08"). Geen
 // TTL-loze counter mogelijk in deze kvStore (kvIncrWithTtl zet altijd een
@@ -234,6 +244,51 @@ export async function zetKlantdossierZoekopdracht(
   return bijgewerkt;
 }
 
+// --- Koper-voorkeuren (matching-model) ----------------------------------------
+// Publieke, niet-ingelogde vragenlijst-link voor de koper (zie het Cowork-
+// gesprek hierover) -- zelfde tokenpatroon als maakOfVernieuwDeelToken
+// verderop: een los, herroepbaar token i.p.v. de klant-id zelf publiek
+// bruikbaar maken.
+
+// Idempotent qua dossier: bestaat er al een token, dan wordt die gewoon
+// hergebruikt (geen nieuwe link nodig bij elke klik op "kopieer link" in de
+// makelaar-UI) -- alleen als er nog geen token is, wordt er één aangemaakt.
+export async function maakOfVernieuwKoperVoorkeurenToken(dossierId: string): Promise<string> {
+  const dossier = await getKlantdossier(dossierId);
+  if (!dossier) throw new Error("Klantdossier niet gevonden.");
+  const bestaandToken = dossier.zoekopdracht?.koperVoorkeurenToken;
+  if (bestaandToken) return bestaandToken;
+
+  const token = randomBytes(24).toString("hex");
+  const basisZoekopdracht: B2bKlantdossier["zoekopdracht"] = dossier.zoekopdracht ?? {
+    budgetMin: null,
+    budgetMax: null,
+    locatie: null,
+    kenmerken: legeKenmerken(),
+    matchenActief: false,
+    koperVoorkeuren: null,
+    koperVoorkeurenToken: null,
+  };
+  await kvSet(koperVoorkeurenTokenKey(token), dossierId);
+  await zetKlantdossierZoekopdracht(dossierId, { ...basisZoekopdracht, koperVoorkeurenToken: token });
+  return token;
+}
+
+export async function getKlantdossierDoorKoperVoorkeurenToken(token: string): Promise<B2bKlantdossier | null> {
+  const dossierId = await kvGet(koperVoorkeurenTokenKey(token));
+  if (!dossierId) return null;
+  return getKlantdossier(dossierId);
+}
+
+// Slaat de ingevulde antwoorden op -- shallow merge op zoekopdracht-niveau,
+// zodat het invullen van de vragenlijst nooit per ongeluk al ingestelde
+// budget/locatie/kenmerken van de makelaar overschrijft.
+export async function zetKoperVoorkeuren(dossierId: string, voorkeuren: B2bKoperVoorkeuren): Promise<B2bKlantdossier | null> {
+  const dossier = await getKlantdossier(dossierId);
+  if (!dossier || !dossier.zoekopdracht) return null;
+  return zetKlantdossierZoekopdracht(dossierId, { ...dossier.zoekopdracht, koperVoorkeuren: voorkeuren });
+}
+
 // Verwijdert een klantdossier (#3). Rapportdata wordt NOOIT weggegooid (dat
 // zou onomkeerbaar historische Altum-data kosten die de organisatie al
 // betaald heeft) -- rapporten die aan dit dossier hingen blijven gewoon
@@ -328,14 +383,24 @@ export async function verwijderMatch(match: Pick<B2bWoningMatch, "id" | "klantId
 // hierboven -- voor de zekerheid als verouderd behandeld: we kunnen niet
 // vaststellen of ze nog kloppen, dus veiliger om ze opnieuw (correct) te
 // laten vinden dan een mogelijk foute match te laten staan.
+// MATCHING-MODEL-UITBREIDING (zie het Cowork-gesprek hierover): `koperVoorkeuren`
+// erbij zodat budgetFlexibel dezelfde marge (BUDGET_FLEXIBEL_MARGE,
+// fundaFeed.ts) toepast als bij het scrapen zelf -- anders zou een
+// net-boven-budget-match die dankzij die voorkeur juist WEL is toegelaten,
+// hier bij de eerstvolgende verversing alsnog als "verouderd" worden
+// opgeruimd. Zelfde principe voor kenmerkenFlexibel via voldoetAanKenmerken.
 export async function ruimVerouderdeMatchenOp(
   klantId: string,
   budgetMin: number | null,
   budgetMax: number | null,
   locatieLabel: string | null,
-  kenmerken?: B2bKenmerken
+  kenmerken?: B2bKenmerken,
+  koperVoorkeuren?: B2bKoperVoorkeuren | null
 ): Promise<B2bWoningMatch[]> {
   const bestaande = await listMatchenVoorKlant(klantId);
+  const budgetMaxMetMarge =
+    budgetMax != null && budgetMax > 0 && koperVoorkeuren?.budgetFlexibel ? Math.round(budgetMax * (1 + BUDGET_FLEXIBEL_MARGE)) : budgetMax;
+  const kenmerkenFlexibel = Boolean(koperVoorkeuren?.kenmerkenFlexibel);
 
   const passend: B2bWoningMatch[] = [];
   for (const match of bestaande) {
@@ -343,10 +408,10 @@ export async function ruimVerouderdeMatchenOp(
     // liet oude, te goedkope matches eerder gewoon staan, om dezelfde reden
     // als de al bestaande budgetMax-check hieronder.
     const onderBudget = budgetMin != null && budgetMin > 0 && match.prijs != null && match.prijs < budgetMin;
-    const buitenBudget = budgetMax != null && budgetMax > 0 && match.prijs != null && match.prijs > budgetMax;
+    const buitenBudget = budgetMaxMetMarge != null && budgetMaxMetMarge > 0 && match.prijs != null && match.prijs > budgetMaxMetMarge;
     const andereLocatie = locatieLabel != null && match.locatieLabel !== locatieLabel;
     const voldoetNietMeerAanKenmerken =
-      kenmerken != null && (match.verificatie == null || !voldoetAanKenmerken(match.verificatie, kenmerken));
+      kenmerken != null && (match.verificatie == null || !voldoetAanKenmerken(match.verificatie, kenmerken, kenmerkenFlexibel));
     if (onderBudget || buitenBudget || andereLocatie || voldoetNietMeerAanKenmerken) {
       await verwijderMatch(match);
     } else {
@@ -356,16 +421,36 @@ export async function ruimVerouderdeMatchenOp(
   return passend;
 }
 
-// Toont "maximaal 10 resultaten" is een bewuste, harde grens (zie het gesprek
-// hierover): een matchlijst die blijft aangroeien totdat hij half uit
-// verouderde/marginale treffers bestaat is erger dan gewoon eerlijk minder
-// tonen. Wordt aangeroepen NA het opslaan van nieuwe matches -- knipt de
-// oudste matches weg zodra het totaal boven maxAantal komt (listMatchenVoorKlant
-// geeft al nieuwste-eerst terug, dus "oudste" = alles ná index maxAantal).
+// "Maximaal 30 resultaten" (MAX_ZICHTBARE_MATCHEN) is een bewuste, harde
+// grens (zie het gesprek hierover): een matchlijst die blijft aangroeien
+// totdat hij half uit verouderde/marginale treffers bestaat is erger dan
+// gewoon eerlijk minder tonen. Wordt aangeroepen NA het opslaan van nieuwe
+// matches.
+//
+// MATCHING-MODEL (zie het Cowork-gesprek hierover): was FIFO (de oudste
+// matches vlogen eruit) -- dat had geen enkele notie van kwaliteit, dus een
+// uitstekende match kon zomaar wegvallen zodra er een middelmatige nieuwere
+// bijkwam. Nu wordt op score gerangschikt (berekenMatchScore,
+// lib/services/matchScore.ts) en vallen de LAAGST scorende matches als eerste
+// weg. Een match met een gekoppeld Kooprapport (vindGekoppeldRapport) is
+// altijd beschermd, ongeacht score -- de makelaar heeft daar al tijd in
+// gestoken, die mag nooit stilzwijgend uit het overzicht verdwijnen. Zijn er
+// méér beschermde matches dan maxAantal, dan wordt de cap bewust niet
+// gehaald -- bescherming gaat voor de weergavelimiet.
 export async function kapMatchenOpMax(klantId: string, maxAantal: number): Promise<void> {
   const huidige = await listMatchenVoorKlant(klantId);
-  const teVeel = huidige.slice(maxAantal);
-  for (const match of teVeel) {
+  if (huidige.length <= maxAantal) return;
+
+  const [dossier, rapporten] = await Promise.all([getKlantdossier(klantId), listRapportenVoorKlant(klantId)]);
+  const beschermdeIds = new Set(huidige.filter((m) => vindGekoppeldRapport(m.titel, rapporten) != null).map((m) => m.id));
+
+  const teVeel = huidige.length - maxAantal;
+  const kandidaten = huidige
+    .filter((m) => !beschermdeIds.has(m.id))
+    .map((match) => ({ match, score: berekenMatchScore(match, dossier?.zoekopdracht).totaal }))
+    .sort((a, b) => a.score - b.score);
+
+  for (const { match } of kandidaten.slice(0, teVeel)) {
     await verwijderMatch(match);
   }
 }

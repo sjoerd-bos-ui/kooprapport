@@ -105,6 +105,7 @@ export default async function ZakelijkKlantDetailPagina({ params }: { params: Pr
                   rapporten={rapporten}
                   dossierId={dossier.id}
                   matchenActief={dossier.zoekopdracht?.matchenActief ?? false}
+                  zoekopdracht={dossier.zoekopdracht}
                 />
                 {laatsteBiedadvies && (
                   <div className="rounded-2xl bg-gradient-to-br from-accent to-accent-dark p-4">

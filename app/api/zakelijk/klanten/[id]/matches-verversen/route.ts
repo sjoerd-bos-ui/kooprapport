@@ -54,9 +54,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // erbij, zodat ruimVerouderdeMatchenOp ook BESTAANDE matches die niet meer
   // aan woningtype/slaapkamers/m²/energielabel voldoen opruimt -- niet
   // alleen budget/locatie zoals voorheen (zie b2bStore.ts).
-  const bestaande = await ruimVerouderdeMatchenOp(id, budgetMin, budgetMax, locatie.label, dossier.zoekopdracht?.kenmerken);
+  // Matching-model: koperVoorkeuren erbij, zowel voor het opruimen van
+  // bestaande matches (dezelfde budget-/kenmerkenmarge, zie b2bStore.ts) als
+  // voor het live doorzoeken van Funda (zie haalFundaMatches).
+  const koperVoorkeuren = dossier.zoekopdracht?.koperVoorkeuren ?? null;
+  const bestaande = await ruimVerouderdeMatchenOp(id, budgetMin, budgetMax, locatie.label, dossier.zoekopdracht?.kenmerken, koperVoorkeuren);
   const bekendeUrls = new Set(bestaande.map((m) => m.url));
-  const feedItems = await haalFundaMatches(locatie, budgetMin, budgetMax, dossier.zoekopdracht?.kenmerken, MAX_DIRECT, bekendeUrls);
+  const feedItems = await haalFundaMatches(locatie, budgetMin, budgetMax, dossier.zoekopdracht?.kenmerken, MAX_DIRECT, bekendeUrls, koperVoorkeuren);
   const nieuweItems = feedItems.filter((item) => !bekendeUrls.has(item.url)).slice(0, MAX_DIRECT);
 
   for (const item of nieuweItems) {

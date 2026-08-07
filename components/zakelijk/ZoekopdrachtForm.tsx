@@ -130,6 +130,34 @@ export default function ZoekopdrachtForm({ dossierId, huidig }: { dossierId: str
   // Zie ook MatchesKaart.tsx voor dezelfde, duidelijkere melding bij de
   // losse "Ververs"-knop.
   const [zoekBezig, setZoekBezig] = useState(false);
+  // Matching-model: koper-voorkeuren-link (zie het Cowork-gesprek hierover) --
+  // genereert/hergebruikt een publiek token en kopieert de link direct naar
+  // het klembord, zodat de makelaar hem meteen kan doorsturen.
+  const [linkBezig, setLinkBezig] = useState(false);
+  const [linkMelding, setLinkMelding] = useState<string | null>(null);
+
+  async function kopieerVoorkeurenLink() {
+    setLinkBezig(true);
+    setLinkMelding(null);
+    try {
+      const res = await fetch(`/api/zakelijk/klanten/${dossierId}/koper-voorkeuren-link`, { method: "POST" });
+      const body = await res.json();
+      if (!res.ok) {
+        setLinkMelding(body.error ?? "Link aanmaken is niet gelukt.");
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(body.voorkeurenUrl);
+        setLinkMelding("Link gekopieerd -- stuur 'm naar de koper.");
+      } catch {
+        setLinkMelding(body.voorkeurenUrl);
+      }
+    } catch {
+      setLinkMelding("Link aanmaken is niet gelukt.");
+    } finally {
+      setLinkBezig(false);
+    }
+  }
 
   const heeftData = huidig && (huidig.budgetMin || huidig.budgetMax || huidig.locatie || huidig.matchenActief);
 
@@ -208,10 +236,18 @@ export default function ZoekopdrachtForm({ dossierId, huidig }: { dossierId: str
       <div className="rounded-2xl bg-white p-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-[11px] font-bold uppercase tracking-wide text-ink/40">Zoekopdracht</p>
-          <button type="button" onClick={() => setBewerken(true)} className="text-[10.5px] font-semibold text-accent hover:underline">
-            {heeftData ? "Bewerken" : "+ Toevoegen"}
-          </button>
+          <div className="flex items-center gap-3">
+            {heeftData && huidig?.locatie && (
+              <button type="button" onClick={kopieerVoorkeurenLink} disabled={linkBezig} className="text-[10.5px] font-semibold text-accent hover:underline disabled:opacity-50">
+                {linkBezig ? "Bezig…" : "Voorkeuren-link kopiëren"}
+              </button>
+            )}
+            <button type="button" onClick={() => setBewerken(true)} className="text-[10.5px] font-semibold text-accent hover:underline">
+              {heeftData ? "Bewerken" : "+ Toevoegen"}
+            </button>
+          </div>
         </div>
+        {linkMelding && <p className="mt-1.5 text-[10.5px] font-semibold text-accent">{linkMelding}</p>}
         {heeftData ? (
           <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
             {huidig?.locatie && (
@@ -238,6 +274,12 @@ export default function ZoekopdrachtForm({ dossierId, huidig }: { dossierId: str
               <BoltIcon className="h-3 w-3" />
               Automatisch {matchenActief ? "aan" : "uit"}
             </span>
+            {huidig?.koperVoorkeuren && (
+              <span className="flex items-center gap-1 rounded-full bg-[#EAF3DE] px-2.5 py-1 text-[11px] font-semibold text-[#3B6D11]">
+                <CheckIcon className="h-3 w-3" />
+                Voorkeuren van koper bekend
+              </span>
+            )}
           </div>
         ) : (
           <p className="mt-2 text-[11.5px] text-ink/40">Nog geen zoekopdracht vastgelegd voor dit dossier.</p>

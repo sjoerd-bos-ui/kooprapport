@@ -87,7 +87,17 @@ export async function GET(req: NextRequest) {
         // slaapkamers/m²/energielabel voldoen hier worden opgeruimd -- dit is
         // de dagelijkse cron, dus dit is ook de plek waar dat structureel
         // gebeurt (zie b2bStore.ts).
-        const bestaande = await ruimVerouderdeMatchenOp(dossier.id, budgetMin, budgetMax, locatieLabel, dossier.zoekopdracht.kenmerken);
+        // Matching-model: koperVoorkeuren erbij, zelfde reden als in
+        // matches-verversen/route.ts.
+        const koperVoorkeuren = dossier.zoekopdracht.koperVoorkeuren ?? null;
+        const bestaande = await ruimVerouderdeMatchenOp(
+          dossier.id,
+          budgetMin,
+          budgetMax,
+          locatieLabel,
+          dossier.zoekopdracht.kenmerken,
+          koperVoorkeuren
+        );
         const bekendeUrls = new Set(bestaande.map((m) => m.url));
         const feedItems = await haalFundaMatches(
           dossier.zoekopdracht.locatie,
@@ -95,7 +105,8 @@ export async function GET(req: NextRequest) {
           budgetMax,
           dossier.zoekopdracht.kenmerken,
           MAX_ZICHTBARE_MATCHEN,
-          bekendeUrls
+          bekendeUrls,
+          koperVoorkeuren
         );
         const nieuweItems = feedItems.filter((item) => !bekendeUrls.has(item.url));
         if (nieuweItems.length === 0) continue;

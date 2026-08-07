@@ -3,9 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { B2bWoningMatch, B2bRapportAanvraag } from "@/types/b2b";
+import type { B2bWoningMatch, B2bRapportAanvraag, B2bZoekopdracht } from "@/types/b2b";
 import { vindGekoppeldRapport } from "@/lib/services/matchRapportKoppeling";
-import { BoltIcon, ArrowRightIcon, FileCheckIcon } from "@/components/report/icons";
+import { berekenMatchScore, type MatchScore } from "@/lib/services/matchScore";
+import { BoltIcon, ArrowRightIcon, FileCheckIcon, InfoIcon, LayersIcon, RulerIcon } from "@/components/report/icons";
 
 // -----------------------------------------------------------------------------
 // Matches (#2), herbouwd van een smal lijstje onderaan de sidebar naar een
@@ -15,10 +16,14 @@ import { BoltIcon, ArrowRightIcon, FileCheckIcon } from "@/components/report/ico
 // zelf bekijken, OF het eigen Kooprapport voor dat adres (indien al
 // aangevraagd in dit dossier, anders een link om er een aan te vragen).
 //
-// GEEN m²/kamers/energielabel-metadata in de kaarten: de Funda-detailpagina's
-// JSON-LD (zie lib/data-sources/fundaFeed.ts) geeft betrouwbaar alleen titel,
-// prijs en foto -- die extra kenmerken zouden geraden/verzonnen moeten
-// worden, en dat doen we hier bewust niet.
+// MATCHING-MODEL (zie het Cowork-gesprek hierover en de goedgekeurde
+// mockups): niet langer gesorteerd op vindmoment, maar op score
+// (berekenMatchScore, lib/services/matchScore.ts) -- de beste match krijgt
+// een uitgelicht kaartblok met de volledige puntenverdeling, de rest staat in
+// een compacte grid met een score-ring en een eigen (i)-knop per woning. De
+// eerder bewuste keuze om GEEN m²/kamers/energielabel te tonen ("zou geraden
+// moeten worden") geldt niet meer -- sinds de kenmerken-verificatie (zie
+// fundaFeed.ts) is dit echte, van de advertentie afgelezen data, geen gok.
 // -----------------------------------------------------------------------------
 
 const HUIS_KLEUREN = [
@@ -71,6 +76,89 @@ function MatchThumbnail({ fotoUrl, index }: { fotoUrl: string | null; index: num
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img src={fotoUrl} alt="" className="h-full w-full object-cover" onError={() => setFout(true)} />
+  );
+}
+
+// Groen bij een sterke match, ink-grijs daaronder -- bewust maar twee
+// niveaus (geen driekleurenschaal) om de kaarten rustig te houden.
+function scoreKleur(score: number): string {
+  return score >= 85 ? "#3B6D11" : "#8A8A85";
+}
+
+function ScoreRing({ score, groot }: { score: number; groot?: boolean }) {
+  const straal = groot ? 20 : 14;
+  const strokeBreedte = groot ? 5 : 4;
+  const omtrek = 2 * Math.PI * straal;
+  const fractie = Math.max(0, Math.min(100, score)) / 100;
+  const kleur = scoreKleur(score);
+  const midden = straal + strokeBreedte;
+  const grootte = midden * 2;
+  return (
+    <svg width={grootte} height={grootte} viewBox={`0 0 ${grootte} ${grootte}`} className="shrink-0">
+      <circle cx={midden} cy={midden} r={straal} fill="none" stroke="#EEEEE6" strokeWidth={strokeBreedte} />
+      <circle
+        cx={midden}
+        cy={midden}
+        r={straal}
+        fill="none"
+        stroke={kleur}
+        strokeWidth={strokeBreedte}
+        strokeLinecap="round"
+        strokeDasharray={omtrek}
+        strokeDashoffset={omtrek * (1 - fractie)}
+        transform={`rotate(-90 ${midden} ${midden})`}
+      />
+      <text x={midden} y={midden + (groot ? 5 : 4)} textAnchor="middle" fontSize={groot ? 14 : 11} fontWeight={600} fill="#26251F">
+        {Math.round(score)}
+      </text>
+    </svg>
+  );
+}
+
+function ScoreToelichting({ score }: { score: MatchScore }) {
+  return (
+    <div className="flex flex-col gap-2">
+      {score.onderdelen.map((o) => (
+        <div key={o.label}>
+          <div className="flex items-center justify-between gap-2 text-[11.5px]">
+            <span className="text-ink/60">{o.label}</span>
+            <span className={`font-semibold ${o.behaald < 0 ? "text-red-600" : "text-ink/40"}`}>
+              {o.behaald < 0 ? o.behaald : `${o.behaald}/${o.maximum}`}
+            </span>
+          </div>
+          {o.maximum > 0 && (
+            <div className="mt-1 h-1 overflow-hidden rounded-full bg-mist">
+              <div
+                className="h-full rounded-full bg-[#3B6D11]"
+                style={{ width: `${Math.max(0, Math.min(100, (o.behaald / o.maximum) * 100))}%` }}
+              />
+            </div>
+          )}
+          <p className="mt-0.5 text-[10.5px] text-ink/40">{o.toelichting}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Kenmerkenchips({ match }: { match: B2bWoningMatch }) {
+  const v = match.verificatie;
+  if (!v) return null;
+  const chips = [
+    v.slaapkamers != null ? { icoon: LayersIcon, label: `${v.slaapkamers} slaapk.` } : null,
+    v.woonoppervlak != null ? { icoon: RulerIcon, label: `${v.woonoppervlak} m²` } : null,
+    v.energielabel ? { icoon: BoltIcon, label: `Label ${v.energielabel}` } : null,
+  ].filter((x): x is { icoon: typeof LayersIcon; label: string } => x !== null);
+  if (chips.length === 0) return null;
+  return (
+    <div className="mt-2 flex flex-wrap gap-2.5">
+      {chips.map((c) => (
+        <span key={c.label} className="flex items-center gap-1 text-[11px] text-ink/50">
+          <c.icoon className="h-3 w-3 text-ink/30" />
+          {c.label}
+        </span>
+      ))}
+    </div>
   );
 }
 
@@ -138,15 +226,18 @@ export default function MatchesKaart({
   rapporten,
   dossierId,
   matchenActief,
+  zoekopdracht,
 }: {
   matches: B2bWoningMatch[];
   rapporten: B2bRapportAanvraag[];
   dossierId: string;
   matchenActief: boolean;
+  zoekopdracht?: B2bZoekopdracht;
 }) {
   const router = useRouter();
   const [actieveMatch, setActieveMatch] = useState<B2bWoningMatch | null>(null);
   const [ververst, setVerverst] = useState(false);
+  const [openToelichtingId, setOpenToelichtingId] = useState<string | null>(null);
 
   async function ververs() {
     setVerverst(true);
@@ -159,6 +250,14 @@ export default function MatchesKaart({
   }
 
   const laatstGevonden = matches[0]?.gevondenOp;
+
+  // Gesorteerd op score i.p.v. vindmoment (zie de uitleg hierboven) -- de
+  // beste match wordt hieronder apart als uitgelicht blok getoond, de rest
+  // in de compacte grid.
+  const gescoord = matches
+    .map((match) => ({ match, score: berekenMatchScore(match, zoekopdracht) }))
+    .sort((a, b) => b.score.totaal - a.score.totaal);
+  const [topmatch, ...overige] = gescoord;
 
   return (
     <div className="rounded-2xl bg-white p-5 shadow-sm">
@@ -203,30 +302,84 @@ export default function MatchesKaart({
           passende advertentie verschijnt, staat die hier.
         </p>
       ) : (
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {matches.map((m, i) => (
-            <button
-              key={m.id}
-              type="button"
-              onClick={() => setActieveMatch(m)}
-              className="flex flex-col overflow-hidden rounded-xl border border-ink/[0.06] text-left hover:border-accent/30 hover:shadow-sm"
-            >
-              <div className="h-32 w-full bg-mist">
-                <MatchThumbnail fotoUrl={m.fotoUrl} index={i} />
-              </div>
-              <div className="flex flex-1 flex-col gap-1 p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="rounded-md bg-[#EAF3DE] px-1.5 py-0.5 text-[9px] font-bold text-[#3B6D11]">
-                    {BRON_LABEL[m.bron] ?? m.bron}
-                  </span>
-                  <span className="text-[10px] text-ink/40">{relatieveTijd(m.gevondenOp)}</span>
+        <>
+          {topmatch && (
+            <div className="mt-4 overflow-hidden rounded-2xl border border-ink/[0.06]">
+              <div className="flex flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setActieveMatch(topmatch.match)}
+                  className="relative block h-52 flex-1 basis-64 text-left"
+                >
+                  <MatchThumbnail fotoUrl={topmatch.match.fotoUrl} index={0} />
+                  {topmatch.score.totaal >= 85 && (
+                    <span className="absolute left-3 top-3 rounded-full bg-[#3B6D11] px-2.5 py-1 text-[11px] font-bold text-white">
+                      Topmatch
+                    </span>
+                  )}
+                </button>
+                <div className="flex-1 basis-72 p-4 sm:p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <button type="button" onClick={() => setActieveMatch(topmatch.match)} className="text-left hover:underline">
+                      <p className="text-[15px] font-bold text-ink">{topmatch.match.titel}</p>
+                      {topmatch.match.prijsLabel && <p className="mt-0.5 text-[12.5px] text-ink/50">{topmatch.match.prijsLabel}</p>}
+                    </button>
+                    <ScoreRing score={topmatch.score.totaal} groot />
+                  </div>
+                  <Kenmerkenchips match={topmatch.match} />
+                  <p className="mt-4 text-[10.5px] font-bold uppercase tracking-wide text-ink/35">Waarom deze score</p>
+                  <div className="mt-2">
+                    <ScoreToelichting score={topmatch.score} />
+                  </div>
                 </div>
-                <p className="truncate text-[12.5px] font-semibold text-ink">{m.titel}</p>
-                {m.prijsLabel && <p className="text-[11.5px] text-ink/50">{m.prijsLabel}</p>}
               </div>
-            </button>
-          ))}
-        </div>
+            </div>
+          )}
+
+          {overige.length > 0 && (
+            <>
+              <p className="mb-2 mt-5 text-[10.5px] font-bold uppercase tracking-wide text-ink/35">Overige matches</p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {overige.map(({ match: m, score }, i) => (
+                  <div key={m.id} className="flex flex-col overflow-hidden rounded-xl border border-ink/[0.06] hover:border-accent/30 hover:shadow-sm">
+                    <button type="button" onClick={() => setActieveMatch(m)} className="block h-32 w-full bg-mist text-left">
+                      <MatchThumbnail fotoUrl={m.fotoUrl} index={i + 1} />
+                    </button>
+                    <div className="flex flex-1 flex-col gap-1 p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="rounded-md bg-[#EAF3DE] px-1.5 py-0.5 text-[9px] font-bold text-[#3B6D11]">
+                          {BRON_LABEL[m.bron] ?? m.bron}
+                        </span>
+                        <span className="text-[10px] text-ink/40">{relatieveTijd(m.gevondenOp)}</span>
+                      </div>
+                      <button type="button" onClick={() => setActieveMatch(m)} className="text-left hover:underline">
+                        <p className="truncate text-[12.5px] font-semibold text-ink">{m.titel}</p>
+                        {m.prijsLabel && <p className="text-[11.5px] text-ink/50">{m.prijsLabel}</p>}
+                      </button>
+                      <Kenmerkenchips match={m} />
+                      <div className="mt-2 flex items-center justify-between">
+                        <ScoreRing score={score.totaal} />
+                        <button
+                          type="button"
+                          onClick={() => setOpenToelichtingId((huidig) => (huidig === m.id ? null : m.id))}
+                          className="flex h-6 w-6 items-center justify-center rounded-full border border-ink/15 text-ink/40 hover:bg-mist"
+                          aria-label="Waarom deze score"
+                        >
+                          <InfoIcon className="h-3 w-3" />
+                        </button>
+                      </div>
+                      {openToelichtingId === m.id && (
+                        <div className="mt-2 rounded-lg bg-mist/60 p-2.5">
+                          <ScoreToelichting score={score} />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </>
       )}
 
       {actieveMatch && (
