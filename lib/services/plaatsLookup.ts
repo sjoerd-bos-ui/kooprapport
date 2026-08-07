@@ -50,6 +50,22 @@ function naarFundaSlug(naam: string): string {
 //      (inclusief plaatsnaam) terug als wijknaam. Nu wordt de betrouwbare
 //      gemeentenaam van het EIND van weergavenaam afgeknipt, wat wel/geen
 //      komma er ook staat.
+//
+// TWEEDE BUGFIX (klacht "Kralingen Crooswijk pakt helemaal niks"; live
+// geverifieerd via Funda's eigen zoekbalk, Chrome-DOM op de resulterende
+// URL): een `wijk`-niveau gebied heeft op Funda een ANDERE slugvorm dan een
+// `buurt`-niveau gebied -- een buurt is een kale slug
+// (selected_area=rotterdam/kralingen-oost, 46 resultaten), maar een wijk
+// heeft een verplicht "wijk-"-voorvoegsel
+// (selected_area=rotterdam/wijk-kralingen-crooswijk, 287 resultaten; zonder
+// dat voorvoegsel: 0 resultaten). "Delfshaven" bestaat op Funda zelfs
+// LETTERLIJK ALS BEIDE tegelijk (een wijk "Delfshaven" EN een buurt
+// "Delfshaven" binnen die wijk) -- precies de reden dat Funda dit
+// voorvoegsel nodig heeft om ze uit elkaar te houden. Deze functie kende dat
+// onderscheid niet: elk `wijk`-niveau resultaat (niet alleen samengestelde
+// namen zoals Kralingen-Crooswijk) kreeg dus stilzwijgend een kale slug en
+// leverde 0 resultaten op, ook al zag de makelaar het gewoon als geldige
+// suggestie in de autocomplete.
 function mapPdokDoc(doc: PdokLocatieDoc): B2bLocatie | null {
   if (doc.type === "woonplaats" && doc.woonplaatsnaam) {
     return { label: doc.woonplaatsnaam, plaatsSlug: naarFundaSlug(doc.woonplaatsnaam), wijkSlug: null };
@@ -62,7 +78,8 @@ function mapPdokDoc(doc: PdokLocatieDoc): B2bLocatie | null {
       subNaam = subNaam.slice(0, subNaam.length - plaatsNaam.length).replace(/,\s*$/, "").trim();
     }
     if (!subNaam) return null;
-    return { label: `${subNaam}, ${plaatsNaam}`, plaatsSlug: naarFundaSlug(plaatsNaam), wijkSlug: naarFundaSlug(subNaam) };
+    const wijkSlug = doc.type === "wijk" ? `wijk-${naarFundaSlug(subNaam)}` : naarFundaSlug(subNaam);
+    return { label: `${subNaam}, ${plaatsNaam}`, plaatsSlug: naarFundaSlug(plaatsNaam), wijkSlug };
   }
   return null;
 }

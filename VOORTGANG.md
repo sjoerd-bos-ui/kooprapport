@@ -1,5 +1,37 @@
 # Voortgang Kooprapport Zakelijk — overdracht naar nieuwe chat
 
+## -1. Nieuwste sessie: matchingmodel (commit `b84c7ff`) + wijk/buurt-slugbug
+
+Sinds commit `cfca26b` hieronder zijn er twee dingen bijgekomen, **ook nog
+niet gepusht** (zelfde push-blokkade als hieronder beschreven):
+
+- **Matchingmodel** (`b84c7ff`): matches worden nu gescoord (prijs t.o.v.
+  buurtgemiddelde, overtroffen kenmerken, versheid, bouwjaar, kavelgrootte,
+  volledigheid) i.p.v. simpelweg op vindmoment getoond/opgeruimd, met een
+  optionele korte koper-voorkeuren-vragenlijst (publieke link) die de
+  gewichten en budget/kenmerken-soepelheid stuurt. Zie
+  `lib/services/matchScore.ts` voor de volledige uitleg.
+- **BUGFIX: wijk-niveau locaties (bv. "Kralingen Crooswijk", "Delfshaven")
+  gaven 0 resultaten.** Live geverifieerd via Funda's eigen zoekbalk (Chrome,
+  niet gegokt): een Funda-`buurt` heeft een kale slug
+  (`selected_area=rotterdam/kralingen-oost`), maar een Funda-`wijk` heeft een
+  verplicht `wijk-`-voorvoegsel (`selected_area=rotterdam/wijk-delfshaven`) —
+  zonder dat voorvoegsel 0 resultaten. "Delfshaven" bestaat op Funda zelfs
+  letterlijk als BEIDE tegelijk (wijk én buurt), precies waarom dat
+  voorvoegsel nodig is. `mapPdokDoc()` in `lib/services/plaatsLookup.ts`
+  kende dat onderscheid niet en gaf voor elke `wijk`-suggestie (niet alleen
+  samengestelde namen) een kale, niet-werkende slug terug. Fix: `wijkSlug`
+  krijgt nu `wijk-`-voorvoegsel wanneer `doc.type === "wijk"`.
+  - **Bestaande klantdossiers met een al gekozen wijk-niveau locatie**
+    (opgeslagen vóór deze fix) hebben nog de kale, foute slug in hun
+    `zoekopdracht.locatie.wijkSlug` staan — er is geen migratie gedraaid
+    (geen los PDOK-`type`-veld bewaard om op te migreren). Makelaar moet de
+    locatie in zo'n dossier opnieuw kiezen via de autocomplete zodra deze fix
+    live staat.
+  - `npx tsc --noEmit` schoon; live opnieuw bevestigd na de fix door de
+    berekende URL (`rotterdam/wijk-kralingen-crooswijk`) te vergelijken met
+    de URL die Funda's eigen zoekbalk teruggaf (287 resultaten, identiek).
+
 Laatste commit lokaal: `cfca26b` (main) — **NOG NIET GEPUSHT**. Deze sandbox
 heeft geen netwerktoegang tot github.com (proxy-allowlist blokkeert het, geen
 opgeslagen GitHub-credentials) en kon dus niet zelf `git push` doen, in
