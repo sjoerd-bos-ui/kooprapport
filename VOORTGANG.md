@@ -1,6 +1,61 @@
 # Voortgang Kooprapport Zakelijk — overdracht naar nieuwe chat
 
-## -1. Nieuwste sessie: matchingmodel (commit `b84c7ff`) + wijk/buurt-slugbug
+## -2. Nieuwste sessie: MatchesKaart-herontwerp + zoekfout-bug (na live feedback op het matchingmodel)
+
+Sjoerd testte het matchingmodel (hieronder, `b84c7ff` + `2800409`) live en was
+niet tevreden: geen zichtbaar effect van de koper-voorkeuren-antwoorden, geen
+"toon meer"-knop, het ontwerp (hero-blok + altijd-open puntenverdeling onder
+elke kaart) "ziet er echt niet uit", en Kralingen Crooswijk gaf nog steeds 0
+matches. Per punt uitgezocht via de Vercel-productielogs en een live test
+(Chrome + de koper-voorkeuren-vragenlijst zelf ingevuld):
+
+- **Koper-voorkeuren werken wél** (bevestigd: POST naar
+  `/api/koper-voorkeuren/[token]` gaf 200, live getest) -- het probleem was
+  dat er nergens op de matches-pagina zichtbaar was DAT/WAT er verwerkt werd.
+  Opgelost met een samenvattingsregel boven de resultaten
+  (`koperVoorkeurenSamenvatting()` in `MatchesKaart.tsx`).
+- **BUGFIX: mislukte zoekaanvraag zag eruit als "0 matches".** De
+  wijk/buurt-slugfix (hieronder) bleek zelf wél correct te werken (live
+  bevestigd in de productielogs: `rotterdam/wijk-kralingen-crooswijk` wordt
+  goed opgebouwd) -- maar één van de testaanvragen kreeg een `AbortError`
+  van de Bright Data-zoekaanvraag zelf, VOORDAT er ook maar een HTTP-status
+  binnenkwam. `haalFundaMatches()` (`lib/data-sources/fundaFeed.ts`) ving dat
+  af en gaf stilzwijgend een lege lijst terug -- ononderscheidbaar van een
+  oprechte 0-resultaten-uitkomst. De functie geeft nu `{ items, fout }`
+  terug i.p.v. kaal een array; `fout: true` alleen als er aan het einde nog
+  niets bruikbaars is gevonden (een latere pagina die faalt nadat eerdere
+  pagina's al links opleverden telt niet als fout). `matches-verversen` en
+  de cron-route geven dit door (`zoekFout`/`zoekFouten` in de response);
+  `ZoekopdrachtForm.tsx` en `MatchesKaart.tsx` tonen nu een aparte
+  foutmelding i.p.v. dat te verbergen achter "0 gevonden". Bestaande
+  klantdossiers met een al eerder gekozen wijk-locatie hebben nog steeds de
+  oude, kale slug staan (zie hieronder) -- dat blijft een aparte, losstaande
+  actie (opnieuw kiezen via de autocomplete).
+- **Volledig herontwerp `MatchesKaart.tsx`**: geen apart, breder hero-blok
+  meer voor de topmatch (vond Sjoerd onrustig) -- alle kaarten nu gelijk van
+  vorm in één grid, topmatch krijgt alleen een badge. De volledige
+  puntenverdeling staat nergens meer standaard op de pagina ("puur een i per
+  huis") -- alleen een klein (i)-knopje per kaart dat een los
+  overlay-schermpje opent (`ScoreModal`). Nieuw: een "Toon meer"-knop
+  (`INITIEEL_ZICHTBAAR`/`STAP_ZICHTBAAR` = 9) i.p.v. in één keer alles tonen.
+- Opschoning: `MatchesKaart.tsx` importeerde eerst `BUDGET_FLEXIBEL_MARGE`
+  rechtstreeks uit `lib/data-sources/fundaFeed.ts` (server-only, met
+  scraping-logica) -- dat hoort niet in een `"use client"`-bundle. Vervangen
+  door een losse weergavewaarde. Let op: `lib/services/matchScore.ts` doet
+  hetzelfde (importeert `ENERGIELABEL_VOLGORDE_FUNDA`/
+  `ENERGIELABEL_AANTAL_FUNDA_WAARDEN` uit fundaFeed.ts) en wordt ook
+  client-side gebruikt -- dat is een al langer bestaand patroon (dateert van
+  vóór deze sessie), functioneel onschadelijk (Next vervangt de
+  `process.env`-verwijzingen client-side met `undefined`, en de
+  scrape-functies zelf worden nooit vanuit de client aangeroepen) maar wel
+  onnodig bundle-gewicht/interne-logica-blootstelling. Nog niet opgeruimd --
+  zou een aparte, gedeelde constants-file vergen (bv. in `types/b2b.ts`).
+- `npx tsc --noEmit` schoon. Kon niet in de browser als ingelogde makelaar
+  getest worden (geen inloggegevens in deze sandbox) -- Sjoerd: graag na
+  deployment een dossier met matches + ingevulde koper-voorkeuren-link erbij
+  controleren.
+
+## -1. Vorige sessie: matchingmodel (commit `b84c7ff`) + wijk/buurt-slugbug
 
 Sinds commit `cfca26b` hieronder zijn er twee dingen bijgekomen, **ook nog
 niet gepusht** (zelfde push-blokkade als hieronder beschreven):

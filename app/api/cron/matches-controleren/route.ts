@@ -63,6 +63,10 @@ export async function GET(req: NextRequest) {
   let nieuweMatches = 0;
   let mailsVerstuurd = 0;
   let mailsMislukt = 0;
+  // BUGFIX: telt hoe vaak de zoekaanvraag zelf mislukte (netwerk/timeout,
+  // zie fundaFeed.ts) i.p.v. gewoon 0 nieuwe matches op te leveren -- zichtbaar
+  // in de cron-response, zodat dit niet verborgen blijft achter "nieuweMatches: 0".
+  let zoekFouten = 0;
 
   outer: for (const org of organisaties) {
     const dossiers = await listKlantdossiersVoorOrg(org.id);
@@ -99,7 +103,7 @@ export async function GET(req: NextRequest) {
           koperVoorkeuren
         );
         const bekendeUrls = new Set(bestaande.map((m) => m.url));
-        const feedItems = await haalFundaMatches(
+        const { items: feedItems, fout: zoekFout } = await haalFundaMatches(
           dossier.zoekopdracht.locatie,
           budgetMin,
           budgetMax,
@@ -108,6 +112,7 @@ export async function GET(req: NextRequest) {
           bekendeUrls,
           koperVoorkeuren
         );
+        if (zoekFout) zoekFouten++;
         const nieuweItems = feedItems.filter((item) => !bekendeUrls.has(item.url));
         if (nieuweItems.length === 0) continue;
 
@@ -152,5 +157,6 @@ export async function GET(req: NextRequest) {
     nieuweMatches,
     mailsVerstuurd,
     mailsMislukt,
+    zoekFouten,
   });
 }

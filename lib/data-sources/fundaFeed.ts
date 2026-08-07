@@ -690,6 +690,21 @@ export interface KoperVoorkeurenVoorZoeken {
   kenmerkenFlexibel?: boolean;
 }
 
+// BUGFIX (klacht "Kralingen Crooswijk geeft nog steeds 0 matches zonder
+// extra filter" -- bleek NIET meer de slug te zijn, die klopt inmiddels
+// live geverifieerd; root cause via de Vercel-productielogs: de Bright
+// Data-zoekaanvraag zelf timede een keer uit (AbortError) VOORDAT er ook
+// maar een HTTP-status binnenkwam). Het resultaat was hierdoor
+// ononderscheidbaar van een oprechte "0 woningen voldoen" -- de aanroeper
+// (en dus de makelaar) kreeg gewoon een lege lijst te zien, geen signaal
+// dat het zoeken zelf mislukt was. `fout` maakt dat onderscheid nu
+// expliciet: true = het zoeken zelf is niet gelukt (netwerk/proxy/timeout),
+// de aanroeper hoort dit anders te tonen dan "geen passende woningen".
+export interface FundaZoekResultaat {
+  items: FundaFeedItem[];
+  fout: boolean;
+}
+
 export async function haalFundaMatches(
   locatie: B2bLocatie,
   budgetMin: number | null,
@@ -698,7 +713,7 @@ export async function haalFundaMatches(
   limiet = 15,
   bekendeUrls: Set<string> = new Set(),
   koperVoorkeuren?: KoperVoorkeurenVoorZoeken | null
-): Promise<FundaFeedItem[]> {
+): Promise<FundaZoekResultaat> {
   const budgetFlexibel = Boolean(koperVoorkeuren?.budgetFlexibel);
   const kenmerkenFlexibel = Boolean(koperVoorkeuren?.kenmerkenFlexibel);
 
@@ -748,27 +763,41 @@ export async function haalFundaMatches(
   };
 
   if (FUNDA_FEED_MODE !== "live") {
-    return MOCK_ITEMS.filter(bijBudget).slice(0, limiet);
+    return { items: MOCK_ITEMS.filter(bijBudget).slice(0, limiet), fout: false };
   }
 
-  try {
-    // Paginering (matching-model): LIVE GEVERIFIEERD dat Funda's `&page=2`,
-    // `&page=3` werkt en daadwerkelijk nieuwe, andere woning-URL's teruggeeft
-    // via hetzelfde ld+json ItemList-blok als pagina 1 (zie bouwZoekUrl) --
-    // nodig om uit een grotere pool te kunnen kiezen dan de ±15 resultaten
-    // van pagina 1 alleen (zie MAX_ZICHTBARE_MATCHEN in types/b2b.ts). Elke
-    // pagina kost 1 proxy-verzoek ongeacht hoeveel links daarna al bekend
-    // blijken (dat wordt pas ná dit blok bepaald) -- MAX_PAGINAS is dus een
-    // bewuste, harde kostengrens.
-    const MAX_PAGINAS = 3;
-    const links: string[] = [];
-    let paginasOpgehaald = 0;
-    for (let pagina = 1; pagina <= MAX_PAGINAS && links.length < limiet; pagina++) {
-      const zoekUrl = bouwZoekUrl(locatie, budgetMin, budgetMax, kenmerken, pagina, { budgetFlexibel, kenmerkenFlexibel });
+  // Paginering (matching-model): LIVE GEVERIFIEERD dat Funda's `&page=2`,
+  // `&page=3` werkt en daadwerkelijk nieuwe, andere woning-URL's teruggeeft
+  // via hetzelfde ld+json ItemList-blok als pagina 1 (zie bouwZoekUrl) --
+  // nodig om uit een grotere pool te kunnen kiezen dan de ±15 resultaten
+  // van pagina 1 alleen (zie MAX_ZICHTBARE_MATCHEN in types/b2b.ts). Elke
+  // pagina kost 1 proxy-verzoek ongeacht hoeveel links daarna al bekend
+  // blijken (dat wordt pas ná dit blok bepaald) -- MAX_PAGINAS is dus een
+  // bewuste, harde kostengrens.
+  const MAX_PAGINAS = 3;
+  const links: string[] = [];
+  let paginasOpgehaald = 0;
+  // BUGFIX (klacht "Kralingen Crooswijk geeft nog steeds 0 matches zonder
+  // extra filter" -- de wijk-slug zelf bleek inmiddels correct, live
+  // geverifieerd; de daadwerkelijke oorzaak stond in de productielogs: de
+  // Bright Data-zoekaanvraag timede één keer uit (AbortError, VOORDAT er
+  // ook maar een HTTP-status binnenkwam). Zo'n mislukte aanvraag leverde
+  // hierdoor exact hetzelfde resultaat op als een oprechte "0 woningen
+  // voldoen" -- voor de aanroeper (en dus de makelaar) niet te
+  // onderscheiden. `heeftFout` maakt dat nu expliciet, maar ALLEEN als er
+  // aan het einde nog niets bruikbaars is gevonden -- faalt een latere
+  // pagina nadat eerdere pagina's al links opleverden, dan is dat gewoon
+  // "klaar met pagineren", geen fout.
+  let heeftFout = false;
+
+  for (let pagina = 1; pagina <= MAX_PAGINAS && links.length < limiet; pagina++) {
+    const zoekUrl = bouwZoekUrl(locatie, budgetMin, budgetMax, kenmerken, pagina, { budgetFlexibel, kenmerkenFlexibel });
+    try {
       const res = await fetchMetTimeout(zoekUrl, FUNDA_SEARCH_TIMEOUT_MS);
       console.log(`[fundaFeed] LIVE zoekaanvraag (pagina ${pagina}) ${zoekUrl} -> HTTP ${res.status}`);
       if (!res.ok) {
         console.error(`[fundaFeed] HTTP ${res.status} bij ophalen van ${zoekUrl}`);
+        if (links.length === 0) heeftFout = true;
         break;
       }
       paginasOpgehaald++;
@@ -789,26 +818,32 @@ export async function haalFundaMatches(
         break; // geen (verdere) resultaten -- volgende pagina's leveren dan ook niets op
       }
       for (const link of paginaLinks) if (!links.includes(link)) links.push(link);
+    } catch (err) {
+      console.error(`[fundaFeed] LIVE zoekaanvraag (pagina ${pagina}) mislukt (netwerk/timeout):`, err);
+      if (links.length === 0) heeftFout = true;
+      break;
     }
+  }
 
-    console.log(`[fundaFeed] LIVE ${links.length} woninglink(s) gevonden over ${paginasOpgehaald} pagina('s)`);
-    if (links.length === 0) return [];
+  console.log(`[fundaFeed] LIVE ${links.length} woninglink(s) gevonden over ${paginasOpgehaald} pagina('s)${heeftFout ? " -- ZOEKFOUT" : ""}`);
+  if (links.length === 0) return { items: [], fout: heeftFout };
 
-    const nieuweLinks = links.filter((url) => !bekendeUrls.has(url));
-    const overgeslagen = links.length - nieuweLinks.length;
-    if (overgeslagen > 0) {
-      console.log(`[fundaFeed] LIVE ${overgeslagen}/${links.length} link(s) al bekend -- detailpagina overgeslagen (credits bespaard)`);
-    }
-    if (nieuweLinks.length === 0) return [];
+  const nieuweLinks = links.filter((url) => !bekendeUrls.has(url));
+  const overgeslagen = links.length - nieuweLinks.length;
+  if (overgeslagen > 0) {
+    console.log(`[fundaFeed] LIVE ${overgeslagen}/${links.length} link(s) al bekend -- detailpagina overgeslagen (credits bespaard)`);
+  }
+  if (nieuweLinks.length === 0) return { items: [], fout: false };
 
+  try {
     const resultaten = await Promise.all(nieuweLinks.map((url) => haalListingDetails(url, kenmerken, kenmerkenFlexibel)));
     const afgekeurd = resultaten.filter((item) => item === null).length;
     if (afgekeurd > 0) {
       console.log(`[fundaFeed] LIVE ${afgekeurd}/${nieuweLinks.length} link(s) afgekeurd door lokale kenmerken-verificatie of prijs`);
     }
-    return resultaten.filter((item): item is FundaFeedItem => item !== null).filter(bijBudget);
+    return { items: resultaten.filter((item): item is FundaFeedItem => item !== null).filter(bijBudget), fout: false };
   } catch (err) {
-    console.error("[fundaFeed] ophalen/parsen mislukt (funda.nl is geen officiële, ondersteunde koppeling):", err);
-    return [];
+    console.error("[fundaFeed] detailpagina's ophalen/parsen mislukt:", err);
+    return { items: [], fout: true };
   }
 }

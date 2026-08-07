@@ -199,7 +199,17 @@ export default function ZoekopdrachtForm({ dossierId, huidig }: { dossierId: str
         try {
           const versRes = await fetch(`/api/zakelijk/klanten/${dossierId}/matches-verversen`, { method: "POST" });
           const versBody = await versRes.json();
-          setMelding(versRes.ok ? `Opgeslagen -- ${versBody.nieuweMatches} nieuwe woning(en) gevonden.` : "Opgeslagen.");
+          // BUGFIX (klacht "geeft nog steeds 0 matches zonder extra filter"):
+          // een mislukte zoekaanvraag (netwerk/timeout bij de proxy, zie
+          // fundaFeed.ts) zag er voorheen identiek uit als "0 passende
+          // woningen" -- versBody.zoekFout maakt dat onderscheid nu expliciet.
+          if (!versRes.ok) {
+            setMelding("Opgeslagen.");
+          } else if (versBody.zoekFout) {
+            setMelding("Opgeslagen. Zoeken naar Funda is niet gelukt (netwerkprobleem) -- probeer straks opnieuw via 'Ververs' bij de matches.");
+          } else {
+            setMelding(`Opgeslagen -- ${versBody.nieuweMatches} nieuwe woning(en) gevonden.`);
+          }
         } catch {
           setMelding("Opgeslagen.");
         } finally {

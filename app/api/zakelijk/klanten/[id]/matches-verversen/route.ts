@@ -60,7 +60,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const koperVoorkeuren = dossier.zoekopdracht?.koperVoorkeuren ?? null;
   const bestaande = await ruimVerouderdeMatchenOp(id, budgetMin, budgetMax, locatie.label, dossier.zoekopdracht?.kenmerken, koperVoorkeuren);
   const bekendeUrls = new Set(bestaande.map((m) => m.url));
-  const feedItems = await haalFundaMatches(locatie, budgetMin, budgetMax, dossier.zoekopdracht?.kenmerken, MAX_DIRECT, bekendeUrls, koperVoorkeuren);
+  // BUGFIX (klacht "geeft nog steeds 0 matches zonder extra filter" --
+  // bleek een stilzwijgend mislukte zoekaanvraag, ononderscheidbaar van een
+  // oprechte 0-resultaten-uitkomst, zie fundaFeed.ts): `fout` gaat mee in de
+  // response zodat de makelaar een duidelijk "zoeken niet gelukt, probeer
+  // opnieuw"-signaal krijgt i.p.v. dat het lijkt alsof er simpelweg geen
+  // passende woningen bestaan.
+  const { items: feedItems, fout: zoekFout } = await haalFundaMatches(
+    locatie,
+    budgetMin,
+    budgetMax,
+    dossier.zoekopdracht?.kenmerken,
+    MAX_DIRECT,
+    bekendeUrls,
+    koperVoorkeuren
+  );
   const nieuweItems = feedItems.filter((item) => !bekendeUrls.has(item.url)).slice(0, MAX_DIRECT);
 
   for (const item of nieuweItems) {
@@ -79,5 +93,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
   await kapMatchenOpMax(id, MAX_ZICHTBARE_MATCHEN);
 
-  return NextResponse.json({ ok: true, nieuweMatches: nieuweItems.length, totaalGevonden: feedItems.length });
+  return NextResponse.json({ ok: true, nieuweMatches: nieuweItems.length, totaalGevonden: feedItems.length, zoekFout });
 }
