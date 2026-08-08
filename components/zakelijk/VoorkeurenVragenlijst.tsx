@@ -85,7 +85,15 @@ function leegDraft(bestaand: B2bKoperVoorkeuren | null): Draft {
     minEnergielabel: bestaand?.minEnergielabel ?? null,
     belangrijkeVoorzieningen: bestaand?.belangrijkeVoorzieningen ?? [],
     parkeren: bestaand?.parkeren ?? null,
-    dealbreakers: bestaand?.dealbreakers ?? [],
+    // BUGFIX (matchingmodel v3, B2B_DEALBREAKERS is van 11 naar 7 opties
+    // getrimd): een bestaand dossier kan nog een inmiddels verwijderde
+    // waarde bevatten (bv. "no_outdoor_space"). MultiSelect toont zo'n
+    // waarde niet als chip (zit niet meer in `opties`), maar de array bleef
+    // wel gevuld -- de stap leek dus al "klaar" (length > 0) terwijl de
+    // server 'm bij opslaan alsnog afwijst omdat de waarde niet meer geldig
+    // is. Daarom hier al filteren tegen de actuele lijst, zodat het
+    // formulier meteen laat zien wat er nog écht gekozen moet worden.
+    dealbreakers: (bestaand?.dealbreakers ?? []).filter((d) => B2B_DEALBREAKERS.some((o) => o.waarde === d)),
     dealbreakerAnders: bestaand?.dealbreakerAnders ?? "",
     afwegingen: bestaand?.afwegingen ?? [],
     prioriteiten: bestaand?.prioriteiten ?? [],
