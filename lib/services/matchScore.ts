@@ -402,8 +402,16 @@ export async function berekenMatchScore(match: B2bWoningMatch, voorkeuren: B2bKo
   // "amenities_nearby") -- alleen ophalen als er ook daadwerkelijk iets mee
   // gedaan wordt, zie voorzieningenMatch.ts voor de kostenoverweging (gratis
   // CBS-bronnen, maar wel extra latency per kandidaat).
+  // BUGFIX (dubbelcheck op verzoek van Sjoerd): dit keek voorheen alleen naar
+  // `belangrijkeVoorzieningen.length > 0`, dus ook als de koper UITSLUITEND
+  // "sports"/"restaurants"/"workplace" had aangevinkt (die geen CBS-databron
+  // hebben, zie WENS_NAAR_CBS_KEYS in voorzieningenMatch.ts) werd de dure
+  // adresresolutie + CBS-opzoeking toch uitgevoerd, terwijl het resultaat
+  // sowieso nooit gebruikt kon worden (heeftDatabron() filtert die wensen
+  // er bij het echte gebruik alsnog uit). `.some(heeftDatabron)` voorkomt nu
+  // die zinloze extra latency per kandidaat.
   const heeftVoorzieningenBehoefte =
-    voorkeuren.belangrijkeVoorzieningen.length > 0 ||
+    voorkeuren.belangrijkeVoorzieningen.some(heeftDatabron) ||
     voorkeuren.dealbreakers.includes("no_amenities") ||
     voorkeuren.prioriteiten.includes("amenities_nearby");
   const voorzieningen: VoorzieningenResultaat = heeftVoorzieningenBehoefte
