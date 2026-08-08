@@ -103,16 +103,6 @@ export interface B2bLocatie {
   wijkSlug: string | null; // exacte Funda-wijkslug indien een wijk gekozen is, anders null (= hele plaats)
 }
 
-export type B2bWoningtype = "tussenwoning" | "hoekwoning" | "2-onder-1-kapwoning" | "vrijstaande-woning" | "appartement";
-
-export const B2B_WONINGTYPES: { waarde: B2bWoningtype; label: string }[] = [
-  { waarde: "tussenwoning", label: "Tussenwoning" },
-  { waarde: "hoekwoning", label: "Hoekwoning" },
-  { waarde: "2-onder-1-kapwoning", label: "2-onder-1-kapwoning" },
-  { waarde: "vrijstaande-woning", label: "Vrijstaand" },
-  { waarde: "appartement", label: "Appartement" },
-];
-
 // Energielabel als "X of beter"-classificatie i.p.v. losse per-label
 // vinkjes -- Funda's eigen filter heeft 12 losse checkboxes
 // (A+++++ t/m G, live geverifieerd via het filterpaneel), maar niemand
@@ -124,52 +114,17 @@ export type B2bEnergielabel = "A" | "B" | "C" | "D" | "E" | "F" | "G";
 
 export const B2B_ENERGIELABELS: B2bEnergielabel[] = ["A", "B", "C", "D", "E", "F", "G"];
 
-// Vaste, gestructureerde kenmerken i.p.v. de eerdere vrije-tekst "moetHebben"
-// -- bewust, want vrije tekst ("min. 4 kamers, tuin op het zuiden") is voor
-// een mens leesbaar maar onbruikbaar als filter op de Funda-feed. Elk
-// kenmerk hier komt direct overeen met een (vermoedelijk) filter-padsegment
-// van de feed, zie bouwZoekpad() in lib/data-sources/fundaFeed.ts.
-export interface B2bKenmerken {
-  woningtype: B2bWoningtype | null;
-  minKamers: number | null;
-  minSlaapkamers: number | null;
-  minWoonoppervlak: number | null; // in m²
-  tuin: boolean;
-  balkon: boolean;
-  dakterras: boolean;
-  garage: boolean;
-  lift: boolean;
-  // "geen voorkeur" is bewust ook een expliciete keuze (null), niet een
-  // afwezige/vergeten instelling -- zie het gesprek hierover.
-  minEnergielabel: B2bEnergielabel | null;
-}
-
-export function legeKenmerken(): B2bKenmerken {
-  return {
-    woningtype: null,
-    minKamers: null,
-    minSlaapkamers: null,
-    minWoonoppervlak: null,
-    tuin: false,
-    balkon: false,
-    dakterras: false,
-    garage: false,
-    lift: false,
-    minEnergielabel: null,
-  };
-}
-
-// Essentiële informatie uit de zoekopdracht (#3) -- budget, locatie en
-// kenmerken. `matchenActief` vervangt het eerdere losse
-// B2bMatchInstelling-veld: nu de locatie al gestructureerd/exact is, heeft
-// de matchfunctie (#2) geen eigen duplicaat-plaatsveld meer nodig en is het
-// gewoon een aan/uit-stand op dezelfde zoekopdracht. Alles optioneel/
-// nullable, want een dossier kan zonder ingevulde zoekopdracht bestaan.
+// Essentiële informatie uit de zoekopdracht (#3). Sinds de matchingmodel-v2-
+// herbouw (zie het Cowork-gesprek hierover, "matchingsproces onder de loep")
+// vervangt de volledige 13-vragen-lijst (B2bKoperVoorkeuren hieronder) het
+// VOLLEDIGE oude formulier (budget/locatie/kenmerken EN de oude, aparte
+// 4-vragen koper-voorkeuren) -- niet alleen de score, ook wat er op Funda
+// gezocht wordt (budget uit Vraag 1, locatie uit Vraag 3, woningtype uit
+// Vraag 4, zie afgeleideZoekcriteria() in lib/services/koperVoorkeuren.ts)
+// komt nu allemaal uit dit ene formulier. `matchenActief` blijft BEWUST een
+// los, makelaar-only veld (niet onderdeel van de vragenlijst): de koper kiest
+// nooit zelf of automatisch matchen aan staat.
 export interface B2bZoekopdracht {
-  budgetMin: number | null;
-  budgetMax: number | null;
-  locatie: B2bLocatie | null;
-  kenmerken: B2bKenmerken;
   matchenActief: boolean;
   // Matching-model: koperVoorkeuren = ingevulde antwoorden (of null, nog niet
   // ingevuld), koperVoorkeurenToken = het token voor de publieke
@@ -234,31 +189,347 @@ export interface B2bMatchVerificatie {
   perceeloppervlak: number | null; // in m², alleen bij huizen
   vraagprijsPerM2: number | null;
   buurtgemiddeldePrijsPerM2: number | null;
+  // -----------------------------------------------------------------------
+  // Matchingmodel v2 (100-puntensysteem, zie lib/services/matchScore.ts) --
+  // ALLES hieronder is LIVE GEVERIFIEERD op meerdere Funda-detailpagina's
+  // (Chrome-DOM, "Reserveboezemstraat 5", "Buizenwerf 235", "Voorschoterlaan
+  // 101" e.a., zie VOORTGANG.md voor de fundstukken) vóór implementatie, niet
+  // gegokt.
+  //
+  // "Aantal kamers" dt/dd-rij toont BEIDE getallen in één string, bv.
+  // "4 kamers (3 slaapkamers)" -- kamers is het TOTAAL (incl. woonkamer
+  // e.d.), losstaand van slaapkamers hierboven (dat komt uit de losse
+  // iconenrij bovenaan de pagina, ongewijzigd).
+  kamers: number | null;
+  // Funda's "Voorzieningen"-rij is een kommagescheiden lijst (bv. "Lift,
+  // mechanische ventilatie, en TV kabel") -- lift wordt hieruit gelezen,
+  // ontbreekt de rij (of ontbreekt "Lift" erin) dan is er geen lift. Zelfde
+  // "afwezig = nee"-discipline als bij heeftTuin/heeftBalkon hierboven.
+  heeftLift: boolean;
+  // "Gelegen op" (bv. "Begane grond" of "10e woonlaag") -- 0 = begane grond,
+  // anders het woonlaagnummer. `null` als de rij ontbreekt (bv. bij
+  // grondgebonden huizen, die hebben geen "woonlaag"-concept) -- geen
+  // aanname dat dat begane grond betekent.
+  woonlaag: number | null;
+  // Eigen parkeerplek: aanwezig zodra de losse "Soort garage"/"Capaciteit"-
+  // rijen bestaan (alleen aanwezig als de woning zelf een garage/parkeerplek
+  // heeft, live bevestigd op "Reserveboezemstraat 5": "Soort garage" =
+  // "Inpandig", "Capaciteit" = "1 auto"). `parkeerOmschrijving` is de
+  // ALTIJD aanwezige, bredere "Soort parkeergelegenheid"-rij (buurtniveau,
+  // bv. "Betaald parkeren, op eigen terrein, parkeergarage en
+  // parkeervergunningen") -- gebruikt om "geen parkeermogelijkheid" te
+  // herkennen voor de parkeren-score/dealbreaker.
+  heeftEigenParkeerplek: boolean;
+  parkeerOmschrijving: string | null;
+  // Ruwe tekst van "Soort woonhuis" (huizen, bv. "Herenhuis, tussenwoning")
+  // of "Soort appartement" (appartementen, bv. "Portiekflat (appartement)")
+  // -- bevat het fijnmazige subtype waar woningtypeFamilie hierboven (alleen
+  // huis/appartement) geen onderscheid in maakt. Wordt in matchScore.ts met
+  // trefwoorden (tussenwoning/hoekwoning/vrijstaand/halfvrijstaand/studio)
+  // geclassificeerd, zie classificeerWoningsubtype().
+  woningsubtypeRuw: string | null;
+  // De naam van het gebied dat FUNDA ZELF aan deze woning toekent, gelezen
+  // uit het BreadcrumbList-JSON-LD-blok op de detailpagina (live
+  // geverifieerd: "Reserveboezemstraat 5" -> breadcrumb "Rotterdam" >
+  // "Nieuw Crooswijk" > straatnaam) -- Funda's eigen, al toegekende
+  // buurt/wijknaam, betrouwbaarder dan zelf uit het adres proberen af te
+  // leiden. Gebruikt voor de locatie-score (classificeerGebied() in
+  // lib/services/gebiedIndeling.ts).
+  gebiedRuw: string | null;
+  plaatsnaam: string | null;
 }
 
 // -----------------------------------------------------------------------------
-// Koper-voorkeuren (matching-model, zie het Cowork-gesprek hierover): een
-// korte, publieke vragenlijst (geen login, zelfde tokenpatroon als
-// B2bRapportAanvraag.deelToken) waarmee de koper zelf een paar knoppen
-// aanklikt. De antwoorden sturen de gewichten in het scoremodel
-// (lib/services/matchScore.ts) en bepalen of budget/kenmerken een harde grens
-// blijven of een zachte (met strafpunten in plaats van uitsluiting).
-// `null` op B2bZoekopdracht.koperVoorkeuren = nog niet ingevuld -> het model
-// valt dan terug op de neutrale standaardverdeling en de bestaande harde
-// filters, precies zoals vóór dit model bestond.
+// Koper-voorkeuren v2 (matchingmodel-herbouw, zie het Cowork-gesprek hierover
+// "matchingsproces onder de loep") -- de VOLLEDIGE, 13-vragen/7-stappen-lijst
+// die het oude 4-vragen-formulier (prioriteit/bouwstijl/budgetFlexibel/
+// kenmerkenFlexibel) EN het aparte budget/locatie/kenmerken-zoekopdracht-
+// formulier samen vervangt. Ingevuld door de makelaar (in de app, zie
+// components/zakelijk/VoorkeurenVragenlijst.tsx) -- de publieke koper-link
+// (zelfde tokenpatroon als B2bRapportAanvraag.deelToken) blijft bestaan als
+// alternatief invulkanaal, zie het gesprek "moet op deze manier ingevuld
+// kunnen worden via de link, maar ook niet ingevuld of via de app zelf" uit
+// de vorige sessie -- dat principe verandert niet, alleen de vragenlijst zelf.
+// `null` op B2bZoekopdracht.koperVoorkeuren = nog niet ingevuld: er wordt dan
+// niets gezocht/gescoord (zie afgeleideZoekcriteria() in
+// lib/services/koperVoorkeuren.ts) totdat dit formulier is ingevuld -- geen
+// vage terugval meer op losse velden zoals voorheen, want die bestaan niet
+// meer los van dit formulier.
 // -----------------------------------------------------------------------------
-export type B2bPrioriteit = "prijs" | "kenmerken" | "gelijk";
-export type B2bBouwstijlVoorkeur = "nieuw" | "karakter" | "geen_voorkeur";
 
+// --- Stap 1: budget -----------------------------------------------------------
+export type B2bBudgetOptie = "150k_250k" | "250k_350k" | "350k_450k" | "450k_550k" | "550k_plus" | "uncertain";
+
+// `max` is het enige getal dat het scoremodel gebruikt (zie Component 1,
+// matchScore.ts) -- de opgegeven `min` per keuze is bewust puur weergave-
+// informatie (het bepaalt geen enkel filter of scorecomponent in de opgave),
+// dus een huis van bv. € 220.000 bij een gekozen bereik "250k_350k" wordt
+// niet afgewezen, alleen een huis BOVEN de € 350.000. "uncertain" heeft geen
+// bruikbaar maximum -- Component 1 kent dan geen budgetgrens toe (altijd
+// volledige punten, er is simpelweg niets om tegen af te wijzen).
+export const B2B_BUDGET_OPTIES: { waarde: B2bBudgetOptie; label: string; min: number | null; max: number | null }[] = [
+  { waarde: "150k_250k", label: "€ 150.000 - € 250.000", min: 150000, max: 250000 },
+  { waarde: "250k_350k", label: "€ 250.000 - € 350.000", min: 250000, max: 350000 },
+  { waarde: "350k_450k", label: "€ 350.000 - € 450.000", min: 350000, max: 450000 },
+  { waarde: "450k_550k", label: "€ 450.000 - € 550.000", min: 450000, max: 550000 },
+  { waarde: "550k_plus", label: "€ 550.000+", min: 550000, max: null },
+  { waarde: "uncertain", label: "Nog onzeker / ik wil eerst advies", min: null, max: null },
+];
+
+export type B2bKostenKoperOptie = "yes_included" | "no_separate" | "unknown";
+
+export const B2B_KOSTEN_KOPER_OPTIES: { waarde: B2bKostenKoperOptie; label: string }[] = [
+  { waarde: "yes_included", label: "Ja, mijn budget is inclusief kosten koper" },
+  { waarde: "no_separate", label: "Nee, ik houd rekening met extra kosten" },
+  { waarde: "unknown", label: "Ik weet niet wat kosten koper zijn" },
+];
+
+// --- Stap 2: locatie -----------------------------------------------------------
+// Vaste, grove gebiedskeuze i.p.v. de fijnmazige PDOK-wijk/buurt-autocomplete
+// van het oude zoekopdracht-formulier (die blijft wel bestaan, zie
+// B2bLocatie/plaatsLookup.ts -- alleen nu uitsluitend voor de "Anders"-optie
+// hieronder). BELANGRIJK: "Rotterdam Centrum/Noord/Zuid/Oost/West" zijn GEEN
+// officiële CBS-wijken of Funda-doorzoekbare gebieden (in tegenstelling tot
+// bv. "Kralingen-Crooswijk", dat WEL zo'n officieel, live-geverifieerd gebied
+// is) -- dit is een BEARGUMENTEERDE EIGEN INDELING op basis van de 21
+// officiële Rotterdamse CBS-wijken, zie ROTTERDAM_KWADRANT_WIJKEN in
+// lib/services/gebiedIndeling.ts voor de exacte toewijzing en de onderbouwing
+// per wijk. De overige 5 zijn gewone gemeenten/plaatsen (live geverifieerd,
+// zie fetchLiveLocatieSuggesties) en dus wél eenduidig.
+export type B2bVoorkeurLocatie =
+  | "rotterdam_centrum"
+  | "rotterdam_noord"
+  | "rotterdam_zuid"
+  | "rotterdam_oost"
+  | "rotterdam_west"
+  | "schiedam"
+  | "vlaardingen"
+  | "capelle"
+  | "barendrecht"
+  | "hendrik_ido_ambacht"
+  | "other";
+
+export const B2B_VOORKEUR_LOCATIES: { waarde: B2bVoorkeurLocatie; label: string }[] = [
+  { waarde: "rotterdam_centrum", label: "Rotterdam Centrum" },
+  { waarde: "rotterdam_noord", label: "Rotterdam Noord" },
+  { waarde: "rotterdam_zuid", label: "Rotterdam Zuid" },
+  { waarde: "rotterdam_oost", label: "Rotterdam Oost" },
+  { waarde: "rotterdam_west", label: "Rotterdam West" },
+  { waarde: "schiedam", label: "Schiedam" },
+  { waarde: "vlaardingen", label: "Vlaardingen" },
+  { waarde: "capelle", label: "Capelle aan den IJssel" },
+  { waarde: "barendrecht", label: "Barendrecht" },
+  { waarde: "hendrik_ido_ambacht", label: "Hendrik-Ido-Ambacht" },
+  { waarde: "other", label: "Andere" },
+];
+
+export const MAX_VOORKEUR_LOCATIES = 3;
+
+// --- Stap 3: woning --------------------------------------------------------------
+// Woningtype-waarden komen direct overeen met Funda's eigen
+// object_type/object_type_house_orientation-waarden (live geverifieerd, zie
+// WONINGTYPE_SEARCH_PARAMS in lib/data-sources/fundaFeed.ts) -- "studio"
+// heeft geen eigen Funda-zoekfilter (blijkt in de praktijk een subtype van
+// "appartement", zie de toelichting daar) en wordt daarom bij het zoeken
+// mee-gescand onder "apartment", met een eigen classificatie pas bij het
+// scoren (Component 3, matchScore.ts).
+export type B2bWoningtypeVoorkeur = "apartment" | "studio" | "terraced" | "corner" | "semi_detached" | "detached" | "other";
+
+export const B2B_WONINGTYPE_VOORKEUREN: { waarde: B2bWoningtypeVoorkeur; label: string }[] = [
+  { waarde: "apartment", label: "Appartement" },
+  { waarde: "studio", label: "Studio" },
+  { waarde: "terraced", label: "Tussenwoning" },
+  { waarde: "corner", label: "Hoekwoning" },
+  { waarde: "semi_detached", label: "Halfvrijstaand" },
+  { waarde: "detached", label: "Vrijstaand" },
+  { waarde: "other", label: "Anders" },
+];
+
+export type B2bMinKamersOptie = "1" | "2" | "3" | "4" | "5_plus";
+
+export const B2B_MIN_KAMERS_OPTIES: { waarde: B2bMinKamersOptie; label: string; minKamers: number }[] = [
+  { waarde: "1", label: "1 kamer", minKamers: 1 },
+  { waarde: "2", label: "2 kamers", minKamers: 2 },
+  { waarde: "3", label: "3 kamers", minKamers: 3 },
+  { waarde: "4", label: "4 kamers", minKamers: 4 },
+  { waarde: "5_plus", label: "5+ kamers", minKamers: 5 },
+];
+
+export type B2bMinOppervlakOptie = "up_to_60" | "60_80" | "80_100" | "100_120" | "120_plus";
+
+export const B2B_MIN_OPPERVLAK_OPTIES: { waarde: B2bMinOppervlakOptie; label: string; minArea: number; maxArea: number | null }[] = [
+  { waarde: "up_to_60", label: "Tot 60 m²", minArea: 0, maxArea: 60 },
+  { waarde: "60_80", label: "60 - 80 m²", minArea: 60, maxArea: 80 },
+  { waarde: "80_100", label: "80 - 100 m²", minArea: 80, maxArea: 100 },
+  { waarde: "100_120", label: "100 - 120 m²", minArea: 100, maxArea: 120 },
+  { waarde: "120_plus", label: "120 m²+", minArea: 120, maxArea: null },
+];
+
+export type B2bBuitenruimteVoorkeur = "garden_required" | "balcony_ok" | "no_preference" | "not_important";
+
+export const B2B_BUITENRUIMTE_OPTIES: { waarde: B2bBuitenruimteVoorkeur; label: string }[] = [
+  { waarde: "garden_required", label: "Tuin verplicht" },
+  { waarde: "balcony_ok", label: "Balkon of dakterras is voldoende" },
+  { waarde: "no_preference", label: "Geen voorkeur" },
+  { waarde: "not_important", label: "Niet belangrijk" },
+];
+
+export type B2bMinEnergielabelOptie = "A_plus" | "B_plus" | "C_plus" | "D_plus" | "no_preference";
+
+export const B2B_MIN_ENERGIELABEL_OPTIES: { waarde: B2bMinEnergielabelOptie; label: string; minLabel: B2bEnergielabel | null }[] = [
+  { waarde: "A_plus", label: "Label A of beter", minLabel: "A" },
+  { waarde: "B_plus", label: "Label B of beter", minLabel: "B" },
+  { waarde: "C_plus", label: "Label C of beter", minLabel: "C" },
+  { waarde: "D_plus", label: "Label D of beter", minLabel: "D" },
+  { waarde: "no_preference", label: "Geen voorkeur", minLabel: null },
+];
+
+// --- Stap 4: voorzieningen ---------------------------------------------------------
+// Zie lib/services/voorzieningenMatch.ts voor de koppeling met het bestaande
+// CBS-gebaseerde buurtprofiel (lib/data-sources/buurtprofiel.ts, al gebruikt
+// voor de consumenten-Kooprapporten) -- "sports"/"restaurants"/"workplace"
+// hebben daar BEWUST geen databron voor (CBS' "Nabijheid voorzieningen"-tabel
+// kent geen categorie voor sportfaciliteiten, horeca of werklocaties), dus
+// die drie tellen in de score altijd neutraal mee, nooit als afwijzingsgrond.
+export type B2bVoorzieningWens = "schools" | "shops" | "public_transport" | "healthcare" | "sports" | "restaurants" | "park" | "workplace";
+
+export const B2B_VOORZIENING_WENSEN: { waarde: B2bVoorzieningWens; label: string }[] = [
+  { waarde: "schools", label: "Scholen / kinderopvang" },
+  { waarde: "shops", label: "Winkels / supermarkten" },
+  { waarde: "public_transport", label: "OV-knooppunt (station, metro, bus)" },
+  { waarde: "healthcare", label: "Zorg / ziekenhuis" },
+  { waarde: "sports", label: "Sport / recreatie" },
+  { waarde: "restaurants", label: "Horeca / restaurants" },
+  { waarde: "park", label: "Park / groen" },
+  { waarde: "workplace", label: "Werkplek in de buurt" },
+];
+
+export type B2bParkerenVoorkeur = "private_required" | "private_preferred" | "public_ok" | "no_car";
+
+export const B2B_PARKEREN_OPTIES: { waarde: B2bParkerenVoorkeur; label: string }[] = [
+  { waarde: "private_required", label: "Eigen parkeerplek verplicht" },
+  { waarde: "private_preferred", label: "Eigen parkeerplek gewenst" },
+  { waarde: "public_ok", label: "Openbaar parkeren is prima" },
+  { waarde: "no_car", label: "Geen auto / niet relevant" },
+];
+
+// --- Stap 5: dealbreakers -----------------------------------------------------------
+// Niet elke dealbreaker is automatisch te detecteren uit Funda-data --
+// "busy_road_noise" (geen geluidsdata beschikbaar) en "too_far_from_work"
+// (geen werkadres bekend) triggeren daarom NOOIT automatisch (zie
+// evalueerDealbreakers() in matchScore.ts) en tellen dus nooit mee als
+// strafpunt -- bewust geen valse zekerheid voorwenden over iets wat simpelweg
+// niet gemeten wordt.
+export type B2bDealbreaker =
+  | "no_outdoor_space"
+  | "no_parking"
+  | "ground_floor_no_elevator"
+  | "busy_road_noise"
+  | "poor_energy_label"
+  | "too_far_from_work"
+  | "price_over_budget"
+  | "too_few_rooms"
+  | "too_small_area"
+  | "no_amenities"
+  | "other";
+
+export const B2B_DEALBREAKERS: { waarde: B2bDealbreaker; label: string }[] = [
+  { waarde: "no_outdoor_space", label: "Geen tuin / balkon" },
+  { waarde: "no_parking", label: "Geen parkeermogelijkheid" },
+  { waarde: "ground_floor_no_elevator", label: "Benedenwoning zonder lift" },
+  { waarde: "busy_road_noise", label: "Drukke weg / geluidsoverlast" },
+  { waarde: "poor_energy_label", label: "Slecht energielabel (lager dan C)" },
+  { waarde: "too_far_from_work", label: "Te ver van werk / voorzieningen" },
+  { waarde: "price_over_budget", label: "Prijs boven budget" },
+  { waarde: "too_few_rooms", label: "Minder kamers dan gewenst" },
+  { waarde: "too_small_area", label: "Kleinere oppervlakte dan gewenst" },
+  { waarde: "no_amenities", label: "Geen voorzieningen in buurt" },
+  { waarde: "other", label: "Anders" },
+];
+
+export const MAX_DEALBREAKERS = 3;
+
+// --- Stap 6: afwegingen --------------------------------------------------------------
+// Puur informatief voor de makelaar (weergegeven bij de match, zie
+// MatchesKaart.tsx) -- deze antwoorden voeden GEEN scorecomponent (staan niet
+// in de opgegeven puntenverdeling), in tegenstelling tot vrijwel alle andere
+// vragen.
+export type B2bAfweging =
+  | "smaller_for_location"
+  | "older_for_space"
+  | "less_outdoor_for_price"
+  | "longer_commute_for_area"
+  | "worse_energy_for_price"
+  | "less_parking"
+  | "fewer_rooms"
+  | "no_tradeoffs";
+
+export const B2B_AFWEGINGEN: { waarde: B2bAfweging; label: string }[] = [
+  { waarde: "smaller_for_location", label: "Kleinere woning voor betere locatie" },
+  { waarde: "older_for_space", label: "Oudere woning voor meer ruimte" },
+  { waarde: "less_outdoor_for_price", label: "Minder buitenruimte voor lagere prijs" },
+  { waarde: "longer_commute_for_area", label: "Langere reistijd voor betere buurt" },
+  { waarde: "worse_energy_for_price", label: "Slechter energielabel voor lagere prijs" },
+  { waarde: "less_parking", label: "Minder parkeergemak" },
+  { waarde: "fewer_rooms", label: "Minder kamers dan ideaal" },
+  { waarde: "no_tradeoffs", label: "Ik wil niet inleveren" },
+];
+
+export const MAX_AFWEGINGEN = 3;
+
+// --- Stap 7: prioriteiten -----------------------------------------------------------
+// "quiet_location" (geen geluid-/rustdata) en "condition_year" (benaderd via
+// bouwjaar, zie hieronder) hebben een beperktere databasis dan de rest -- zie
+// scorePrioriteitenBonus() in matchScore.ts voor de precieze, per-prioriteit
+// onderbouwing.
+export type B2bPrioriteitOptie =
+  | "location"
+  | "price"
+  | "size"
+  | "rooms"
+  | "outdoor_space"
+  | "energy_efficiency"
+  | "parking"
+  | "amenities_nearby"
+  | "quiet_location"
+  | "condition_year";
+
+export const B2B_PRIORITEITEN: { waarde: B2bPrioriteitOptie; label: string }[] = [
+  { waarde: "location", label: "Locatie" },
+  { waarde: "price", label: "Prijs" },
+  { waarde: "size", label: "Woninggrootte" },
+  { waarde: "rooms", label: "Aantal kamers" },
+  { waarde: "outdoor_space", label: "Buitenruimte" },
+  { waarde: "energy_efficiency", label: "Energielabel / duurzaamheid" },
+  { waarde: "parking", label: "Parkeergelegenheid" },
+  { waarde: "amenities_nearby", label: "Nabijheid voorzieningen" },
+  { waarde: "quiet_location", label: "Rust / ligging" },
+  { waarde: "condition_year", label: "Bouwjaar / staat" },
+];
+
+export const MAX_PRIORITEITEN = 3;
+
+// --- Het geheel ------------------------------------------------------------------
 export interface B2bKoperVoorkeuren {
-  prioriteit: B2bPrioriteit;
-  bouwstijl: B2bBouwstijlVoorkeur;
-  // "Is je maximale budget een harde grens, of zou een woning er net iets
-  // boven nog interessant kunnen zijn?" -- true = bespreekbaar.
-  budgetFlexibel: boolean;
-  // "Een woning voldoet aan bijna alles, maar mist net één ding -- nog
-  // laten zien?" -- true = ja, toon 'm alsnog (met strafpunten).
-  kenmerkenFlexibel: boolean;
+  maxKoopprijs: B2bBudgetOptie;
+  kostenKoper: B2bKostenKoperOptie;
+  voorkeurLocaties: B2bVoorkeurLocatie[]; // max MAX_VOORKEUR_LOCATIES
+  // Alleen ingevuld/relevant als "other" in voorkeurLocaties staat -- exacte
+  // PDOK-gekozen locatie, zelfde discipline als de oude zoekopdracht (nooit
+  // vrije tekst fuzzy-matchen), zie LocatieAutocomplete.tsx.
+  voorkeurLocatieAnders: B2bLocatie | null;
+  woningtypes: B2bWoningtypeVoorkeur[];
+  woningtypeAnders: string | null;
+  minKamers: B2bMinKamersOptie;
+  minOppervlak: B2bMinOppervlakOptie;
+  buitenruimte: B2bBuitenruimteVoorkeur;
+  minEnergielabel: B2bMinEnergielabelOptie;
+  belangrijkeVoorzieningen: B2bVoorzieningWens[]; // optioneel (Required: false in de opgave), geen maximum
+  parkeren: B2bParkerenVoorkeur;
+  dealbreakers: B2bDealbreaker[]; // max MAX_DEALBREAKERS
+  dealbreakerAnders: string | null;
+  afwegingen: B2bAfweging[]; // max MAX_AFWEGINGEN
+  prioriteiten: B2bPrioriteitOptie[]; // max MAX_PRIORITEITEN
   ingevuldOp: string; // ISO
 }
 
@@ -272,22 +543,21 @@ export interface B2bWoningMatch {
   prijs: number | null; // ruwe waarde (voor budgetvergelijking) -- prijsLabel is alleen de weergavetekst
   prijsLabel: string | null;
   fotoUrl: string | null;
-  // Locatie (B2bLocatie.label) van de zoekopdracht op het moment dat deze
-  // match gevonden werd -- nodig om matches van een INMIDDELS GEWIJZIGDE
-  // locatie te kunnen herkennen en opruimen (zie ruimVerouderdeMatchenOp in
-  // b2bStore.ts), zelfde reden als het prijs-veld hierboven voor budget.
-  locatieLabel: string | null;
   // BUGFIX (diagnose-sessie "het klopt gewoon allemaal niet"): een match werd
   // tot nu toe NOOIT opnieuw tegen woningtype/slaapkamers/m²/energielabel
   // gecontroleerd nadat hij eenmaal was opgeslagen -- alleen budget en
-  // locatie werden bij elke verversing herzien. Matches die vóór de
-  // kenmerken-verificatie (fundaFeed.ts) bestonden, of van een zoekopdracht
-  // die sindsdien is aangescherpt, konden dus voor altijd blijven staan,
-  // ook als ze allang niet meer klopten (bv. een energielabel F-woning bij
-  // een "A of hoger"-zoekopdracht). `null` = opgeslagen vóór dit veld
-  // bestond -- wordt bij de eerstvolgende verversing voor de zekerheid als
-  // verouderd behandeld (zie ruimVerouderdeMatchenOp), net als bij een
-  // ontbrekend locatieLabel.
+  // locatie werden bij elke verversing herzien. `null` = opgeslagen vóór dit
+  // veld bestond -- wordt bij de eerstvolgende verversing voor de zekerheid
+  // als verouderd behandeld (zie ruimVerouderdeMatchenOp in b2bStore.ts).
+  //
+  // MATCHINGMODEL V2: het losse `locatieLabel`-veld (dat er hier ooit stond)
+  // is vervallen -- onder het oude model was "locatie gewijzigd?" een eigen
+  // ja/nee-vlag naast budget/kenmerken; onder het nieuwe 100-puntenmodel is
+  // ALLES (budget, locatie, kenmerken, dealbreakers) samengevoegd tot één
+  // score met een harde ondergrens (MIN_MATCH_SCORE), dus "is deze match nog
+  // steeds geldig" is nu simpelweg "scoort hij nog steeds >= 60 tegen de
+  // HUIDIGE koperVoorkeuren" (zie ruimVerouderdeMatchenOp) -- geen aparte
+  // locatievergelijking meer nodig, de locatie zit gewoon in die score.
   verificatie: B2bMatchVerificatie | null;
   gevondenOp: string; // ISO
 }
@@ -304,6 +574,18 @@ export interface B2bWoningMatch {
 // grotere kandidatenpool om uit te kiezen dan alleen de eerste
 // zoekresultatenpagina.
 export const MAX_ZICHTBARE_MATCHEN = 30;
+
+// Opgegeven puntensysteem (zie het Cowork-gesprek hierover, "DEEL 2: MATCHING
+// SCORE SYSTEEM"): "Score < 60: niet tonen als match" -- een HARDE ondergrens,
+// in tegenstelling tot de score-gebaseerde eviction hierboven (die alleen
+// kiest WÉLKE van de te-veel-matches wegvallen). Deze grens filtert nu AL bij
+// het opslaan: een kandidaat die onder de 60 scoort, wordt nooit een
+// B2bWoningMatch (zie matches-verversen/route.ts en cron/matches-
+// controleren/route.ts), en een bestaande match die er bij een volgende
+// verversing onder zakt (gewijzigde koperVoorkeuren, of de woning zelf blijkt
+// toch niet te voldoen) wordt alsnog verwijderd (zie ruimVerouderdeMatchenOp
+// in b2bStore.ts).
+export const MIN_MATCH_SCORE = 60;
 
 export interface B2bRapportAanvraag {
   id: string;

@@ -1,5 +1,6 @@
 import { FUNDA_FEED_MODE, FUNDA_SEARCH_TIMEOUT_MS, FUNDA_DETAIL_TIMEOUT_MS } from "@/lib/config/fundaFeed";
-import type { B2bLocatie, B2bKenmerken, B2bWoningtype, B2bEnergielabel, B2bMatchVerificatie } from "@/types/b2b";
+import type { B2bKoperVoorkeuren, B2bMatchVerificatie, B2bWoningtypeVoorkeur } from "@/types/b2b";
+import { B2B_BUDGET_OPTIES } from "@/types/b2b";
 
 // -----------------------------------------------------------------------------
 // Directe adapter voor de publieke funda.nl-pagina's (zie de uitleg in
@@ -13,13 +14,31 @@ import type { B2bLocatie, B2bKenmerken, B2bWoningtype, B2bEnergielabel, B2bMatch
 //      een betrouwbare prijs, adres en foto -- in tegenstelling tot de
 //      geteste Apify-actor, waar het prijsveld structureel leeg bleef).
 //
-// URL-parameters (selected_area, price, rooms, exterior_space_type,
-// object_type, object_type_house_orientation) zijn LIVE GEVERIFIEERD door de
-// filters handmatig in de Funda-UI te bedienen en de resulterende URL af te
-// lezen -- niet gegokt, met uitzondering van de expliciet gemarkeerde
-// plekken hieronder (die zijn wél een educated guess, en dat is ook zo
+// URL-parameters (selected_area, price, object_type,
+// object_type_house_orientation) zijn LIVE GEVERIFIEERD door de filters
+// handmatig in de Funda-UI te bedienen en de resulterende URL af te lezen --
+// niet gegokt, met uitzondering van de expliciet gemarkeerde plekken
+// hieronder (die zijn wél een educated guess, en dat is ook zo
 // gedocumenteerd). Nog steeds geen officiële/ondersteunde koppeling: elke
 // stap faalt defensief (minder/geen matches), nooit een crash.
+//
+// MATCHINGMODEL V2 (zie het Cowork-gesprek hierover, "matchingsproces onder
+// de loep"): dit bestand zocht voorheen op basis van een los B2bZoekopdracht-
+// object (budgetMin/budgetMax/locatie/kenmerken) MET harde Funda-URL-filters
+// per kenmerk. Dat is vervangen door de volledige B2bKoperVoorkeuren-
+// vragenlijst (types/b2b.ts) als ENIGE invoer, en de harde kenmerken-filters
+// zijn bewust LOSGELATEN op alles behalve locatie en budget: het nieuwe
+// 100-puntensysteem (lib/services/matchScore.ts) geeft juist gedeeltelijke
+// punten voor "net niet" (bv. 1 kamer minder, 10% onder het gevraagde
+// oppervlak, één energielabel slechter) -- een harde Funda-filter zou die
+// kandidaten nooit eens LATEN VINDEN om ze zo te kunnen scoren. Alleen
+// locatie (waar zoeken) en budget (met marge, zie BUDGET_SCORE_MARGE) blijven
+// harde zoekfilters, plus een BREDE woningtype-familiefilter (huis/
+// appartement) puur om te voorkomen dat een koper die alleen huizen wil
+// evenveel scan-budget kwijt is aan irrelevante appartementen (zie
+// objectTypeFamilieFilter hieronder) -- de FIJNMAZIGE typewens (tussenwoning
+// vs hoekwoning vs vrijstaand) wordt niet meer als harde Funda-filter
+// gebruikt, alleen nog als scorecomponent.
 // -----------------------------------------------------------------------------
 
 export interface FundaFeedItem {
@@ -28,11 +47,11 @@ export interface FundaFeedItem {
   prijs: number | null; // ruwe waarde -- nodig om zelf nog eens hard tegen budgetMax te filteren
   prijsLabel: string | null;
   fotoUrl: string | null;
-  // Snapshot van de kenmerken-verificatie op scrapemoment (zie
-  // B2bMatchVerificatie in types/b2b.ts) -- de aanroeper slaat dit mee op
-  // zodat een BESTAANDE match later opnieuw getoetst kan worden. Optioneel
-  // (ontbreekt bij mock-items -- geen echte scrape, dus niets om vast te
-  // leggen; aanroepers vallen dan terug op `null`).
+  // Snapshot van de lokale verificatie (zie B2bMatchVerificatie in
+  // types/b2b.ts) -- de aanroeper slaat dit mee op zodat een BESTAANDE match
+  // later opnieuw gescoord kan worden. Optioneel (ontbreekt bij mock-items --
+  // geen echte scrape, dus niets om vast te leggen; aanroepers vallen dan
+  // terug op `null`).
   verificatie?: B2bMatchVerificatie | null;
 }
 
@@ -78,157 +97,52 @@ const MOCK_ITEMS: FundaFeedItem[] = [
   },
 ];
 
-// object_type + object_type_house_orientation -- ALLE waarden hieronder zijn
-// nu live geverifieerd (diagnose-sessie: "veel data komt niet overeen met
-// Funda") door in het filterpaneel op "Woonhuis" > "Specificeer" te klikken
-// en per oriëntatie-checkbox het daadwerkelijke id uit te lezen
-// (checkbox-object_type_house_orientation-<waarde>).
-//
-// BUGFIX: "2-onder-1-kapwoning" gebruikte tot nu toe "semi_detached" -- dat
-// bleek NIET 2-onder-1-kapwoning te zijn, maar Funda's aparte categorie
-// "Halfvrijstaande woning" (een woning met maar aan één kant een buurwoning,
-// wat iets anders is dan een 2-onder-1-kapwoning). De echte waarde voor
-// 2-onder-1-kapwoning is "double". Dit verklaart (samen met de
-// topposities-bugfix hieronder) de gemelde klacht "ik kies een woningtype en
-// krijg toch iets anders": met de foute waarde zocht de app feitelijk op een
-// compleet andere, veel zeldzamere categorie, wat al snel op 0 échte
-// resultaten uitkwam.
-const WONINGTYPE_PARAMS: Record<B2bWoningtype, { objectType: string; orientation?: string }> = {
-  tussenwoning: { objectType: "house", orientation: "terraced" },
-  hoekwoning: { objectType: "house", orientation: "corner" },
-  "2-onder-1-kapwoning": { objectType: "house", orientation: "double" },
-  "vrijstaande-woning": { objectType: "house", orientation: "detached" },
-  appartement: { objectType: "apartment" },
-};
+// Live geverifieerd (matchingmodel-v2-sessie, Funda-filterpaneel "Woningtype"
+// > checkboxes Woonhuis/Appartement aangevinkt): object_type accepteert een
+// kommagelijst ("object_type=house,apartment" gaf exact 3.321 = 606 (Woonhuis)
+// + 2.715 (Appartement)). We filteren hier bewust alleen op FAMILIE (huis vs
+// appartement), niet op het fijnmazige subtype (tussenwoning/hoekwoning/
+// vrijstaand/studio) -- zie de bestandstoelichting hierboven.
+const HUIS_WONINGTYPES: B2bWoningtypeVoorkeur[] = ["terraced", "corner", "semi_detached", "detached"];
+const APPARTEMENT_WONINGTYPES: B2bWoningtypeVoorkeur[] = ["apartment", "studio"];
 
-// exterior_space_type -- "garden" (tuin) en "balcony" (balkon) waren al live
-// geverifieerd. BUGFIX (nieuwe diagnose-sessie, filterpaneel dit keer
-// uitgelezen via de checkbox-id's in de DOM i.p.v. alleen de resulterende
-// URL): dakterras bleek NIET "roof_terrace" te zijn zoals eerder aangenomen
-// -- de daadwerkelijke checkbox-waarde is "terrace" (bevestigd: 947
-// resultaten onder "Dakterras" in het filterpaneel, en de URL na aanvinken
-// werd exterior_space_type=terrace). Elke zoekopdracht met dakterras aan
-// werd dus stilzwijgend NIET gefilterd -- zelfde patroon als eerder bij
-// selected_area en de topposities.
-//
-// bedrooms/accessibility/garage_type/energy_label/floor_area zijn in
-// dezelfde sessie NIEUW live geverifieerd (checkbox- en veld-id's in het
-// filterpaneel gecontroleerd, daarna handmatig ingevuld/aangevinkt en de
-// resulterende URL afgelezen): "bedrooms=2-" voor minimum slaapkamers
-// (voorheen HELEMAAL niet meegegeven -- dit was de gemelde bug "filter op 2
-// slaapkamers geeft ook 1 slaapkamer terug"), "floor_area=80-" voor minimum
-// woonoppervlak, "accessibility=lift" voor lift, "energy_label=A,B,C" voor
-// energielabel (komma-lijst, meerdere waarden toegestaan -- zie
-// ENERGIELABEL_NAAR_FUNDA_WAARDEN hieronder voor de "X of beter"-vertaling).
-// garage_type kent losse subtypes (aangebouwd/garagebox/vrijstaand/
-// inpandig/ondergronds) zonder één generieke "heeft garage"-optie; voor ons
-// simpele garage-aan/uit-kenmerk vragen we ze allemaal op (comma-lijst) --
-// elke garage telt.
-const GARAGE_TYPE_WAARDEN = "lean_to,lock_up,garage_and_carport,built_in,underground";
+function objectTypeFamilieFilter(woningtypes: B2bWoningtypeVoorkeur[]): string | null {
+  const wilHuis = woningtypes.some((w) => HUIS_WONINGTYPES.includes(w));
+  const wilAppartement = woningtypes.some((w) => APPARTEMENT_WONINGTYPES.includes(w));
+  const families: string[] = [];
+  if (wilHuis) families.push("house");
+  if (wilAppartement) families.push("apartment");
+  // Leeg, of alleen "other" gekozen: geen zinvolle familie bekend, dus geen
+  // filter -- breed zoeken is hier veiliger dan per ongeluk alles uitsluiten.
+  return families.length > 0 ? families.join(",") : null;
+}
 
-// Funda's eigen 12 energielabel-checkboxes, van beste naar slechtste (live
-// geverifieerd via het filterpaneel). Ons eigen B2bEnergielabel is bewust
-// een vereenvoudiging tot 7 waarden (A t/m G, zie types/b2b.ts) -- "A of
-// beter" dekt bij het filteren dus automatisch ook alle A+ t/m A+++++
-// mee, dat onderscheid is voor de meeste gebruikers niet zinvol.
-// Geëxporteerd (i.p.v. alleen intern gebruikt): lib/services/matchScore.ts
-// hergebruikt dezelfde volgorde/drempels om te bepalen of een woning het
-// gevraagde energielabel niet alleen haalt maar ook overtreft.
+// Energielabel-ordening (beste naar slechtste), Funda's eigen 12
+// checkboxwaarden (live geverifieerd via het filterpaneel in een vorige
+// sessie). Geëxporteerd: matchScore.ts gebruikt dezelfde volgorde om
+// energielabels ordinaal te vergelijken (Component 7).
 export const ENERGIELABEL_VOLGORDE_FUNDA = ["A+++++", "A++++", "A+++", "A++", "A+", "A", "B", "C", "D", "E", "F", "G"];
-export const ENERGIELABEL_AANTAL_FUNDA_WAARDEN: Record<B2bEnergielabel, number> = { A: 6, B: 7, C: 8, D: 9, E: 10, F: 11, G: 12 };
-function energielabelNaarFundaWaarden(label: B2bEnergielabel): string {
-  return ENERGIELABEL_VOLGORDE_FUNDA.slice(0, ENERGIELABEL_AANTAL_FUNDA_WAARDEN[label]).join(",");
-}
 
-// `kenmerkenFlexibel` (matching-model, koperVoorkeuren.kenmerkenFlexibel):
-// als de koper heeft aangegeven dat een woning die op één punt net niet
-// voldoet nog steeds interessant is, laten we de buitenruimte-filter
-// (tuin/balkon/dakterras) hier bewust WEG i.p.v. hem gewoon mee te sturen --
-// Funda's eigen filter is een harde uitsluiting, dus als we die erin laten
-// staan komt een net-niet-match nooit eens in de resultatenlijst terecht om
-// lokaal te kunnen scoren/toetsen. voldoetAanKenmerken() hieronder blijft
-// wél lokaal controleren en telt hoeveel van tuin/balkon/dakterras
-// daadwerkelijk ontbreken -- bij "flexibel" wordt hooguit ÉÉN ontbrekend
-// kenmerk getolereerd (zie voldoetAanKenmerken), niet allemaal.
-// Overige kenmerken (woningtype, slaapkamers, energielabel, garage, lift)
-// blijven altijd hard -- daar is nooit over "een puntje minder" gesproken.
-function kenmerkenNaarParams(kenmerken: B2bKenmerken | undefined, kenmerkenFlexibel = false): URLSearchParams {
+// selected_area -- LIVE GEVERIFIEERD (vorige sessie): een wijk-niveau gebied
+// heeft een verplicht "wijk-"-voorvoegsel (rotterdam/wijk-kralingen-
+// crooswijk), een buurt-niveau gebied een kale slug (rotterdam/kralingen-
+// oost), en een plaats-niveau gebied gewoon de plaatsslug (schiedam). Deze
+// waarden komen al kant-en-klaar uit plaatsLookup.ts (B2bLocatie.wijkSlug) of
+// de vaste gebied-slugs (GEBIED_SLUGS hieronder) -- hier alleen nog
+// samenvoegen.
+//
+// MULTI-GEBIED (LIVE GEVERIFIEERD, matchingmodel-v2-sessie): Funda's "+
+// locatie toevoegen"-knop naast de locatie-chip bleek een simpele
+// KOMMAGELIJST binnen ÉÉN selected_area-parameter te produceren
+// (selected_area=rotterdam/wijk-kralingen-crooswijk,capelle-aan-den-ijssel
+// gaf 531 = 284 + 247 resultaten, listings van beide gebieden door elkaar) --
+// geen aparte requests per gebied nodig, dus geen extra proxykosten voor tot
+// 3 gekozen voorkeurlocaties.
+function bouwZoekUrl(gebiedSlugs: string[], budgetMax: number | null, objectType: string | null, pagina = 1): string {
   const params = new URLSearchParams();
-  if (!kenmerken) return params;
-
-  if (kenmerken.woningtype) {
-    const w = WONINGTYPE_PARAMS[kenmerken.woningtype];
-    params.set("object_type", w.objectType);
-    if (w.orientation) params.set("object_type_house_orientation", w.orientation);
-  }
-  if (kenmerken.minKamers && kenmerken.minKamers > 0) params.set("rooms", `${kenmerken.minKamers}-`);
-  if (kenmerken.minSlaapkamers && kenmerken.minSlaapkamers > 0) params.set("bedrooms", `${kenmerken.minSlaapkamers}-`);
-  if (kenmerken.minWoonoppervlak && kenmerken.minWoonoppervlak > 0) params.set("floor_area", `${kenmerken.minWoonoppervlak}-`);
-  if (kenmerken.minEnergielabel) params.set("energy_label", energielabelNaarFundaWaarden(kenmerken.minEnergielabel));
-  if (kenmerken.lift) params.set("accessibility", "lift");
-  if (kenmerken.garage) params.set("garage_type", GARAGE_TYPE_WAARDEN);
-
-  if (!kenmerkenFlexibel) {
-    const buiten: string[] = [];
-    if (kenmerken.tuin) buiten.push("garden");
-    if (kenmerken.balkon) buiten.push("balcony");
-    if (kenmerken.dakterras) buiten.push("terrace");
-    if (buiten.length > 0) params.set("exterior_space_type", buiten.join(","));
-  }
-
-  return params;
-}
-
-// selected_area -- BUGFIX (live geverifieerd door de "Selecteer buurten"-
-// verfijning zelf handmatig te bedienen en de resulterende URL af te lezen):
-// de eerdere aanname (["plaatsSlug","wijkSlug"], als JSON-array) bleek FOUT.
-// Funda negeert die tweede array-waarde stilzwijgend en zoekt gewoon in de
-// hele plaats -- geen crash, geen foutcode, maar ook geen wijkfilter (dit was
-// de oorzaak van "Kralingen Oost" die ook Overschie en de rest van Rotterdam
-// liet zien: elke zoekopdracht met een wijk viel feitelijk terug op de hele
-// stad). De echte, live geverifieerde vorm is één string met een slash:
-// selected_area=rotterdam/kralingen-oost (bevestigd: 47 resultaten, allemaal
-// in Kralingen Oost, i.p.v. de 3.388 van heel Rotterdam).
-// BUGFIX (dezelfde diagnose-sessie): budgetMin werd HIER NOOIT meegegeven --
-// alleen budgetMax kwam in de price-parameter terecht ("0-<budgetMax>"), dus
-// een ondergrens (bv. "€300k - €500k") deed op Funda-niveau helemaal niets.
-// Dat is de directe verklaring voor de gemelde klacht "ik kies 300-500k en
-// krijg een woning van 289": die woning voldeed op Funda's eigen resultaten
-// gewoon aan "tot 500k" (het enige dat werd doorgegeven). Live geverifieerd
-// dat Funda's price-parameter een simpel "<min>-<max>"-bereik is, waarbij
-// beide kanten optioneel zijn (price=300000-500000, price=300000- en
-// price=0-500000 zijn alle drie handmatig getest en gaven exact de
-// verwachte, aftelbare resultaten).
-// `pagina` -- LIVE GEVERIFIEERD (matching-model-sessie, Chrome): Funda's
-// eigen paginaknoppen linken naar `?...&page=2`, `&page=3` enz. (pagina 1 is
-// gewoon de URL zonder page-parameter); `page=2` gaf ook daadwerkelijk 15
-// nieuwe, andere woning-URL's terug via hetzelfde ld+json ItemList-blok.
-// Nodig om een grotere kandidatenpool te kunnen scoren/kiezen dan de ±15
-// resultaten van de eerste pagina alleen (zie MAX_ZICHTBARE_MATCHEN).
-// Vaste marge (10%) voor "budget is bespreekbaar" (koperVoorkeuren.
-// budgetFlexibel, zie types/b2b.ts) -- toegepast op zowel de Funda-URL zelf
-// (anders komt een net-boven-budget-woning nooit in de resultatenlijst
-// terecht) als de lokale nafiltering (bijBudget) en de herverificatie van
-// bestaande matches (ruimVerouderdeMatchenOp in b2bStore.ts), zodat alle drie
-// dezelfde marge hanteren. Geëxporteerd om die laatste twee consistent te
-// houden i.p.v. het getal op drie plekken te dupliceren.
-export const BUDGET_FLEXIBEL_MARGE = 0.1;
-
-function bouwZoekUrl(
-  locatie: B2bLocatie,
-  budgetMin: number | null,
-  budgetMax: number | null,
-  kenmerken: B2bKenmerken | undefined,
-  pagina = 1,
-  opties: { budgetFlexibel?: boolean; kenmerkenFlexibel?: boolean } = {}
-): string {
-  const gebied = locatie.wijkSlug ? `${locatie.plaatsSlug}/${locatie.wijkSlug}` : locatie.plaatsSlug;
-  const params = kenmerkenNaarParams(kenmerken, opties.kenmerkenFlexibel);
-  params.set("selected_area", gebied);
-  const min = budgetMin && budgetMin > 0 ? Math.round(budgetMin) : null;
-  let max = budgetMax && budgetMax > 0 ? Math.round(budgetMax) : null;
-  if (max != null && opties.budgetFlexibel) max = Math.round(max * (1 + BUDGET_FLEXIBEL_MARGE));
-  if (min != null || max != null) params.set("price", `${min ?? 0}-${max ?? ""}`);
+  params.set("selected_area", gebiedSlugs.join(","));
+  if (objectType) params.set("object_type", objectType);
+  if (budgetMax != null && budgetMax > 0) params.set("price", `0-${Math.round(budgetMax)}`);
   if (pagina > 1) params.set("page", String(pagina));
   return `https://www.funda.nl/zoeken/koop?${params.toString()}`;
 }
@@ -343,21 +257,9 @@ async function fetchMetTimeout(url: string, timeoutMs: number): Promise<Response
 // Funda's eigen pagina "0 koopwoningen binnen jouw zoekwensen" oplevert,
 // heeft ook helemaal GEEN ld+json-scripts meer op de pagina staan). De oude
 // fallback greep dan terug op de kale anchor-regex over de VOLLEDIGE pagina
-// -- en die pikt dan het Toppositie-blok op (data-testid=
-// "top-position-wrapper", betaalde plaatsingen die NOOIT aan het gebieds-,
-// prijs- of ander filter gebonden zijn, live bevestigd: 3 appartementen van
-// overal in Nederland op een pagina met 0 échte, gefilterde resultaten).
-// Dat is de directe verklaring voor "ik kies vrijstaand en krijg toch
-// appartementen": een streng samengestelde zoekopdracht (locatie + budget +
-// woningtype + slaapkamers + energielabel samen) komt vaak op 0 échte
-// treffers uit, en dan werden stilzwijgend de 3 topposities als "match"
-// opgeslagen -- volledig losstaand van de opgegeven criteria.
-//
-// Fix: het topposities-blok wordt nu ALTIJD eerst uit de HTML geknipt
-// (verwijderTopposities hieronder) vóórdat de fallback-regex draait. Blijft
-// er na het knippen niets bruikbaars over (het echte, veelvoorkomende
-// 0-resultaten-geval), dan is de uitkomst nu terecht een lege lijst i.p.v.
-// verzonnen matches.
+// -- en die pikt dan het Toppositie-blok op. Fix: het topposities-blok wordt
+// nu ALTIJD eerst uit de HTML geknipt (verwijderTopposities hieronder)
+// vóórdat de fallback-regex draait.
 function verwijderTopposities(html: string): string {
   const marker = 'data-testid="top-position-wrapper"';
   const markerIdx = html.indexOf(marker);
@@ -394,7 +296,7 @@ function extractDetailLinks(html: string, limiet: number): string[] {
     try {
       const data = JSON.parse(m[1]);
       const items: unknown = data?.itemListElement;
-      if (Array.isArray(items) && items.length > 0) {
+      if (Array.isArray(items) && items.length > 0 && data["@type"] !== "BreadcrumbList") {
         const urls = items
           .map((item) => (item as { url?: unknown })?.url)
           .filter((url): url is string => typeof url === "string" && url.includes("/detail/koop/"));
@@ -438,49 +340,45 @@ function extractJsonLd(html: string): FundaJsonLd | null {
   return null;
 }
 
+// Matchingmodel v2, Component 2 (locatiescore): het BreadcrumbList-JSON-LD-
+// blok op de detailpagina bevat Funda's EIGEN, al toegekende wijk/buurtnaam
+// (live geverifieerd: "Reserveboezemstraat 5" -> Home > Rotterdam > "Nieuw
+// Crooswijk" > straatnaam -- positie 3 van 4, dus altijd de voorlaatste
+// entry vóór de straatnaam zelf). Betrouwbaarder dan zelf uit het adres
+// proberen af te leiden.
+function extractBreadcrumbGebied(html: string): string | null {
+  const matches = [...html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)];
+  for (const m of matches) {
+    try {
+      const data = JSON.parse(m[1]);
+      if (data?.["@type"] === "BreadcrumbList" && Array.isArray(data.itemListElement)) {
+        const items = data.itemListElement as { position?: number; item?: { name?: string } }[];
+        if (items.length >= 3) {
+          const naam = items[items.length - 2]?.item?.name;
+          return typeof naam === "string" && naam.trim() ? naam.trim() : null;
+        }
+      }
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
 // -----------------------------------------------------------------------------
-// Lokale nafiltering ("vangnet") -- diagnose-sessie "veel data komt niet
-// overeen met Funda": tot nu toe werd alleen de prijs nog eens hard tegen
-// budgetMax gecontroleerd (zie bijBudget in haalFundaMatches). Woningtype,
-// slaapkamers, woonoppervlak en energielabel van de daadwerkelijk
-// gescrapete woning werden NOOIT teruggecontroleerd tegen de kenmerken van
-// de zoekopdracht -- als de Funda-URL (om welke reden dan ook: een verkeerde
-// parameterwaarde zoals de 2-onder-1-kap-bug hierboven, een gewijzigde
-// Funda-indeling, of de topposities-vervuiling) iets anders teruggaf dan
-// gevraagd, werd dat gewoon voor zoete koek aangenomen.
-//
-// Deze functie leest dezelfde weergavegegevens die een bezoeker ook gewoon
-// op de detailpagina ziet (live geverifieerd op meerdere woningen, zowel
-// appartement als huis): het iconenblokje direct onder de prijs
-// ("<n> slaapkamers", "<n> m² wonen", "<label> energielabel") en het @type-
-// veld uit de JSON-LD ("Huis" vs "Appartement"). Als een waarde niet te
-// vinden/parsen is, wordt dat NOOIT als afwijzingsgrond gebruikt (dat zou
-// onze eigen scrape-beperkingen afstraffen i.p.v. een echte mismatch) --
-// alleen een daadwerkelijk TEGENSTRIJDIGE waarde leidt tot afwijzing.
-// Geëxporteerd (i.p.v. alleen intern gebruikt): b2bStore.ts slaat dit als
-// snapshot op bij elke match (B2bWoningMatch.verificatie) en gebruikt
-// dezelfde voldoetAanKenmerken() hieronder om BESTAANDE matches bij een
-// volgende verversing opnieuw te toetsen -- zie de uitleg bij
-// B2bWoningMatch.verificatie in types/b2b.ts voor waarom dat nodig is.
+// Lokale verificatie ("vangnet" + scoregegevens) -- leest dezelfde
+// weergavegegevens die een bezoeker ook gewoon op de detailpagina ziet (live
+// geverifieerd op meerdere woningen, zowel appartement als huis).
+// -----------------------------------------------------------------------------
 export type LokaleVerificatie = B2bMatchVerificatie;
 
-// Buitenruimte-detectie (tuin/balkon/dakterras) -- LIVE GEVERIFIEERD (klacht
-// "balkon naar tuin switchen laat oude matches staan"): Funda's "Kenmerken"-
-// tabel op de detailpagina heeft een dt/dd-paar per rij (bv.
-// `<dt ...>Tuin</dt><dd ...><span>Achtertuin en voortuin</span></dd>`),
-// gecontroleerd via de daadwerkelijke DOM op meerdere woningen. Twee dingen
-// live bevestigd, niet gegokt:
-//   1. De rij "Tuin" is alleen aanwezig als de woning ook echt een tuin
-//      heeft; ontbreekt hij, dan heeft de woning er geen (bevestigd op
-//      meerdere appartementen zonder tuin).
-//   2. Funda combineert balkon EN dakterras in één rij "Balkon/dakterras",
-//      met een tekstwaarde die het specifieke type noemt ("Balkon aanwezig",
-//      "Dakterras aanwezig") -- vandaar de losse balkon/dakterras-substring-
-//      check op dezelfde rij i.p.v. twee aparte dt's.
-// Regex i.p.v. exacte class-match (in tegenstelling tot de spans hieronder):
-// deze dt/dd-rijen hebben een langere, minder stabiele Tailwind-classlist, dus
-// alleen op de dt-teksten zelf gematcht en de dd-inhoud van omliggende tags
-// ontdaan -- robuuster tegen kleine opmaakwijzigingen.
+// Buitenruimte-detectie (tuin/balkon/dakterras) -- LIVE GEVERIFIEERD: Funda's
+// "Kenmerken"-tabel op de detailpagina heeft een dt/dd-paar per rij (bv.
+// `<dt ...>Tuin</dt><dd ...><span>Achtertuin en voortuin</span></dd>`). De
+// rij "Tuin" is alleen aanwezig als de woning ook echt een tuin heeft;
+// ontbreekt hij, dan heeft de woning er geen. Funda combineert balkon EN
+// dakterras in één rij "Balkon/dakterras", met een tekstwaarde die het
+// specifieke type noemt.
 function leesBuitenruimte(html: string): { heeftTuin: boolean; heeftBalkon: boolean; heeftDakterras: boolean } {
   const heeftTuin = /<dt[^>]*>\s*Tuin\s*<\/dt>/i.test(html);
 
@@ -496,12 +394,12 @@ function leesBuitenruimte(html: string): { heeftTuin: boolean; heeftBalkon: bool
   };
 }
 
-// LIVE GEVERIFIEERD (Chrome-DOM, matching-model-sessie) op zowel een huis als
-// een appartement: "Bouwjaar", "Perceel" (ontbreekt bij appartementen -- geen
-// eigen grond, dus terecht geen dt-rij), "Vraagprijs per m²" en de
-// buurtvergelijking "Gem. vraagprijs / m²" zijn allemaal dt/dd-rijen van
-// hetzelfde type als Tuin/Balkon-dakterras hierboven. Prijs-per-m² komt als
-// "€ 4.643" terug, vandaar dezelfde eurotekst-opschoning als naarPrijsGetal.
+// LIVE GEVERIFIEERD (Chrome-DOM) op zowel een huis als een appartement:
+// "Bouwjaar", "Perceel" (ontbreekt bij appartementen -- geen eigen grond, dus
+// terecht geen dt-rij), "Vraagprijs per m²" en de buurtvergelijking "Gem.
+// vraagprijs / m²" zijn allemaal dt/dd-rijen van hetzelfde type als Tuin/
+// Balkon-dakterras hierboven. Prijs-per-m² komt als "€ 4.643" terug, vandaar
+// dezelfde eurotekst-opschoning als naarPrijsGetal.
 function leesDtWaarde(html: string, label: string): string | null {
   const match = html.match(new RegExp(`<dt[^>]*>\\s*${label}\\s*<\\/dt>\\s*<dd[^>]*>([\\s\\S]*?)<\\/dd>`, "i"));
   if (!match) return null;
@@ -531,6 +429,52 @@ function leesExtraKenmerken(html: string): {
   };
 }
 
+// Matchingmodel v2 -- ALLES hieronder LIVE GEVERIFIEERD op meerdere
+// detailpagina's (Reserveboezemstraat 5, Oostmaaslaan 511, Buizenwerf 235,
+// Voorschoterlaan 101) vóór implementatie:
+//   - "Aantal kamers" toont BEIDE getallen in één string, bv. "4 kamers
+//     (3 slaapkamers)" -- het eerste getal is het TOTAAL.
+//   - "Voorzieningen" is een kommagescheiden lijst (bv. "Lift, mechanische
+//     ventilatie, en TV kabel") -- lift wordt hieruit gelezen.
+//   - "Gelegen op" toont "Begane grond" of "<n>e woonlaag".
+//   - Eigen parkeerplek: alleen aanwezig als de losse "Soort garage"/
+//     "Capaciteit"-rijen bestaan. "Soort parkeergelegenheid" (buurtniveau)
+//     staat er altijd, en beschrijft de algemene parkeersituatie.
+//   - "Soort woonhuis" (huizen, bv. "Herenhuis, tussenwoning") / "Soort
+//     appartement" (appartementen, bv. "Portiekflat (appartement)") bevat
+//     het fijnmazige subtype.
+function leesKamers(html: string): number | null {
+  const tekst = leesDtWaarde(html, "Aantal kamers");
+  const match = tekst?.match(/(\d+)\s*kamers?/i);
+  return match ? Number(match[1]) : null;
+}
+
+function leesLift(html: string): boolean {
+  const tekst = leesDtWaarde(html, "Voorzieningen");
+  return tekst ? /\blift\b/i.test(tekst) : false;
+}
+
+function leesWoonlaag(html: string): number | null {
+  const tekst = leesDtWaarde(html, "Gelegen op");
+  if (!tekst) return null;
+  if (/begane\s*grond/i.test(tekst)) return 0;
+  const match = tekst.match(/(\d+)e\s*woonlaag/i);
+  return match ? Number(match[1]) : null;
+}
+
+function leesParkeren(html: string): { heeftEigenParkeerplek: boolean; parkeerOmschrijving: string | null } {
+  const eigenGarage = leesDtWaarde(html, "Soort garage");
+  const capaciteit = leesDtWaarde(html, "Capaciteit");
+  return {
+    heeftEigenParkeerplek: Boolean(eigenGarage) || Boolean(capaciteit && /\d/.test(capaciteit)),
+    parkeerOmschrijving: leesDtWaarde(html, "Soort parkeergelegenheid"),
+  };
+}
+
+function leesWoningsubtypeRuw(html: string): string | null {
+  return leesDtWaarde(html, "Soort woonhuis") ?? leesDtWaarde(html, "Soort appartement");
+}
+
 function leesLokaleVerificatieData(html: string, ld: FundaJsonLd): LokaleVerificatie {
   const types = Array.isArray(ld["@type"]) ? ld["@type"] : ld["@type"] ? [ld["@type"]] : [];
   const woningtypeFamilie: LokaleVerificatie["woningtypeFamilie"] = types.includes("Huis")
@@ -549,6 +493,8 @@ function leesLokaleVerificatieData(html: string, ld: FundaJsonLd): LokaleVerific
     /<span class="md:font-semibold">([^<]*)<\/span><span class="ml-1 hidden text-neutral-50 md:inline-block">energielabel<\/span>/i
   );
 
+  const { heeftEigenParkeerplek, parkeerOmschrijving } = leesParkeren(html);
+
   return {
     woningtypeFamilie,
     slaapkamers: slaapMatch ? Number(slaapMatch[1]) : null,
@@ -556,65 +502,15 @@ function leesLokaleVerificatieData(html: string, ld: FundaJsonLd): LokaleVerific
     energielabel: labelMatch ? labelMatch[1].trim() : null,
     ...leesBuitenruimte(html),
     ...leesExtraKenmerken(html),
+    kamers: leesKamers(html),
+    heeftLift: leesLift(html),
+    woonlaag: leesWoonlaag(html),
+    heeftEigenParkeerplek,
+    parkeerOmschrijving,
+    woningsubtypeRuw: leesWoningsubtypeRuw(html),
+    gebiedRuw: extractBreadcrumbGebied(html),
+    plaatsnaam: ld.address?.addressLocality ?? null,
   };
-}
-
-// true = deze woning voldoet (of kon niet met zekerheid worden afgekeurd),
-// false = aantoonbaar in strijd met een expliciet ingestelde kenmerk, dus
-// wordt uit de matches gehouden. Geëxporteerd: b2bStore.ts hergebruikt dit
-// om BESTAANDE, opgeslagen matches (via hun verificatie-snapshot) opnieuw te
-// toetsen, niet alleen nieuw gescrapete kandidaten.
-export function voldoetAanKenmerken(verificatie: LokaleVerificatie, kenmerken: B2bKenmerken | undefined, kenmerkenFlexibel = false): boolean {
-  if (!kenmerken) return true;
-
-  if (kenmerken.woningtype && verificatie.woningtypeFamilie) {
-    const verwacht = kenmerken.woningtype === "appartement" ? "appartement" : "huis";
-    if (verificatie.woningtypeFamilie !== verwacht) return false;
-  }
-
-  if (kenmerken.minSlaapkamers && verificatie.slaapkamers != null) {
-    if (verificatie.slaapkamers < kenmerken.minSlaapkamers) return false;
-  }
-
-  if (kenmerken.minWoonoppervlak && verificatie.woonoppervlak != null) {
-    if (verificatie.woonoppervlak < kenmerken.minWoonoppervlak) return false;
-  }
-
-  if (kenmerken.minEnergielabel && verificatie.energielabel) {
-    const rang = ENERGIELABEL_VOLGORDE_FUNDA.indexOf(verificatie.energielabel);
-    // Niet te herkennen label-tekst (onverwacht formaat) -- niet afwijzen,
-    // zie de uitleg hierboven.
-    if (rang !== -1 && rang >= ENERGIELABEL_AANTAL_FUNDA_WAARDEN[kenmerken.minEnergielabel]) return false;
-  }
-
-  // BUGFIX (klacht "balkon naar tuin switchen laat oude matches staan"):
-  // tuin/balkon/dakterras werden hier nooit gecontroleerd. Bewust `!== true`
-  // i.p.v. `=== false`: dat wijst ook BESTAANDE, VOOR deze fix opgeslagen
-  // matches af (hun verificatie-snapshot mist deze velden nog helemaal, dus
-  // `undefined`) -- exact dezelfde eenmalige "voor de zekerheid als
-  // verouderd behandelen"-aanpak als bij een volledig ontbrekende snapshot
-  // (zie ruimVerouderdeMatchenOp in b2bStore.ts). Voor NIEUW gescrapete
-  // matches is dit veld altijd een echte boolean (nooit undefined, zie
-  // leesBuitenruimte hierboven), dus daar betekent dit gewoon "heeft het
-  // kenmerk aantoonbaar niet".
-  //
-  // MATCHING-MODEL: bij kenmerkenFlexibel (koperVoorkeuren, "op één puntje
-  // na nog interessant?") wordt maximaal ÉÉN ontbrekend buitenruimte-kenmerk
-  // getolereerd i.p.v. meteen afgewezen -- de bijbehorende strafpunten komen
-  // van berekenMatchScore() in lib/services/matchScore.ts, niet hier. Twee of
-  // meer ontbrekende kenmerken blijft altijd een afwijzing, ook flexibel.
-  const ontbrekend = [
-    kenmerken.tuin && verificatie.heeftTuin !== true,
-    kenmerken.balkon && verificatie.heeftBalkon !== true,
-    kenmerken.dakterras && verificatie.heeftDakterras !== true,
-  ].filter(Boolean).length;
-  if (kenmerkenFlexibel) {
-    if (ontbrekend > 1) return false;
-  } else if (ontbrekend > 0) {
-    return false;
-  }
-
-  return true;
 }
 
 function naarPrijsGetal(prijs: number | string | undefined): number | null {
@@ -630,11 +526,7 @@ function formatPrijs(bedrag: number | null): string | null {
   return `${new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(bedrag)} k.k.`;
 }
 
-async function haalListingDetails(
-  detailUrl: string,
-  kenmerken: B2bKenmerken | undefined,
-  kenmerkenFlexibel = false
-): Promise<FundaFeedItem | null> {
+async function haalListingDetails(detailUrl: string): Promise<FundaFeedItem | null> {
   try {
     const res = await fetchMetTimeout(detailUrl, FUNDA_DETAIL_TIMEOUT_MS);
     if (!res.ok) return null;
@@ -642,12 +534,7 @@ async function haalListingDetails(
     const ld = extractJsonLd(html);
     if (!ld) return null;
 
-    // Vangnet: ongeacht wat de zoekpagina/URL-parameters al (zouden moeten)
-    // hebben gefilterd, wordt de daadwerkelijk gescrapete woning hier nog
-    // eens hard tegen de kenmerken van de zoekopdracht gehouden. Zie
-    // voldoetAanKenmerken() hierboven voor de precieze regels.
     const verificatie = leesLokaleVerificatieData(html, ld);
-    if (!voldoetAanKenmerken(verificatie, kenmerken, kenmerkenFlexibel)) return null;
 
     const straat = ld.address?.streetAddress ?? ld.name ?? "";
     const plaats = ld.address?.addressLocality ?? "";
@@ -667,145 +554,118 @@ async function haalListingDetails(
   }
 }
 
-// TIJDELIJKE DIAGNOSE-LOGGING (bewust altijd aan, ook in mock-modus): tot nu
-// toe was "geen nieuwe matches" volledig stil in beide gevallen (mock-modus
-// EN live-modus-met-0-resultaten loggen namelijk geen van beide iets), dus
-// die twee waren via de runtime-logs niet van elkaar te onderscheiden. Dit
-// maakt in elk geval meteen zichtbaar welke modus daadwerkelijk actief is op
-// de lopende deployment, en bij live-modus ook of de zoekpagina uberhaupt
-// echte woninglinks teruggeeft. Mag na de eerste geslaagde live-run weer
-// verwijderd/afgezwakt worden.
-//
-// BUGFIX (diagnose-sessie "wat hebben we maandelijks nodig"): dit haalde
-// voorheen de detailpagina van ELKE gevonden link op, ook van woningen die
-// al als match bekend waren van een vorige ronde (dedupe gebeurde pas
-// daarna, bij de aanroeper) -- bij de dagelijkse cron kostte dat élke dag
-// opnieuw proxy-verzoeken aan dezelfde, allang bekende woningen. `bekendeUrls`
-// laat de aanroeper de al opgeslagen matches meegeven zodat de detailpagina
-// van die links helemaal wordt overgeslagen -- de link blijft wel meetellen
-// voor `limiet` (zelfde resultatenselectie als voorheen), alleen het dure
-// detailpagina-verzoek wordt bespaard.
-export interface KoperVoorkeurenVoorZoeken {
-  budgetFlexibel?: boolean;
-  kenmerkenFlexibel?: boolean;
-}
-
-// BUGFIX (klacht "Kralingen Crooswijk geeft nog steeds 0 matches zonder
-// extra filter" -- bleek NIET meer de slug te zijn, die klopt inmiddels
-// live geverifieerd; root cause via de Vercel-productielogs: de Bright
-// Data-zoekaanvraag zelf timede een keer uit (AbortError) VOORDAT er ook
-// maar een HTTP-status binnenkwam). Het resultaat was hierdoor
-// ononderscheidbaar van een oprechte "0 woningen voldoen" -- de aanroeper
-// (en dus de makelaar) kreeg gewoon een lege lijst te zien, geen signaal
-// dat het zoeken zelf mislukt was. `fout` maakt dat onderscheid nu
-// expliciet: true = het zoeken zelf is niet gelukt (netwerk/proxy/timeout),
-// de aanroeper hoort dit anders te tonen dan "geen passende woningen".
 export interface FundaZoekResultaat {
   items: FundaFeedItem[];
   fout: boolean;
 }
 
+// Matchingmodel v2, Component 1 (budgetscore): tiers op 100%/105%/110% van
+// het gekozen maximum (zie het opgegeven puntensysteem) -- de Funda-
+// zoekopdracht zelf scant daarom bewust tot 110% boven het gekozen maximum,
+// anders zouden de 15- en 10-puntentussenstappen nooit een kandidaat te zien
+// krijgen. Boven de 110% is er sowieso 0 punten op dit onderdeel, dus verder
+// scannen heeft geen zin. Gedeeld met matchScore.ts (dezelfde marge moet
+// hier en bij het scoren gebruikt worden, anders vindt de zoekopdracht
+// kandidaten die het scoremodel meteen weer afwijst als "nooit gezien").
+export const BUDGET_ZOEK_MARGE = 0.1;
+
+function afgeleidBudgetMax(voorkeuren: B2bKoperVoorkeuren): number | null {
+  const optie = B2B_BUDGET_OPTIES.find((o) => o.waarde === voorkeuren.maxKoopprijs);
+  if (!optie?.max) return null;
+  return Math.round(optie.max * (1 + BUDGET_ZOEK_MARGE));
+}
+
+// Matchingmodel v2, Component 2 (locatiescore) -- vertaalt de tot 3 gekozen
+// B2bVoorkeurLocatie-waarden naar 1-3 daadwerkelijke Funda-zoekgebieden.
+// Meerdere Rotterdam-kwadranten (centrum/noord/zuid/oost/west) vallen samen
+// tot ÉÉN zoekopdracht op de HELE stad "rotterdam" -- er bestaat geen
+// doorzoekbaar Funda-gebied per kwadrant (zie gebiedIndeling.ts), en apart
+// per kwadrant-wijk zoeken zou veel te veel proxy-verzoeken kosten. De
+// classificatie naar kwadrant gebeurt pas ná het scrapen, bij het scoren
+// (Component 2, matchScore.ts), o.b.v. Funda's eigen breadcrumb-gebiedsnaam.
+const GEMEENTE_SLUGS: Partial<Record<string, string>> = {
+  schiedam: "schiedam",
+  vlaardingen: "vlaardingen",
+  capelle: "capelle-aan-den-ijssel",
+  barendrecht: "barendrecht",
+  hendrik_ido_ambacht: "hendrik-ido-ambacht",
+};
+const ROTTERDAM_KWADRANTEN = new Set(["rotterdam_centrum", "rotterdam_noord", "rotterdam_zuid", "rotterdam_oost", "rotterdam_west"]);
+
+function afgeleideGebiedSlugs(voorkeuren: B2bKoperVoorkeuren): string[] {
+  const slugs = new Set<string>();
+  for (const locatie of voorkeuren.voorkeurLocaties) {
+    if (ROTTERDAM_KWADRANTEN.has(locatie)) {
+      slugs.add("rotterdam");
+    } else if (locatie === "other") {
+      const a = voorkeuren.voorkeurLocatieAnders;
+      if (a) slugs.add(a.wijkSlug ? `${a.plaatsSlug}/${a.wijkSlug}` : a.plaatsSlug);
+    } else {
+      const slug = GEMEENTE_SLUGS[locatie];
+      if (slug) slugs.add(slug);
+    }
+  }
+  return [...slugs];
+}
+
+// TIJDELIJKE DIAGNOSE-LOGGING (bewust altijd aan, ook in mock-modus): tot nu
+// toe was "geen nieuwe matches" volledig stil in beide gevallen, dus die twee
+// waren via de runtime-logs niet van elkaar te onderscheiden. Dit maakt in
+// elk geval meteen zichtbaar welke modus daadwerkelijk actief is op de
+// lopende deployment.
+//
+// `bekendeUrls` laat de aanroeper de al opgeslagen matches meegeven zodat de
+// detailpagina van die links helemaal wordt overgeslagen -- de link blijft
+// wel meetellen voor `limiet`, alleen het dure detailpagina-verzoek wordt
+// bespaard.
 export async function haalFundaMatches(
-  locatie: B2bLocatie,
-  budgetMin: number | null,
-  budgetMax: number | null,
-  kenmerken: B2bKenmerken | undefined,
+  voorkeuren: B2bKoperVoorkeuren,
   limiet = 15,
-  bekendeUrls: Set<string> = new Set(),
-  koperVoorkeuren?: KoperVoorkeurenVoorZoeken | null
+  bekendeUrls: Set<string> = new Set()
 ): Promise<FundaZoekResultaat> {
-  const budgetFlexibel = Boolean(koperVoorkeuren?.budgetFlexibel);
-  const kenmerkenFlexibel = Boolean(koperVoorkeuren?.kenmerkenFlexibel);
+  const gebiedSlugs = afgeleideGebiedSlugs(voorkeuren);
+  const budgetMax = afgeleidBudgetMax(voorkeuren);
+  const objectType = objectTypeFamilieFilter(voorkeuren.woningtypes);
 
   console.log(
-    // BUGFIX (diagnose-sessie "het klopt allemaal niet"): deze regel liet
-    // altijd "scrape.do" zien zodra SCRAPEDO_TOKEN gezet was, ook nadat
-    // Bright Data er als voorkeursoptie bij kwam (fetchMetTimeout kiest
-    // Bright Data > Scrape.do > direct) -- de log klopte dus niet meer met
-    // wat er echt gebeurde, wat verder diagnosticeren onnodig lastig maakte.
     `[fundaFeed] modus=${FUNDA_FEED_MODE} proxy=${
       BRIGHTDATA_API_TOKEN && BRIGHTDATA_ZONE
         ? "bright-data"
         : SCRAPEDO_TOKEN
           ? "scrape.do"
           : "geen (directe fetch, wordt vermoedelijk geblokkeerd vanaf Vercel)"
-    } locatie=${locatie.plaatsSlug}${locatie.wijkSlug ? "/" + locatie.wijkSlug : ""}${
-      budgetFlexibel || kenmerkenFlexibel
-        ? ` flexibel=${[budgetFlexibel && "budget", kenmerkenFlexibel && "kenmerken"].filter(Boolean).join("+")}`
-        : ""
-    }`
+    } gebieden=${gebiedSlugs.join("|") || "(geen)"} budgetMax=${budgetMax ?? "onbeperkt"} objectType=${objectType ?? "(geen filter)"}`
   );
 
-  // BUGFIX: "budget verlaagd, maar oude/te dure resultaten bleven ertussen
-  // staan" bleek deels ook hier te zitten -- Funda's eigen price-URL-param
-  // vertrouwen we niet blindelings (zie eerdere ontdekking dat selected_area
-  // ook al eens stilzwijgend werd genegeerd). Daarom hard nafilteren op
-  // zowel budgetMin als budgetMax, voor zowel mock- als live-modus, ongeacht
-  // wat de bron zelf al deed -- een woning buiten budget hoort hier nooit
-  // uit te komen. BUGFIX (diagnose-sessie "budget klopt niet"): budgetMin
-  // ontbrak hier eerder volledig, zowel in de Funda-URL (zie bouwZoekUrl)
-  // als in deze nafiltering -- dat was de directe oorzaak van "ik kies
-  // 300-500k en krijg een woning van 289".
-  //
-  // MATCHING-MODEL: bij budgetFlexibel wordt dezelfde marge (10%,
-  // BUDGET_FLEXIBEL_MARGE) toegepast als in de Funda-URL zelf (zie
-  // bouwZoekUrl) -- anders zou een net-boven-budget-woning wel door Funda's
-  // eigen filter komen, maar hier alsnog stilzwijgend worden weggegooid.
-  // berekenMatchScore() in lib/services/matchScore.ts telt de daadwerkelijke
-  // overschrijding later als strafpunten mee, dus dit is geen vrijbrief --
-  // gewoon niet meer een harde uitsluiting.
-  const budgetMaxMetMarge = budgetMax && budgetMax > 0 && budgetFlexibel ? Math.round(budgetMax * (1 + BUDGET_FLEXIBEL_MARGE)) : budgetMax;
+  if (gebiedSlugs.length === 0) {
+    // Geen enkele bruikbare locatie afgeleid (bv. "other" gekozen zonder dat
+    // voorkeurLocatieAnders is ingevuld) -- niets om te doorzoeken, geen
+    // oprechte fout (dus geen `fout: true`), gewoon niets gevonden.
+    console.log("[fundaFeed] geen bruikbaar zoekgebied afgeleid uit de koper-voorkeuren -- overgeslagen");
+    return { items: [], fout: false };
+  }
+
   const bijBudget = (item: FundaFeedItem): boolean => {
-    if (item.prijs == null) return true;
-    if (budgetMin && budgetMin > 0 && item.prijs < budgetMin) return false;
-    if (budgetMaxMetMarge && budgetMaxMetMarge > 0 && item.prijs > budgetMaxMetMarge) return false;
-    return true;
+    if (item.prijs == null || budgetMax == null) return true;
+    return item.prijs <= budgetMax;
   };
 
   if (FUNDA_FEED_MODE !== "live") {
     return { items: MOCK_ITEMS.filter(bijBudget).slice(0, limiet), fout: false };
   }
 
-  // Paginering (matching-model): LIVE GEVERIFIEERD dat Funda's `&page=2`,
-  // `&page=3` werkt en daadwerkelijk nieuwe, andere woning-URL's teruggeeft
-  // via hetzelfde ld+json ItemList-blok als pagina 1 (zie bouwZoekUrl) --
-  // nodig om uit een grotere pool te kunnen kiezen dan de ±15 resultaten
-  // van pagina 1 alleen. Elke pagina kost 1 proxy-verzoek ongeacht hoeveel
-  // links daarna al bekend blijken (dat wordt pas ná dit blok bepaald) --
-  // MAX_PAGINAS is dus een bewuste, harde kostengrens.
-  //
-  // BUGFIX (klacht "Funda vindt 196 woningen, wij maar 25"): stond op 3,
-  // wat bij Funda's ~15 resultaten/pagina neerkwam op een harde grens van
-  // ±45 ruwe links, ongeacht hoe groot de daadwerkelijke markt in die wijk
-  // is. Opgehoogd naar 8 (±120 ruwe links) zodat de aanroeper (via een
-  // grotere `limiet`, zie matches-verversen/route.ts en
-  // cron/matches-controleren/route.ts) een substantieel groter deel van de
-  // markt kan laten scannen vóórdat het scoremodel de beste selectie maakt
-  // -- scannen (dit getal) is bewust losgekoppeld van tonen
-  // (MAX_ZICHTBARE_MATCHEN in types/b2b.ts, toegepast via kapMatchenOpMax
-  // op score). Nog steeds geen garantie dat ALLE beschikbare woningen
-  // gezien worden bij een echt grote markt (196 zou zelf al 196
-  // detailpagina-proxyverzoeken kosten in één refresh) -- zie VOORTGANG.md
-  // voor een efficiëntere vervolgstap (kenmerken al van de zoekpagina zelf
-  // aflezen i.p.v. altijd een detailpagina nodig te hebben).
+  // Paginering: LIVE GEVERIFIEERD dat Funda's `&page=2`, `&page=3` werkt en
+  // daadwerkelijk nieuwe, andere woning-URL's teruggeeft via hetzelfde
+  // ld+json ItemList-blok als pagina 1. Elke pagina kost 1 proxy-verzoek
+  // ongeacht hoeveel links daarna al bekend blijken -- MAX_PAGINAS is dus een
+  // bewuste, harde kostengrens.
   const MAX_PAGINAS = 8;
   const links: string[] = [];
   let paginasOpgehaald = 0;
-  // BUGFIX (klacht "Kralingen Crooswijk geeft nog steeds 0 matches zonder
-  // extra filter" -- de wijk-slug zelf bleek inmiddels correct, live
-  // geverifieerd; de daadwerkelijke oorzaak stond in de productielogs: de
-  // Bright Data-zoekaanvraag timede één keer uit (AbortError, VOORDAT er
-  // ook maar een HTTP-status binnenkwam). Zo'n mislukte aanvraag leverde
-  // hierdoor exact hetzelfde resultaat op als een oprechte "0 woningen
-  // voldoen" -- voor de aanroeper (en dus de makelaar) niet te
-  // onderscheiden. `heeftFout` maakt dat nu expliciet, maar ALLEEN als er
-  // aan het einde nog niets bruikbaars is gevonden -- faalt een latere
-  // pagina nadat eerdere pagina's al links opleverden, dan is dat gewoon
-  // "klaar met pagineren", geen fout.
   let heeftFout = false;
 
   for (let pagina = 1; pagina <= MAX_PAGINAS && links.length < limiet; pagina++) {
-    const zoekUrl = bouwZoekUrl(locatie, budgetMin, budgetMax, kenmerken, pagina, { budgetFlexibel, kenmerkenFlexibel });
+    const zoekUrl = bouwZoekUrl(gebiedSlugs, budgetMax, objectType, pagina);
     try {
       const res = await fetchMetTimeout(zoekUrl, FUNDA_SEARCH_TIMEOUT_MS);
       console.log(`[fundaFeed] LIVE zoekaanvraag (pagina ${pagina}) ${zoekUrl} -> HTTP ${res.status}`);
@@ -819,13 +679,6 @@ export async function haalFundaMatches(
       const paginaLinks = extractDetailLinks(html, limiet - links.length);
       if (paginaLinks.length === 0) {
         if (pagina === 1) {
-          // Waarschijnlijkste oorzaak van 0 links bij een 200-status: ofwel
-          // een oprechte 0-resultaten-pagina (geen ld+json meer aanwezig,
-          // zie extractDetailLinks), ofwel een bot-detectiepagina i.p.v. de
-          // echte zoekresultaten -- de eerste paar honderd tekens (zonder
-          // scripts/styles) laten meestal meteen zien welke van de twee het
-          // is (bv. "Even geduld", "verify you are human", "Access Denied",
-          // een cookie-muur, etc.).
           const snippet = html.replace(/<script[\s\S]*?<\/script>/gi, "").replace(/\s+/g, " ").slice(0, 500);
           console.log(`[fundaFeed] LIVE 0 links op pagina 1. HTML-snippet: ${snippet}`);
         }
@@ -850,10 +703,10 @@ export async function haalFundaMatches(
   if (nieuweLinks.length === 0) return { items: [], fout: false };
 
   try {
-    const resultaten = await Promise.all(nieuweLinks.map((url) => haalListingDetails(url, kenmerken, kenmerkenFlexibel)));
-    const afgekeurd = resultaten.filter((item) => item === null).length;
-    if (afgekeurd > 0) {
-      console.log(`[fundaFeed] LIVE ${afgekeurd}/${nieuweLinks.length} link(s) afgekeurd door lokale kenmerken-verificatie of prijs`);
+    const resultaten = await Promise.all(nieuweLinks.map((url) => haalListingDetails(url)));
+    const mislukt = resultaten.filter((item) => item === null).length;
+    if (mislukt > 0) {
+      console.log(`[fundaFeed] LIVE ${mislukt}/${nieuweLinks.length} link(s) niet leesbaar (detailpagina-fout)`);
     }
     return { items: resultaten.filter((item): item is FundaFeedItem => item !== null).filter(bijBudget), fout: false };
   } catch (err) {

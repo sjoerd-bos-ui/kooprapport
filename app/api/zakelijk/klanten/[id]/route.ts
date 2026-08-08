@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2bSessieUitRequest } from "@/lib/services/b2bAuth";
 import { getKlantdossier, zetKlantdossierStatus, zetKlantdossierZoekopdracht, verwijderKlantdossier } from "@/lib/services/b2bStore";
-import { legeKenmerken, B2B_WONINGTYPES, B2B_ENERGIELABELS } from "@/types/b2b";
-import type { B2bDossierStatus, B2bZoekopdracht, B2bLocatie, B2bKenmerken, B2bKoperVoorkeuren, B2bPrioriteit, B2bBouwstijlVoorkeur } from "@/types/b2b";
-
-const GELDIGE_PRIORITEIT: B2bPrioriteit[] = ["prijs", "kenmerken", "gelijk"];
-const GELDIGE_BOUWSTIJL: B2bBouwstijlVoorkeur[] = ["nieuw", "karakter", "geen_voorkeur"];
+import { valideerKoperVoorkeuren } from "@/lib/services/koperVoorkeurenValidatie";
+import type { B2bDossierStatus, B2bZoekopdracht } from "@/types/b2b";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const context = await getB2bSessieUitRequest(req);
@@ -17,7 +14,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Onbekend klantdossier." }, { status: 404 });
   }
 
-  let body: { status?: B2bDossierStatus; zoekopdracht?: Partial<B2bZoekopdracht> & { koperVoorkeuren?: Partial<B2bKoperVoorkeuren> | null } };
+  let body: { status?: B2bDossierStatus; zoekopdracht?: Partial<B2bZoekopdracht> };
   try {
     body = await req.json();
   } catch {
@@ -34,88 +31,46 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   if (body.zoekopdracht !== undefined) {
     const z = body.zoekopdracht;
-    const budgetMin = typeof z.budgetMin === "number" && z.budgetMin > 0 ? z.budgetMin : null;
-    const budgetMax = typeof z.budgetMax === "number" && z.budgetMax > 0 ? z.budgetMax : null;
 
-    // Locatie moet, als aanwezig, een complete, expliciet gekozen suggestie
-    // zijn (zie LocatieAutocomplete.tsx/plaatsLookup.ts) -- nooit vrije tekst
-    // die hier alsnog tot een plaatsSlug omgezet zou worden.
-    let locatie: B2bLocatie | null = null;
-    if (z.locatie && typeof z.locatie === "object") {
-      const l = z.locatie as Partial<B2bLocatie>;
-      if (typeof l.label === "string" && l.label.trim() && typeof l.plaatsSlug === "string" && l.plaatsSlug.trim()) {
-        locatie = {
-          label: l.label.trim().slice(0, 120),
-          plaatsSlug: l.plaatsSlug.trim().toLowerCase().slice(0, 80),
-          wijkSlug: typeof l.wijkSlug === "string" && l.wijkSlug.trim() ? l.wijkSlug.trim().toLowerCase().slice(0, 80) : null,
-        };
-      } else {
-        return NextResponse.json({ error: "Kies een locatie uit de suggesties." }, { status: 400 });
-      }
-    }
-
-    const geldigeWoningtypes = B2B_WONINGTYPES.map((w) => w.waarde);
-    const kInput = (z.kenmerken ?? {}) as Partial<B2bKenmerken>;
-    const kenmerken: B2bKenmerken = {
-      ...legeKenmerken(),
-      woningtype: kInput.woningtype && geldigeWoningtypes.includes(kInput.woningtype) ? kInput.woningtype : null,
-      minKamers: typeof kInput.minKamers === "number" && kInput.minKamers > 0 ? Math.round(kInput.minKamers) : null,
-      minSlaapkamers: typeof kInput.minSlaapkamers === "number" && kInput.minSlaapkamers > 0 ? Math.round(kInput.minSlaapkamers) : null,
-      minWoonoppervlak: typeof kInput.minWoonoppervlak === "number" && kInput.minWoonoppervlak > 0 ? Math.round(kInput.minWoonoppervlak) : null,
-      tuin: Boolean(kInput.tuin),
-      balkon: Boolean(kInput.balkon),
-      dakterras: Boolean(kInput.dakterras),
-      garage: Boolean(kInput.garage),
-      lift: Boolean(kInput.lift),
-      minEnergielabel: kInput.minEnergielabel && B2B_ENERGIELABELS.includes(kInput.minEnergielabel) ? kInput.minEnergielabel : null,
-    };
-
-    const matchenActief = Boolean(z.matchenActief);
-    if (matchenActief && !locatie) {
-      return NextResponse.json({ error: "Kies eerst een locatie om automatische meldingen aan te zetten." }, { status: 400 });
-    }
-
-    // koperVoorkeuren: BEWUST drie standen mogelijk (zie het gesprek hierover
-    // -- "moeten op deze manier ingevuld kunnen worden (via de link), maar
-    // ook niet ingevuld worden, of via de applicatie zelf"):
-    //   1. via de publieke vragenlijst-link (ongewijzigd, zie
-    //      app/api/koper-voorkeuren/[token]/route.ts) -- die route roept
-    //      zetKoperVoorkeuren rechtstreeks aan, buiten dit PATCH-endpoint om.
-    //   2. rechtstreeks door de makelaar in het dashboard (ZoekopdrachtForm.tsx)
-    //      -- dat stuurt hier nu een volledig `koperVoorkeuren`-object mee.
-    //   3. helemaal niet ingevuld -- ZoekopdrachtForm stuurt dan expliciet
-    //      `koperVoorkeuren: null` mee (het "Nog niet bekend"-standje).
+    // MATCHINGMODEL V2 (zie het Cowork-gesprek hierover, "matchingsproces
+    // onder de loep"): de 13-vragen koperVoorkeuren-lijst VERVANGT het hele
+    // oude formulier (budget/locatie/kenmerken EN de oude 4-vragen koper-
+    // voorkeuren) -- er is dus nu maar één ding om te valideren/opslaan.
+    // Zelfde drie standen als voorheen (zie het gesprek "moet op deze manier
+    // ingevuld kunnen worden via de link, maar ook niet ingevuld of via de
+    // app zelf"), nu toegepast op het VOLLEDIGE formulier i.p.v. alleen de
+    // laatste 4 vragen:
+    //   1. via de publieke vragenlijst-link (ongewijzigd qua route, zie
+    //      app/api/koper-voorkeuren/[token]/route.ts) -- roept
+    //      zetKoperVoorkeuren rechtstreeks aan, buiten dit endpoint om.
+    //   2. rechtstreeks door de makelaar in het dashboard
+    //      (VoorkeurenVragenlijst.tsx) -- stuurt hier een volledig,
+    //      ingevuld `koperVoorkeuren`-object mee.
+    //   3. helemaal niet ingevuld -- de UI stuurt dan expliciet
+    //      `koperVoorkeuren: null` mee.
     // Als het veld in de request-body ONTBREEKT (niet hetzelfde als `null`)
-    // wordt de al opgeslagen waarde ongewijzigd overgenomen -- zodat een
-    // eventuele toekomstige aanroeper die dit veld nog niet kent nooit per
-    // ongeluk al ingevulde koper-voorkeuren wist.
+    // blijft de al opgeslagen waarde ongewijzigd -- zodat een eventuele
+    // toekomstige aanroeper die dit veld nog niet kent nooit per ongeluk
+    // al ingevulde koper-voorkeuren wist.
     let koperVoorkeuren = dossier.zoekopdracht?.koperVoorkeuren ?? null;
     if ("koperVoorkeuren" in z) {
       if (z.koperVoorkeuren === null) {
         koperVoorkeuren = null;
-      } else if (z.koperVoorkeuren && typeof z.koperVoorkeuren === "object") {
-        const kv = z.koperVoorkeuren;
-        if (!kv.prioriteit || !GELDIGE_PRIORITEIT.includes(kv.prioriteit as B2bPrioriteit)) {
-          return NextResponse.json({ error: "Ongeldige of ontbrekende prioriteit bij de koper-voorkeuren." }, { status: 400 });
+      } else {
+        const resultaat = valideerKoperVoorkeuren(z.koperVoorkeuren);
+        if (!resultaat.ok) {
+          return NextResponse.json({ error: resultaat.error }, { status: 400 });
         }
-        if (!kv.bouwstijl || !GELDIGE_BOUWSTIJL.includes(kv.bouwstijl as B2bBouwstijlVoorkeur)) {
-          return NextResponse.json({ error: "Ongeldige of ontbrekende bouwstijl bij de koper-voorkeuren." }, { status: 400 });
-        }
-        koperVoorkeuren = {
-          prioriteit: kv.prioriteit as B2bPrioriteit,
-          bouwstijl: kv.bouwstijl as B2bBouwstijlVoorkeur,
-          budgetFlexibel: Boolean(kv.budgetFlexibel),
-          kenmerkenFlexibel: Boolean(kv.kenmerkenFlexibel),
-          ingevuldOp: new Date().toISOString(),
-        };
+        koperVoorkeuren = resultaat.waarde;
       }
     }
 
+    const matchenActief = Boolean(z.matchenActief);
+    if (matchenActief && !koperVoorkeuren) {
+      return NextResponse.json({ error: "Vul eerst de voorkeurenlijst in om automatische meldingen aan te zetten." }, { status: 400 });
+    }
+
     const bijgewerkt = await zetKlantdossierZoekopdracht(id, {
-      budgetMin,
-      budgetMax,
-      locatie,
-      kenmerken,
       matchenActief,
       koperVoorkeuren,
       koperVoorkeurenToken: dossier.zoekopdracht?.koperVoorkeurenToken ?? null,

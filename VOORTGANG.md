@@ -1,6 +1,102 @@
 # Voortgang Kooprapport Zakelijk — overdracht naar nieuwe chat
 
-## -4. Nieuwste sessie: kandidatenpool losgekoppeld van weergavelimiet ("Funda 196, wij 25")
+## -5. Nieuwste sessie: matchingmodel-v2 — volledige herbouw (13-vragen/100-punten)
+
+Sjoerd's opdracht, verbatim: "Matchingsproces onder de loep nemen ; alle data
+zijn van Funda te halen op voorzieningen na - die halen we uit ons eigen
+systeem en maken we de koppeling - mochten er antwoorden in staan die net
+niet passen kan je dat aanpassen, bouw maar" -- gevolgd door een volledige
+spec voor een 13-vragen/7-stappen koperVoorkeuren-vragenlijst en een
+10-componenten/100-puntenscore (drempel 60, tiers 60-79 "redelijk"/80-100
+"sterk"). Via drie rondes verduidelijkingsvragen bevestigde Sjoerd: de nieuwe
+vragenlijst wordt door de makelaar ingevuld, en vervangt **het complete oude
+formulier** (zowel de oude 4-vragen koper-voorkeuren als de oude, losse
+budget/locatie/kenmerken-zoekopdracht) -- "Vervangt het hele formulier".
+
+**Kernverandering:** `B2bZoekopdracht` heeft nog maar drie velden
+(`matchenActief`, `koperVoorkeuren`, `koperVoorkeurenToken`). Budget, locatie
+en woningtype komen niet meer uit losse zoekopdrachtvelden, maar worden
+AFGELEID uit de volledige `B2bKoperVoorkeuren` (13 vragen) -- diezelfde
+antwoorden sturen zowel de daadwerkelijke Funda-zoekopdracht
+(`haalFundaMatches` in `fundaFeed.ts`) als de matchscore (`matchScore.ts`).
+
+**Nieuwe/gewijzigde bestanden:**
+- `types/b2b.ts`: volledig herschreven vocabulaire voor alle 13 vragen
+  (`B2B_BUDGET_OPTIES`, `B2B_VOORKEUR_LOCATIES`, `B2B_WONINGTYPE_VOORKEUREN`,
+  `B2B_MIN_KAMERS_OPTIES`, `B2B_MIN_OPPERVLAK_OPTIES`,
+  `B2B_BUITENRUIMTE_OPTIES`, `B2B_MIN_ENERGIELABEL_OPTIES`,
+  `B2B_VOORZIENING_WENSEN`, `B2B_PARKEREN_OPTIES`, `B2B_DEALBREAKERS`,
+  `B2B_AFWEGINGEN`, `B2B_PRIORITEITEN`), nieuwe `B2bKoperVoorkeuren`
+  (13 velden), `MIN_MATCH_SCORE = 60`. Oude 4-velden-`B2bKoperVoorkeuren`,
+  `B2bKenmerken`, `B2bWoningtype` etc. verwijderd.
+- `lib/services/gebiedIndeling.ts` (nieuw): eigen, beargumenteerde
+  Rotterdam-kwadrant-naar-wijk-indeling + aangrenzendheidsgraaf
+  (`classificeerGebied`, `zijnAangrenzend`) -- expliciet gedocumenteerd als
+  eigen interpretatie, geen officiële CBS-/Funda-indeling.
+- `lib/data-sources/fundaFeed.ts`: `haalFundaMatches(voorkeuren, limiet,
+  bekendeUrls)` -- bouwt de zoek-URL nu uit de koperVoorkeuren (multi-gebied
+  via Funda's `selected_area`-comma-lijst, multi-woningtype via
+  `object_type`), en leest nieuwe detailpaginavelden (kamers, lift, woonlaag,
+  parkeren, ruw woningsubtype, Funda's eigen breadcrumb-gebied) -- alles live
+  geverifieerd via Chrome-DOM vóór implementatie.
+- `lib/services/voorzieningenMatch.ts` (nieuw): koppelt Vraag 9
+  (voorzieningenwensen) aan het bestaande CBS-gebaseerde
+  `buurtprofiel.ts` (al gebruikt voor consumentenrapporten) -- gratis/keyless,
+  alleen aangeroepen als de koper daadwerkelijk voorzieningenwensen/
+  -dealbreaker/-prioriteit heeft opgegeven.
+- `lib/services/matchScore.ts`: volledig herbouwd, nu `async` (kan een
+  voorzieningenopzoeking triggeren), 10 componenten (budget 20, locatie 20,
+  woningtype 15, kamers 12, oppervlak 10, buitenruimte 8, energielabel 8,
+  parkeren 5, dealbreakers -20 bij trigger, prioriteitenbonus 10) -- de
+  componentsom uit de opgave (108) wordt gekapt op 100 voor het eindcijfer;
+  de losse componentscores blijven ongewijzigd zichtbaar. Ontbrekende
+  scrapegegevens leiden nooit tot afwijzing (middelste tier), behalve bij
+  locatie (bewust laagste tier bij een niet-classificeerbaar gebied, zie
+  toelichting in de code).
+- `lib/services/koperVoorkeurenValidatie.ts` (nieuw): gedeelde validator voor
+  alle 13 velden, gebruikt door zowel de makelaar-route als de publieke
+  token-route.
+- `lib/services/b2bStore.ts`: `ruimVerouderdeMatchenOp`/`kapMatchenOpMax` nu
+  async (scoren via `berekenMatchScore`), evictie bij score < 60.
+- API-routes (`klanten/[id]`, `koper-voorkeuren/[token]`,
+  `matches-verversen`, `cron/matches-controleren`): allemaal bijgewerkt naar
+  het nieuwe model -- elke gevonden kandidaat wordt vóór opslaan gescoord,
+  alleen bewaard bij score >= 60.
+- `components/zakelijk/VoorkeurenVragenlijst.tsx` (nieuw): gedeelde
+  7-stappen-wizard voor alle 13 vragen, hergebruikt door zowel
+  `ZoekopdrachtForm.tsx` (makelaar, in de app) als `KoperVoorkeurenForm.tsx`
+  (publieke koper-link) -- precies zoals eerder al het patroon was ("moet op
+  deze manier ingevuld kunnen worden via de link, maar ook niet ingevuld of
+  via de app zelf"), nu toegepast op de volledige lijst i.p.v. alleen de
+  laatste 4 vragen. Beide oude formulieren (budget/locatie/kenmerken-tegels
+  EN de oude 4-vragen-blok) zijn volledig vervangen, niet aangevuld.
+- `components/zakelijk/MatchesKaart.tsx`: scoreweergave bijgewerkt naar de
+  nieuwe 10-componenten-vorm (`punten`/`maxPunten` i.p.v. `behaald`/
+  `maximum`); scores worden nu asynchroon in een `useEffect` berekend (met
+  een korte "Scores worden berekend…"-status) omdat `berekenMatchScore` niet
+  langer synchroon is; de koper-voorkeuren-samenvatting bovenaan toont nu de
+  belangrijkste prioriteiten en dealbreakers (Vraag 13/11) i.p.v. de
+  vervallen prioriteit/bouwstijl-velden.
+
+**Interpretatiekeuzes (spec liet ruimte, expliciet gedocumenteerd in de
+code, niet stilzwijgend ingevuld):** Rotterdam-kwadrant-indeling en
+aangrenzendheidsgraaf zijn eigen werk, geen officiële classificatie;
+woningtype-gelijkenisgroepen (aaneengeschakeld/vrijstaand-achtig/gestapeld);
+"Benedenwoning zonder lift" geïnterpreteerd als "hogere verdieping zonder
+lift" (de letterlijke lezing zou nooit triggeren); parkeren/buitenruimte-
+tiers aangevuld waar de opgave gaten liet; "quiet_location" en
+"condition_year" (prioriteitenbonus) hebben geen echte databron en vallen
+terug op een neutrale/bouwjaar-benaderde tier; componentsom 108 → gekapt op
+100 voor het eindcijfer.
+
+`npx tsc --noEmit -p tsconfig.json` schoon (geen fouten). Nog niet als
+ingelogde makelaar in de browser getest (geen inloggegevens in deze
+sandbox) -- eerstvolgende sessie: live doorlopen van de nieuwe wizard (beide
+invulkanalen) en een paar Funda-zoekopdrachten, om te bevestigen dat de
+langlopende "verkeerde wijken"-klacht met dit volledig herbouwde model ook
+daadwerkelijk verdwenen is.
+
+## -4. Vorige sessie: kandidatenpool losgekoppeld van weergavelimiet ("Funda 196, wij 25")
 
 Vervolg op sectie -3 hieronder. Sjoerd testte opnieuw en meldde: "Kralingen
 Crooswijk vind Funda bijvoorbeeld 196 koopwoningen en wij vinden er maar 25" --

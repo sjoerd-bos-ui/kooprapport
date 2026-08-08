@@ -2,57 +2,49 @@ import { NextRequest, NextResponse } from "next/server";
 import { getB2bSessieUitRequest } from "@/lib/services/b2bAuth";
 import { getKlantdossier, ruimVerouderdeMatchenOp, kapMatchenOpMax, maakMatch } from "@/lib/services/b2bStore";
 import { haalFundaMatches } from "@/lib/data-sources/fundaFeed";
+import { berekenMatchScore } from "@/lib/services/matchScore";
 import { MAX_ZICHTBARE_MATCHEN } from "@/types/b2b";
+import type { B2bWoningMatch } from "@/types/b2b";
 
 // -----------------------------------------------------------------------------
-// Directe matchcontrole (#3-aanvulling): meteen na het opslaan van een
-// zoekopdracht met locatie wil de makelaar meteen actueel te koop staande
+// Directe matchcontrole (#3-aanvulling): meteen na het opslaan van de
+// koper-voorkeurenlijst wil de makelaar meteen actueel te koop staande
 // woningen zien die aan de criteria voldoen, in plaats van te moeten wachten
 // op de eerstvolgende dagelijkse cron (/api/cron/matches-controleren). Zelfde
 // opslaglogica als die cron (dedupe op URL, via maakMatch), alleen hier
 // synchroon voor één dossier.
 //
-// BUGFIX: eerst werden matches alleen ooit toegevoegd -- een verlaagd budget
-// liet oude, te dure matches gewoon staan, en er was geen bovengrens op het
-// totaal. ruimVerouderdeMatchenOp() verwijdert eerst wat niet meer bij het
-// huidige budget past, kapMatchenOpMax() knipt na het opslaan het totaal
-// terug tot MAX_ZICHTBARE_MATCHEN -- "geen passende woningen? dan zijn het er
-// ook gewoon minder", zie het gesprek hierover.
+// MATCHINGMODEL V2 (zie het Cowork-gesprek hierover, "matchingsproces onder
+// de loep"): budget/locatie/kenmerken komen niet meer los van de
+// zoekopdracht, maar worden AFGELEID uit de volledige koperVoorkeuren-
+// vragenlijst (zie haalFundaMatches in fundaFeed.ts) -- dit endpoint stuurt
+// nu dus alleen nog `koperVoorkeuren` door, niets anders. Elke gevonden
+// kandidaat wordt meteen gescoord (berekenMatchScore, hetzelfde 100-
+// puntenmodel) en alleen bewaard als hij >= MIN_MATCH_SCORE (60) haalt --
+// "Score < 60: niet tonen als match" is dus al hier het eerste filter, niet
+// pas achteraf bij het tonen.
 //
-// BUGFIX 1 (klacht "Kralingen Crooswijk geeft maar 2 matches terwijl er
-// zonder filter veel meer zijn"): stond op 5 -- omdat Funda's
-// zoekresultatenpagina doorgaans al ~15 links per pagina teruggeeft, werd de
-// paginering in haalFundaMatches() hierdoor in de praktijk NOOIT gebruikt:
-// pagina 1 alleen leverde al genoeg links op om de lage limiet te halen.
-//
-// BUGFIX 2 (vervolgklacht, na het gelijktrekken met MAX_ZICHTBARE_MATCHEN:
-// "Funda vindt 196 woningen, wij maar 25"): dit getal deed dubbel dienst als
-// zowel "hoeveel ruwe links scannen" ALS "hoeveel tonen" -- daardoor keek het
-// systeem letterlijk nooit verder dan de eerste ~30 Funda-resultaten,
-// ongeacht hoe groot de wijk werkelijk is. KANDIDATENPOOL is nu bewust
-// losgekoppeld van MAX_ZICHTBARE_MATCHEN: veel meer ruwe kandidaten scannen
-// (en detailpagina's ophalen om te scoren), maar nog steeds maar
-// MAX_ZICHTBARE_MATCHEN daarvan daadwerkelijk BEWAREN -- kapMatchenOpMax()
-// kiest daaruit al op score (lib/services/matchScore.ts), dat is precies het
-// hele punt van het matchingmodel: een grotere kandidatenpool om de beste 30
-// uit te kunnen kiezen, i.p.v. zomaar de eerste 30 die Funda toevallig als
-// eerste toont.
-// Nog steeds geen garantie dat de VOLLEDIGE markt gezien wordt (196 zou zelf
-// 196 detailpagina-proxyverzoeken kosten in één refresh, te duur/traag voor
-// één klik) -- 100 is een bewust gekozen, ruimere maar nog beheersbare
-// tussenstap. Kost aanzienlijk meer Bright Data-credits per klik dan
-// voorheen -- bewuste keuze, Sjoerd gaf aan dat volledigheid nu zwaarder
-// weegt dan credit-besparing.
+// KANDIDATENPOOL: puur een grens op hoeveel ruwe Funda-resultaten gescand
+// worden (zie fundaFeed.ts voor de paginering) -- losgekoppeld van
+// MAX_ZICHTBARE_MATCHEN (hoeveel er uiteindelijk BEWAARD blijven, zie
+// kapMatchenOpMax): een grotere kandidatenpool laat het scoremodel uit meer
+// kiezen, i.p.v. zomaar de eerste woningen die Funda toevallig als eerste
+// toont. Nog steeds geen garantie dat de VOLLEDIGE markt gezien wordt (dat
+// zou een detailpagina-proxyverzoek per woning kosten) -- 100 is een bewust
+// gekozen, ruimere maar nog beheersbare tussenstap. Kost meer Bright Data-
+// credits per klik -- bewuste keuze, Sjoerd gaf eerder aan dat volledigheid
+// zwaarder weegt dan credit-besparing.
 const KANDIDATENPOOL = 100;
 
 // Fetches via de Bright Data-proxy (zie lib/config/fundaFeed.ts) duren iets
-// langer dan een kale directe fetch. Op 60 gehouden (bewezen haalbaar, zie
-// eerdere deployment) ondanks de grotere kandidatenpool -- haalFundaMatches()
-// stopt de paginering zelf zodra de tijd/pagina's op zijn en geeft dan
-// gewoon terug wat er tot dan toe gevonden is (zie fundaFeed.ts), dus een
-// eventueel niet-volledig doorlopen scan faalt niet hard, hij levert alleen
-// iets minder op dan de volle 100. De dagelijkse cron (meerdere dossiers per
-// aanroep) blijft bewust op een kleinere pool en 30s staan, zie de cron-route.
+// langer dan een kale directe fetch, en elke kandidaat die de 60-puntendrempel
+// haalt kost er bovendien nog een (gratis, maar niet-instante) CBS-
+// voorzieningenopzoeking bovenop (zie voorzieningenMatch.ts) als de koper
+// voorzieningenwensen heeft opgegeven. Op 60 gehouden (bewezen haalbaar bij
+// de oude, kleinere scope) -- haalFundaMatches() stopt de paginering zelf
+// zodra de tijd/pagina's op zijn en geeft dan gewoon terug wat er tot dan toe
+// gevonden is, dus een eventueel niet-volledig doorlopen scan faalt niet
+// hard.
 export const maxDuration = 60;
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -65,46 +57,56 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Onbekend klantdossier." }, { status: 404 });
   }
 
-  const locatie = dossier.zoekopdracht?.locatie;
-  if (!locatie) {
-    return NextResponse.json({ error: "Kies eerst een locatie in de zoekopdracht." }, { status: 400 });
+  const koperVoorkeuren = dossier.zoekopdracht?.koperVoorkeuren ?? null;
+  if (!koperVoorkeuren) {
+    return NextResponse.json({ error: "Vul eerst de voorkeurenlijst in." }, { status: 400 });
   }
 
-  const budgetMin = dossier.zoekopdracht?.budgetMin ?? null;
-  const budgetMax = dossier.zoekopdracht?.budgetMax ?? null;
   // BUGFIX (diagnose-sessie "wat hebben we maandelijks nodig"): ruimVerouderdeMatchenOp
-  // moet nu vóór haalFundaMatches klaar zijn (niet meer parallel) -- de al
-  // bekende matchURL's worden meegegeven zodat haalFundaMatches geen
-  // proxy-credits meer verspilt aan detailpagina's van woningen die al
-  // bekend zijn.
-  // BUGFIX (diagnose-sessie "het klopt gewoon allemaal niet"): kenmerken
-  // erbij, zodat ruimVerouderdeMatchenOp ook BESTAANDE matches die niet meer
-  // aan woningtype/slaapkamers/m²/energielabel voldoen opruimt -- niet
-  // alleen budget/locatie zoals voorheen (zie b2bStore.ts).
-  // Matching-model: koperVoorkeuren erbij, zowel voor het opruimen van
-  // bestaande matches (dezelfde budget-/kenmerkenmarge, zie b2bStore.ts) als
-  // voor het live doorzoeken van Funda (zie haalFundaMatches).
-  const koperVoorkeuren = dossier.zoekopdracht?.koperVoorkeuren ?? null;
-  const bestaande = await ruimVerouderdeMatchenOp(id, budgetMin, budgetMax, locatie.label, dossier.zoekopdracht?.kenmerken, koperVoorkeuren);
+  // moet vóór haalFundaMatches klaar zijn (niet parallel) -- de al bekende
+  // matchURL's worden meegegeven zodat haalFundaMatches geen proxy-credits
+  // verspilt aan detailpagina's van woningen die al bekend zijn.
+  const bestaande = await ruimVerouderdeMatchenOp(id, koperVoorkeuren);
   const bekendeUrls = new Set(bestaande.map((m) => m.url));
+
   // BUGFIX (klacht "geeft nog steeds 0 matches zonder extra filter" --
   // bleek een stilzwijgend mislukte zoekaanvraag, ononderscheidbaar van een
   // oprechte 0-resultaten-uitkomst, zie fundaFeed.ts): `fout` gaat mee in de
   // response zodat de makelaar een duidelijk "zoeken niet gelukt, probeer
   // opnieuw"-signaal krijgt i.p.v. dat het lijkt alsof er simpelweg geen
   // passende woningen bestaan.
-  const { items: feedItems, fout: zoekFout } = await haalFundaMatches(
-    locatie,
-    budgetMin,
-    budgetMax,
-    dossier.zoekopdracht?.kenmerken,
-    KANDIDATENPOOL,
-    bekendeUrls,
-    koperVoorkeuren
-  );
+  const { items: feedItems, fout: zoekFout } = await haalFundaMatches(koperVoorkeuren, KANDIDATENPOOL, bekendeUrls);
   const nieuweItems = feedItems.filter((item) => !bekendeUrls.has(item.url)).slice(0, KANDIDATENPOOL);
 
-  for (const item of nieuweItems) {
+  // Scoren VÓÓR opslaan: alleen kandidaten die de 60-puntendrempel halen
+  // worden daadwerkelijk een B2bWoningMatch (zie MIN_MATCH_SCORE in
+  // types/b2b.ts, "Score < 60: niet tonen als match"). Parallel (Promise.all)
+  // i.p.v. serieel -- elke score kan een extra, gratis CBS-voorzieningen-
+  // opzoeking triggeren (zie matchScore.ts), serieel zou dat bij 100
+  // kandidaten veel te lang duren binnen maxDuration.
+  const gescoord = await Promise.all(
+    nieuweItems.map(async (item) => {
+      const tijdelijkeMatch: B2bWoningMatch = {
+        id: "",
+        klantId: dossier.id,
+        orgId: dossier.orgId,
+        bron: "funda",
+        titel: item.titel,
+        url: item.url,
+        prijs: item.prijs,
+        prijsLabel: item.prijsLabel,
+        fotoUrl: item.fotoUrl,
+        verificatie: item.verificatie ?? null,
+        gevondenOp: new Date().toISOString(),
+      };
+      const score = await berekenMatchScore(tijdelijkeMatch, koperVoorkeuren);
+      return { item, score };
+    })
+  );
+
+  let opgeslagen = 0;
+  for (const { item, score } of gescoord) {
+    if (!score.voldoetAanMinimum) continue;
     await maakMatch({
       klantId: dossier.id,
       orgId: dossier.orgId,
@@ -114,11 +116,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       prijs: item.prijs,
       prijsLabel: item.prijsLabel,
       fotoUrl: item.fotoUrl,
-      locatieLabel: locatie.label,
       verificatie: item.verificatie ?? null,
     });
+    opgeslagen++;
   }
   await kapMatchenOpMax(id, MAX_ZICHTBARE_MATCHEN);
 
-  return NextResponse.json({ ok: true, nieuweMatches: nieuweItems.length, totaalGevonden: feedItems.length, zoekFout });
+  return NextResponse.json({
+    ok: true,
+    nieuweMatches: opgeslagen,
+    totaalGevonden: feedItems.length,
+    afgewezenOpScore: nieuweItems.length - opgeslagen,
+    zoekFout,
+  });
 }

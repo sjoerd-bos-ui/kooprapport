@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { B2bWoningMatch, B2bRapportAanvraag, B2bZoekopdracht } from "@/types/b2b";
+import type { B2bWoningMatch, B2bRapportAanvraag, B2bZoekopdracht, B2bKoperVoorkeuren } from "@/types/b2b";
+import { B2B_PRIORITEITEN, B2B_DEALBREAKERS } from "@/types/b2b";
 import { vindGekoppeldRapport } from "@/lib/services/matchRapportKoppeling";
 import { berekenMatchScore, type MatchScore } from "@/lib/services/matchScore";
 import {
@@ -139,18 +140,18 @@ function ScoreToelichting({ score }: { score: MatchScore }) {
   return (
     <div className="flex flex-col gap-2.5">
       {score.onderdelen.map((o) => (
-        <div key={o.label}>
+        <div key={o.key}>
           <div className="flex items-center justify-between gap-2 text-[11.5px]">
             <span className="text-ink/60">{o.label}</span>
-            <span className={`font-semibold ${o.behaald < 0 ? "text-rust" : "text-ink/40"}`}>
-              {o.behaald < 0 ? o.behaald : `${o.behaald}/${o.maximum}`}
+            <span className={`font-semibold ${o.punten < 0 ? "text-rust" : "text-ink/40"}`}>
+              {o.maxPunten > 0 ? `${o.punten}/${o.maxPunten}` : o.punten}
             </span>
           </div>
-          {o.maximum > 0 && (
+          {o.maxPunten > 0 && (
             <div className="mt-1 h-1 overflow-hidden rounded-full bg-mist">
               <div
                 className="h-full rounded-full bg-[#3B6D11]"
-                style={{ width: `${Math.max(0, Math.min(100, (o.behaald / o.maximum) * 100))}%` }}
+                style={{ width: `${Math.max(0, Math.min(100, (o.punten / o.maxPunten) * 100))}%` }}
               />
             </div>
           )}
@@ -214,27 +215,27 @@ function Kenmerkenchips({ match }: { match: B2bWoningMatch }) {
 
 // Zet de ingevulde koper-voorkeuren om in korte, leesbare zinnetjes -- puur
 // om zichtbaar te maken dat de vragenlijst daadwerkelijk iets doet (de
-// backend verwerkte de antwoorden al wel, zie berekenMatchScore/fundaFeed,
-// maar nergens op DEZE pagina was dat eerder terug te zien). Neutrale
-// antwoorden ("gelijk", "geen_voorkeur") leveren bewust geen zin op -- die
-// veranderen niets aan de standaardverdeling, dus niets te melden.
-// Zelfde percentage als BUDGET_FLEXIBEL_MARGE in lib/data-sources/fundaFeed.ts
-// (server-only, met scraping-logica) -- hier bewust als losse weergavewaarde
-// gedupliceerd i.p.v. geïmporteerd, want dit is een "use client"-component en
-// fundaFeed.ts hoort niet in de browserbundle terecht te komen. Puur een
-// weergavegetal, wijzigt de server-side marge zelf niet.
-const BUDGET_FLEXIBEL_MARGE_WEERGAVE_PCT = 10;
-
-function koperVoorkeurenSamenvatting(zoekopdracht: B2bZoekopdracht | undefined): string[] {
-  const v = zoekopdracht?.koperVoorkeuren;
-  if (!v) return [];
+// backend verwerkt de antwoorden al wel, zie berekenMatchScore/fundaFeed,
+// maar nergens op DEZE pagina was dat eerder terug te zien).
+//
+// MATCHINGMODEL V2: het oude 4-vragen-formulier (prioriteit/bouwstijl/
+// budgetFlexibel/kenmerkenFlexibel) bestaat niet meer -- de meest
+// betekenisvolle samenvatting van de nieuwe 13-vragen-lijst is wat de koper
+// als belangrijkst aanwees (Vraag 13) en waar de harde dealbreakers zitten
+// (Vraag 11), dus die twee worden hier getoond.
+function koperVoorkeurenSamenvatting(koperVoorkeuren: B2bKoperVoorkeuren | null | undefined): string[] {
+  if (!koperVoorkeuren) return [];
   const zinnen: string[] = [];
-  if (v.prioriteit === "prijs") zinnen.push("scherpe prijs weegt zwaarder");
-  if (v.prioriteit === "kenmerken") zinnen.push("ruimte en kenmerken wegen zwaarder");
-  if (v.bouwstijl === "nieuw") zinnen.push("voorkeur voor nieuwbouw/modern");
-  if (v.bouwstijl === "karakter") zinnen.push("voorkeur voor karakter, ook als het ouder is");
-  if (v.budgetFlexibel) zinnen.push(`budget tot ${BUDGET_FLEXIBEL_MARGE_WEERGAVE_PCT}% erboven bespreekbaar`);
-  if (v.kenmerkenFlexibel) zinnen.push("toont ook woningen die één gevraagd kenmerk missen");
+  if (koperVoorkeuren.prioriteiten.length > 0) {
+    const labels = koperVoorkeuren.prioriteiten.map((p) => B2B_PRIORITEITEN.find((o) => o.waarde === p)?.label.toLowerCase() ?? p);
+    zinnen.push(`belangrijkst: ${labels.join(", ")}`);
+  }
+  if (koperVoorkeuren.dealbreakers.length > 0) {
+    const labels = koperVoorkeuren.dealbreakers.map((d) =>
+      d === "other" ? koperVoorkeuren.dealbreakerAnders ?? "anders" : B2B_DEALBREAKERS.find((o) => o.waarde === d)?.label.toLowerCase() ?? d
+    );
+    zinnen.push(`dealbreakers: ${labels.join(", ")}`);
+  }
   return zinnen;
 }
 
@@ -323,6 +324,33 @@ export default function MatchesKaart({
   const [ververst, setVerverst] = useState(false);
   const [zoekFout, setZoekFout] = useState(false);
   const [aantalZichtbaar, setAantalZichtbaar] = useState(INITIEEL_ZICHTBAAR);
+  // MATCHINGMODEL V2: berekenMatchScore is nu async (Component 9/10 kunnen
+  // een gratis, maar niet-instante CBS-voorzieningenopzoeking triggeren, zie
+  // matchScore.ts) -- de scores worden daarom hier in een effect berekend
+  // i.p.v. synchroon tijdens het renderen, met een korte laadstand terwijl
+  // dat gebeurt.
+  const [gescoord, setGescoord] = useState<{ match: B2bWoningMatch; score: MatchScore }[]>([]);
+  const [scoresLaden, setScoresLaden] = useState(true);
+
+  const koperVoorkeuren = zoekopdracht?.koperVoorkeuren ?? null;
+
+  useEffect(() => {
+    let actief = true;
+    setScoresLaden(true);
+    (async () => {
+      const resultaten = await Promise.all(
+        matches.map(async (match) => ({ match, score: await berekenMatchScore(match, koperVoorkeuren) }))
+      );
+      if (!actief) return;
+      resultaten.sort((a, b) => b.score.totaal - a.score.totaal);
+      setGescoord(resultaten);
+      setScoresLaden(false);
+    })();
+    return () => {
+      actief = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [matches, JSON.stringify(koperVoorkeuren)]);
 
   async function ververs() {
     setVerverst(true);
@@ -346,11 +374,8 @@ export default function MatchesKaart({
   // Gesorteerd op score i.p.v. vindmoment (matchingmodel, zie
   // lib/services/matchScore.ts) -- geen apart hero-blok meer voor de beste
   // match (afgekeurd als "onrustig"), alleen een label op de eerste kaart.
-  const gescoord = matches
-    .map((match) => ({ match, score: berekenMatchScore(match, zoekopdracht) }))
-    .sort((a, b) => b.score.totaal - a.score.totaal);
   const zichtbaar = gescoord.slice(0, aantalZichtbaar);
-  const voorkeurenZinnen = koperVoorkeurenSamenvatting(zoekopdracht);
+  const voorkeurenZinnen = koperVoorkeurenSamenvatting(koperVoorkeuren);
 
   return (
     <div className="rounded-2xl bg-white p-5 shadow-sm">
@@ -416,6 +441,8 @@ export default function MatchesKaart({
           Nog geen woningen gevonden die aan de zoekopdracht voldoen. Geen paniek -- als ze er niet zijn, zijn ze er niet; zodra er een
           passende advertentie verschijnt, staat die hier.
         </p>
+      ) : scoresLaden && !ververst ? (
+        <p className="mt-4 text-[12px] text-ink/40">Scores worden berekend…</p>
       ) : (
         <>
           <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">

@@ -1,10 +1,8 @@
 import { randomUUID, randomBytes } from "crypto";
 import { kvGet, kvSet, kvDel, kvZAdd, kvZRangeByScore, kvZRem, kvIncrWithTtl } from "@/lib/services/kvStore";
 import { slugify } from "@/lib/utils/slug";
-import { voldoetAanKenmerken, BUDGET_FLEXIBEL_MARGE } from "@/lib/data-sources/fundaFeed";
 import { berekenMatchScore } from "@/lib/services/matchScore";
 import { vindGekoppeldRapport } from "@/lib/services/matchRapportKoppeling";
-import { legeKenmerken } from "@/types/b2b";
 import type {
   B2bOrganisatie,
   B2bGebruiker,
@@ -14,7 +12,6 @@ import type {
   B2bUitnodiging,
   B2bTierWijzigingsverzoek,
   B2bWoningMatch,
-  B2bKenmerken,
   B2bKoperVoorkeuren,
 } from "@/types/b2b";
 
@@ -261,10 +258,6 @@ export async function maakOfVernieuwKoperVoorkeurenToken(dossierId: string): Pro
 
   const token = randomBytes(24).toString("hex");
   const basisZoekopdracht: B2bKlantdossier["zoekopdracht"] = dossier.zoekopdracht ?? {
-    budgetMin: null,
-    budgetMax: null,
-    locatie: null,
-    kenmerken: legeKenmerken(),
     matchenActief: false,
     koperVoorkeuren: null,
     koperVoorkeurenToken: null,
@@ -349,73 +342,33 @@ export async function verwijderMatch(match: Pick<B2bWoningMatch, "id" | "klantId
 }
 
 // BUGFIX: matches werden alleen ooit TOEGEVOEGD, nooit opgeruimd -- verlaagde
-// je het budget in de zoekopdracht (bv. van €650.000 naar €400.000), dan
-// bleven eerder gevonden woningen boven dat nieuwe budget gewoon zichtbaar
-// staan (ze waren immers al opgeslagen vóór de wijziging). Wordt aangeroepen
-// vóór een nieuwe matches-verversen/cron-ronde: verwijdert bestaande matches
-// die niet meer aan het huidige budgetMax voldoen, en geeft de resterende
-// (nog wel passende) matches terug zodat de aanroeper daarna nog weet welke
-// URL's al bekend zijn (voor de dedupe-stap).
+// je het budget, dan bleven eerder gevonden woningen boven dat nieuwe budget
+// gewoon zichtbaar staan. Wordt aangeroepen vóór een nieuwe matches-
+// verversen/cron-ronde: verwijdert bestaande matches die niet meer voldoen,
+// en geeft de resterende (nog wel passende) matches terug zodat de
+// aanroeper daarna nog weet welke URL's al bekend zijn (voor de dedupe-stap).
 //
-// TWEEDE BUGFIX (zelfde principe, andere melding): wijzigde je de LOCATIE
-// (andere plaats of wijk), dan bleven matches van de vorige locatie ook
-// gewoon staan -- er was nooit een locatie op de match zelf opgeslagen om ze
-// aan te kunnen toetsen. Elke match onthoudt nu (locatieLabel, zie
-// types/b2b.ts) onder welke locatie hij gevonden is; wijkt dat af van de
-// huidige zoekopdracht-locatie, dan is de match niet meer relevant en gaat
-// hij eruit -- ook matches zonder locatieLabel (opgeslagen vóór deze fix)
-// worden voor de zekerheid als verouderd behandeld, geen aanname dat ze nog
-// toevallig kloppen.
-//
-// DERDE BUGFIX (diagnose-sessie "het klopt gewoon allemaal niet", live
-// bevestigd: een energielabel-F-woning bleef zichtbaar bij een "A of
-// hoger"-zoekopdracht): budget en locatie waren de ENIGE dingen die ooit
-// opnieuw gecontroleerd werden nadat een match was opgeslagen. Woningtype,
-// slaapkamers, woonoppervlak en energielabel werden nooit herzien -- een
-// match die ooit (mogelijk zelfs vóór de kenmerken-verificatie in
-// fundaFeed.ts bestond, of vóór een van de eerdere bugfixes in deze sessie)
-// verkeerd werd opgeslagen, bleef voor altijd staan. Elke match bewaart nu
-// een verificatie-snapshot (B2bWoningMatch.verificatie, zie types/b2b.ts) en
-// wordt hier, net als bij budget/locatie, opnieuw getoetst via dezelfde
-// voldoetAanKenmerken() als bij het scrapen zelf (hergebruikt uit
-// fundaFeed.ts, geen dubbele logica). Matches zonder snapshot (opgeslagen
-// vóór dit veld bestond) worden -- net als bij een ontbrekend locatieLabel
-// hierboven -- voor de zekerheid als verouderd behandeld: we kunnen niet
-// vaststellen of ze nog kloppen, dus veiliger om ze opnieuw (correct) te
-// laten vinden dan een mogelijk foute match te laten staan.
-// MATCHING-MODEL-UITBREIDING (zie het Cowork-gesprek hierover): `koperVoorkeuren`
-// erbij zodat budgetFlexibel dezelfde marge (BUDGET_FLEXIBEL_MARGE,
-// fundaFeed.ts) toepast als bij het scrapen zelf -- anders zou een
-// net-boven-budget-match die dankzij die voorkeur juist WEL is toegelaten,
-// hier bij de eerstvolgende verversing alsnog als "verouderd" worden
-// opgeruimd. Zelfde principe voor kenmerkenFlexibel via voldoetAanKenmerken.
-export async function ruimVerouderdeMatchenOp(
-  klantId: string,
-  budgetMin: number | null,
-  budgetMax: number | null,
-  locatieLabel: string | null,
-  kenmerken?: B2bKenmerken,
-  koperVoorkeuren?: B2bKoperVoorkeuren | null
-): Promise<B2bWoningMatch[]> {
+// MATCHINGMODEL V2 (zie het Cowork-gesprek hierover, "matchingsproces onder
+// de loep"): dit herverifieerde voorheen budget, locatie en kenmerken als
+// drie LOSSE vlaggen (onderBudget/buitenBudget/andereLocatie/
+// voldoetNietMeerAanKenmerken). Dat is vervangen door ÉÉN herberekening van
+// de volledige match-score (berekenMatchScore, hetzelfde 100-puntenmodel als
+// bij het scrapen zelf) tegen de HUIDIGE koperVoorkeuren -- scoort een
+// bestaande match niet meer >= MIN_MATCH_SCORE (bv. door een verlaagd budget,
+// een gewijzigde locatievoorkeur, of gewoon een aangescherpte vraag), dan is
+// hij niet langer relevant en gaat hij eruit. Matches zonder verificatie-
+// snapshot (opgeslagen vóór dat veld bestond) scoren via berekenMatchScore
+// vanzelf laag genoeg om ook opgeruimd te worden -- geen aparte "ontbrekende
+// snapshot"-check meer nodig.
+export async function ruimVerouderdeMatchenOp(klantId: string, koperVoorkeuren: B2bKoperVoorkeuren | null): Promise<B2bWoningMatch[]> {
   const bestaande = await listMatchenVoorKlant(klantId);
-  const budgetMaxMetMarge =
-    budgetMax != null && budgetMax > 0 && koperVoorkeuren?.budgetFlexibel ? Math.round(budgetMax * (1 + BUDGET_FLEXIBEL_MARGE)) : budgetMax;
-  const kenmerkenFlexibel = Boolean(koperVoorkeuren?.kenmerkenFlexibel);
-
   const passend: B2bWoningMatch[] = [];
   for (const match of bestaande) {
-    // BUGFIX (diagnose-sessie "budget klopt niet"): een verhoogde ondergrens
-    // liet oude, te goedkope matches eerder gewoon staan, om dezelfde reden
-    // als de al bestaande budgetMax-check hieronder.
-    const onderBudget = budgetMin != null && budgetMin > 0 && match.prijs != null && match.prijs < budgetMin;
-    const buitenBudget = budgetMaxMetMarge != null && budgetMaxMetMarge > 0 && match.prijs != null && match.prijs > budgetMaxMetMarge;
-    const andereLocatie = locatieLabel != null && match.locatieLabel !== locatieLabel;
-    const voldoetNietMeerAanKenmerken =
-      kenmerken != null && (match.verificatie == null || !voldoetAanKenmerken(match.verificatie, kenmerken, kenmerkenFlexibel));
-    if (onderBudget || buitenBudget || andereLocatie || voldoetNietMeerAanKenmerken) {
-      await verwijderMatch(match);
-    } else {
+    const score = await berekenMatchScore(match, koperVoorkeuren);
+    if (score.voldoetAanMinimum) {
       passend.push(match);
+    } else {
+      await verwijderMatch(match);
     }
   }
   return passend;
@@ -445,10 +398,12 @@ export async function kapMatchenOpMax(klantId: string, maxAantal: number): Promi
   const beschermdeIds = new Set(huidige.filter((m) => vindGekoppeldRapport(m.titel, rapporten) != null).map((m) => m.id));
 
   const teVeel = huidige.length - maxAantal;
-  const kandidaten = huidige
-    .filter((m) => !beschermdeIds.has(m.id))
-    .map((match) => ({ match, score: berekenMatchScore(match, dossier?.zoekopdracht).totaal }))
-    .sort((a, b) => a.score - b.score);
+  const kandidatenMetScore = await Promise.all(
+    huidige
+      .filter((m) => !beschermdeIds.has(m.id))
+      .map(async (match) => ({ match, score: (await berekenMatchScore(match, dossier?.zoekopdracht?.koperVoorkeuren ?? null)).totaal }))
+  );
+  const kandidaten = kandidatenMetScore.sort((a, b) => a.score - b.score);
 
   for (const { match } of kandidaten.slice(0, teVeel)) {
     await verwijderMatch(match);

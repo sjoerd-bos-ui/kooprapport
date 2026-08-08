@@ -8,9 +8,11 @@ import {
   getGebruiker,
 } from "@/lib/services/b2bStore";
 import { haalFundaMatches } from "@/lib/data-sources/fundaFeed";
+import { berekenMatchScore } from "@/lib/services/matchScore";
 import { stuurNieuweMatchesEmail } from "@/lib/services/email";
 import { APP_BASE_URL } from "@/lib/config/payment";
 import { MAX_ZICHTBARE_MATCHEN } from "@/types/b2b";
+import type { B2bWoningMatch } from "@/types/b2b";
 
 // -----------------------------------------------------------------------------
 // Cron-endpoint (zie vercel.json) dat voor elk klantdossier met actieve
@@ -26,17 +28,24 @@ import { MAX_ZICHTBARE_MATCHEN } from "@/types/b2b";
 // op elk moment kan haperen -- één dossier waarvoor dat misgaat mag nooit de
 // hele batch (en dus alle andere organisaties/klanten) laten stoppen.
 //
+// MATCHINGMODEL V2 (zie het Cowork-gesprek hierover, "matchingsproces onder
+// de loep"): budget/locatie/kenmerken worden nu afgeleid uit de volledige
+// koperVoorkeuren-vragenlijst (zie haalFundaMatches in fundaFeed.ts) i.p.v.
+// losse velden op de zoekopdracht -- een dossier zonder ingevulde
+// koperVoorkeuren wordt hier overgeslagen (er is dan simpelweg niets om op te
+// zoeken/scoren). Elke kandidaat wordt net als bij de handmatige "Ververs"-
+// knop (matches-verversen/route.ts) eerst gescoord en alleen bewaard bij
+// >= MIN_MATCH_SCORE (60).
+//
 // DOSSIER_LIMIET: puur een grens op hoe lang één cron-aanroep duurt, geen
 // functionele limiet -- bij meer actieve dossiers dan dit pakt de volgende
 // geplande aanroep de rest gewoon weer op (zoekopdracht.matchenActief blijft
 // staan totdat iemand het uitzet).
 //
-// TIJDSBUDGET (diagnose-sessie, met de Scrape.do-proxy erbij): dossiers
-// worden hier serieel verwerkt, en één haalFundaMatches()-aanroep via de
-// proxy duurt merkbaar langer dan een kale directe fetch (zie
-// lib/config/fundaFeed.ts) -- DOSSIER_LIMIET=200 was dus volstrekt onhaalbaar
-// binnen de 30s maxDuration hieronder. In plaats van een vast (en per
-// definitie giswerk) aantal dossiers, stopt de loop nu zodra het tijdsbudget
+// TIJDSBUDGET: dossiers worden hier serieel verwerkt, en één
+// haalFundaMatches()-aanroep via de proxy duurt merkbaar langer dan een kale
+// directe fetch (zie lib/config/fundaFeed.ts). In plaats van een vast (en per
+// definitie giswerk) aantal dossiers, stopt de loop zodra het tijdsbudget
 // bijna op is -- de rest wordt, net als voorheen bij te veel dossiers, gewoon
 // door de volgende geplande cron-aanroep opgepakt.
 // -----------------------------------------------------------------------------
@@ -44,16 +53,13 @@ import { MAX_ZICHTBARE_MATCHEN } from "@/types/b2b";
 const DOSSIER_LIMIET = 200;
 const TIJDSBUDGET_MS = 22000; // marge onder maxDuration=30
 
-// BUGFIX (klacht "Funda vindt 196, wij maar 25", zie matches-verversen/route.ts
-// voor de volledige uitleg van het onderliggende probleem): ook hier deed
-// MAX_ZICHTBARE_MATCHEN dubbel dienst als kandidatenpool-grootte. Bewust een
-// kleinere pool dan de 100 van de handmatige "ververs nu"-knop -- deze cron
-// verwerkt serieel ALLE actieve dossiers van ALLE organisaties binnen hetzelfde
-// tijdsbudget (TIJDSBUDGET_MS/maxDuration hierboven), dus een grotere pool per
-// dossier gaat direct ten koste van hoeveel dossiers er per aanroep aan de
-// beurt komen. 50 is een bewuste tussenstap: ruim boven de oude 30 (dus de
-// dagelijkse cron vindt ook echt meer dan de eerste pagina), maar nog
-// beheersbaar qua proxytijd/-credits over mogelijk tientallen dossiers heen.
+// Bewust een kleinere kandidatenpool dan de 100 van de handmatige "ververs
+// nu"-knop -- deze cron verwerkt serieel ALLE actieve dossiers van ALLE
+// organisaties binnen hetzelfde tijdsbudget (TIJDSBUDGET_MS/maxDuration
+// hierboven), dus een grotere pool per dossier gaat direct ten koste van
+// hoeveel dossiers er per aanroep aan de beurt komen. 50 is een bewuste
+// tussenstap: ruim boven de oude 30, maar nog beheersbaar qua proxytijd/
+// -credits over mogelijk tientallen dossiers heen.
 const CRON_KANDIDATENPOOL = 50;
 
 export const maxDuration = 30;
@@ -83,52 +89,49 @@ export async function GET(req: NextRequest) {
   outer: for (const org of organisaties) {
     const dossiers = await listKlantdossiersVoorOrg(org.id);
     for (const dossier of dossiers) {
-      if (!dossier.zoekopdracht?.matchenActief || !dossier.zoekopdracht.locatie) continue;
+      const koperVoorkeuren = dossier.zoekopdracht?.koperVoorkeuren ?? null;
+      if (!dossier.zoekopdracht?.matchenActief || !koperVoorkeuren) continue;
       if (dossiersGecontroleerd >= DOSSIER_LIMIET) break outer;
       if (Date.now() - startTijd > TIJDSBUDGET_MS) break outer;
       dossiersGecontroleerd++;
 
       try {
-        const budgetMin = dossier.zoekopdracht.budgetMin ?? null;
-        const budgetMax = dossier.zoekopdracht.budgetMax ?? null;
-        const locatieLabel = dossier.zoekopdracht.locatie.label;
-        // BUGFIX (diagnose-sessie "wat hebben we maandelijks nodig"): niet meer
-        // parallel -- de bekende matchURL's moeten eerst bekend zijn zodat
-        // haalFundaMatches geen proxy-credits verspilt aan detailpagina's van
-        // woningen die al bekend zijn. Dit is de dagelijkse cron, dus juist
-        // hier (elke dag, voor elk actief dossier) levert dit verreweg de
-        // grootste besparing op.
-        // BUGFIX (diagnose-sessie "het klopt gewoon allemaal niet"): kenmerken
-        // erbij, zodat ook BESTAANDE matches die niet meer aan woningtype/
-        // slaapkamers/m²/energielabel voldoen hier worden opgeruimd -- dit is
-        // de dagelijkse cron, dus dit is ook de plek waar dat structureel
-        // gebeurt (zie b2bStore.ts).
-        // Matching-model: koperVoorkeuren erbij, zelfde reden als in
-        // matches-verversen/route.ts.
-        const koperVoorkeuren = dossier.zoekopdracht.koperVoorkeuren ?? null;
-        const bestaande = await ruimVerouderdeMatchenOp(
-          dossier.id,
-          budgetMin,
-          budgetMax,
-          locatieLabel,
-          dossier.zoekopdracht.kenmerken,
-          koperVoorkeuren
-        );
+        // BUGFIX (diagnose-sessie "wat hebben we maandelijks nodig"): niet
+        // parallel met haalFundaMatches -- de bekende matchURL's moeten eerst
+        // bekend zijn zodat haalFundaMatches geen proxy-credits verspilt aan
+        // detailpagina's van woningen die al bekend zijn. Dit is de
+        // dagelijkse cron, dus juist hier (elke dag, voor elk actief dossier)
+        // levert dit verreweg de grootste besparing op.
+        const bestaande = await ruimVerouderdeMatchenOp(dossier.id, koperVoorkeuren);
         const bekendeUrls = new Set(bestaande.map((m) => m.url));
-        const { items: feedItems, fout: zoekFout } = await haalFundaMatches(
-          dossier.zoekopdracht.locatie,
-          budgetMin,
-          budgetMax,
-          dossier.zoekopdracht.kenmerken,
-          CRON_KANDIDATENPOOL,
-          bekendeUrls,
-          koperVoorkeuren
-        );
+        const { items: feedItems, fout: zoekFout } = await haalFundaMatches(koperVoorkeuren, CRON_KANDIDATENPOOL, bekendeUrls);
         if (zoekFout) zoekFouten++;
         const nieuweItems = feedItems.filter((item) => !bekendeUrls.has(item.url));
         if (nieuweItems.length === 0) continue;
 
-        for (const item of nieuweItems) {
+        const gescoord = await Promise.all(
+          nieuweItems.map(async (item) => {
+            const tijdelijkeMatch: B2bWoningMatch = {
+              id: "",
+              klantId: dossier.id,
+              orgId: org.id,
+              bron: "funda",
+              titel: item.titel,
+              url: item.url,
+              prijs: item.prijs,
+              prijsLabel: item.prijsLabel,
+              fotoUrl: item.fotoUrl,
+              verificatie: item.verificatie ?? null,
+              gevondenOp: new Date().toISOString(),
+            };
+            const score = await berekenMatchScore(tijdelijkeMatch, koperVoorkeuren);
+            return { item, score };
+          })
+        );
+
+        const nieuwOpgeslagen: typeof nieuweItems = [];
+        for (const { item, score } of gescoord) {
+          if (!score.voldoetAanMinimum) continue;
           await maakMatch({
             klantId: dossier.id,
             orgId: org.id,
@@ -138,12 +141,14 @@ export async function GET(req: NextRequest) {
             prijs: item.prijs,
             prijsLabel: item.prijsLabel,
             fotoUrl: item.fotoUrl,
-            locatieLabel,
             verificatie: item.verificatie ?? null,
           });
+          nieuwOpgeslagen.push(item);
         }
+        if (nieuwOpgeslagen.length === 0) continue;
+
         await kapMatchenOpMax(dossier.id, MAX_ZICHTBARE_MATCHEN);
-        nieuweMatches += nieuweItems.length;
+        nieuweMatches += nieuwOpgeslagen.length;
 
         const makelaar = await getGebruiker(dossier.aangemaaktDoorUserId);
         if (makelaar) {
@@ -151,7 +156,7 @@ export async function GET(req: NextRequest) {
             naar: makelaar.email,
             klantnaam: dossier.klantnaam,
             dossierUrl: new URL(`/zakelijk/klanten/${dossier.id}`, APP_BASE_URL).toString(),
-            matches: nieuweItems.map((item) => ({ titel: item.titel, url: item.url, prijsLabel: item.prijsLabel })),
+            matches: nieuwOpgeslagen.map((item) => ({ titel: item.titel, url: item.url, prijsLabel: item.prijsLabel })),
           });
           if (resultaat.ok) mailsVerstuurd++;
           else mailsMislukt++;
