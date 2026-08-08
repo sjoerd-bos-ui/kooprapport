@@ -392,29 +392,25 @@ export const B2B_PARKEREN_OPTIES: { waarde: B2bParkerenVoorkeur; label: string }
 // evalueerDealbreakers() in matchScore.ts) en tellen dus nooit mee als
 // strafpunt -- bewust geen valse zekerheid voorwenden over iets wat simpelweg
 // niet gemeten wordt.
-export type B2bDealbreaker =
-  | "no_outdoor_space"
-  | "no_parking"
-  | "ground_floor_no_elevator"
-  | "busy_road_noise"
-  | "poor_energy_label"
-  | "too_far_from_work"
-  | "price_over_budget"
-  | "too_few_rooms"
-  | "too_small_area"
-  | "no_amenities"
-  | "other";
+//
+// MATCHINGMODEL V3 (zie het Cowork-gesprek hierover, "ik twijfel over ons
+// filtersysteem met punten"): vier oorspronkelijke opties ("Geen tuin/
+// balkon", "Prijs boven budget", "Minder kamers dan gewenst", "Kleinere
+// oppervlakte dan gewenst") zijn hier verwijderd. Budget, kamers, oppervlak
+// en buitenruimte zijn sinds v3 ALTIJD een harde eis (zie
+// voldoetAanHardeEisen() in matchScore.ts, fase 1) -- een kandidaat die deze
+// dealbreakers-lijst bereikt, voldoet dus per definitie al aan die vier, dus
+// konden ze nooit meer triggeren. "Slecht energielabel" blijft wél bestaan:
+// die gebruikt een eigen, VASTE grens ("lager dan C"), los van de
+// koper-gekozen ondergrens uit Vraag 8 -- dus geen overlap met de harde eis.
+export type B2bDealbreaker = "no_parking" | "ground_floor_no_elevator" | "busy_road_noise" | "poor_energy_label" | "too_far_from_work" | "no_amenities" | "other";
 
 export const B2B_DEALBREAKERS: { waarde: B2bDealbreaker; label: string }[] = [
-  { waarde: "no_outdoor_space", label: "Geen tuin / balkon" },
   { waarde: "no_parking", label: "Geen parkeermogelijkheid" },
   { waarde: "ground_floor_no_elevator", label: "Benedenwoning zonder lift" },
   { waarde: "busy_road_noise", label: "Drukke weg / geluidsoverlast" },
   { waarde: "poor_energy_label", label: "Slecht energielabel (lager dan C)" },
   { waarde: "too_far_from_work", label: "Te ver van werk / voorzieningen" },
-  { waarde: "price_over_budget", label: "Prijs boven budget" },
-  { waarde: "too_few_rooms", label: "Minder kamers dan gewenst" },
-  { waarde: "too_small_area", label: "Kleinere oppervlakte dan gewenst" },
   { waarde: "no_amenities", label: "Geen voorzieningen in buurt" },
   { waarde: "other", label: "Anders" },
 ];
@@ -521,14 +517,14 @@ export interface B2bWoningMatch {
   // veld bestond -- wordt bij de eerstvolgende verversing voor de zekerheid
   // als verouderd behandeld (zie ruimVerouderdeMatchenOp in b2bStore.ts).
   //
-  // MATCHINGMODEL V2: het losse `locatieLabel`-veld (dat er hier ooit stond)
-  // is vervallen -- onder het oude model was "locatie gewijzigd?" een eigen
-  // ja/nee-vlag naast budget/kenmerken; onder het nieuwe 100-puntenmodel is
-  // ALLES (budget, locatie, kenmerken, dealbreakers) samengevoegd tot één
-  // score met een harde ondergrens (MIN_MATCH_SCORE), dus "is deze match nog
-  // steeds geldig" is nu simpelweg "scoort hij nog steeds >= 60 tegen de
-  // HUIDIGE koperVoorkeuren" (zie ruimVerouderdeMatchenOp) -- geen aparte
-  // locatievergelijking meer nodig, de locatie zit gewoon in die score.
+  // MATCHINGMODEL V2/V3: het losse `locatieLabel`-veld (dat er hier ooit
+  // stond) is vervallen. V3 (zie het Cowork-gesprek "ik twijfel over ons
+  // filtersysteem met punten"): "is deze match nog steeds geldig" is nu
+  // "voldoet hij nog steeds aan de 7 harde eisen van fase 1 tegen de HUIDIGE
+  // koperVoorkeuren" (zie voldoetAanHardeEisen() in matchScore.ts en
+  // ruimVerouderdeMatchenOp in b2bStore.ts) -- geen scoredrempel meer, een
+  // score zegt sinds v3 alleen nog iets over de RANGSCHIKKING tussen
+  // kandidaten die al aan de harde eisen voldoen.
   verificatie: B2bMatchVerificatie | null;
   gevondenOp: string; // ISO
 }
@@ -545,18 +541,6 @@ export interface B2bWoningMatch {
 // grotere kandidatenpool om uit te kiezen dan alleen de eerste
 // zoekresultatenpagina.
 export const MAX_ZICHTBARE_MATCHEN = 30;
-
-// Opgegeven puntensysteem (zie het Cowork-gesprek hierover, "DEEL 2: MATCHING
-// SCORE SYSTEEM"): "Score < 60: niet tonen als match" -- een HARDE ondergrens,
-// in tegenstelling tot de score-gebaseerde eviction hierboven (die alleen
-// kiest WÉLKE van de te-veel-matches wegvallen). Deze grens filtert nu AL bij
-// het opslaan: een kandidaat die onder de 60 scoort, wordt nooit een
-// B2bWoningMatch (zie matches-verversen/route.ts en cron/matches-
-// controleren/route.ts), en een bestaande match die er bij een volgende
-// verversing onder zakt (gewijzigde koperVoorkeuren, of de woning zelf blijkt
-// toch niet te voldoen) wordt alsnog verwijderd (zie ruimVerouderdeMatchenOp
-// in b2bStore.ts).
-export const MIN_MATCH_SCORE = 60;
 
 export interface B2bRapportAanvraag {
   id: string;

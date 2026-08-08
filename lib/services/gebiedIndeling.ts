@@ -51,17 +51,31 @@ function komtOvereen(a: string, b: string): boolean {
 
 export type LocatieMatchResultaat = "exact" | "onbekend" | "geen_match";
 
+export interface LocatieVergelijkResultaat {
+  resultaat: LocatieMatchResultaat;
+  // Index (0-gebaseerd) in de meegegeven voorkeurLocaties-lijst van de
+  // gekozen locatie waarop "exact" gescoord werd, anders `null`. Matchingmodel
+  // v3 (zie matchScore.ts): gebruikt door scoreLocatie() om een match met de
+  // EERST gekozen (dus hoogst geprefereerde) locatie hoger te belonen dan een
+  // match met de op één of twee na gekozen locatie, en door
+  // voldoetAanHardeEisen() (die alleen `resultaat` nodig heeft) om "geen_match"
+  // hard af te wijzen.
+  exacteIndex: number | null;
+}
+
 // Beste resultaat over alle (tot 3) gekozen locaties -- "exact" wint altijd
-// van "onbekend", dat wint altijd van "geen_match" (zie scoreLocatie in
-// matchScore.ts voor de puntentoekenning per resultaat).
-export function vergelijkLocatie(voorkeurLocaties: B2bLocatie[], gebiedRuw: string | null, plaatsnaam: string | null): LocatieMatchResultaat {
+// van "onbekend", dat wint altijd van "geen_match". Bij meerdere exacte
+// matches (zou niet moeten voorkomen bij een normale locatiekeuze, maar
+// theoretisch mogelijk bij overlappende plaats/wijk-keuzes) telt de EERST
+// gekozen locatie in de lijst.
+export function vergelijkLocatieUitgebreid(voorkeurLocaties: B2bLocatie[], gebiedRuw: string | null, plaatsnaam: string | null): LocatieVergelijkResultaat {
   const candidaatPlaats = plaatsnaam ? normaliseer(plaatsnaam) : null;
   const candidaatWijk = gebiedRuw ? normaliseer(gebiedRuw) : null;
 
   let besteResultaat: LocatieMatchResultaat = "geen_match";
 
-  for (const locatie of voorkeurLocaties) {
-    const { plaats: gekozenPlaats, wijk: gekozenWijk } = ontleedLocatieLabel(locatie);
+  for (let i = 0; i < voorkeurLocaties.length; i++) {
+    const { plaats: gekozenPlaats, wijk: gekozenWijk } = ontleedLocatieLabel(voorkeurLocaties[i]);
     let resultaat: LocatieMatchResultaat;
 
     if (candidaatPlaats == null) {
@@ -90,9 +104,15 @@ export function vergelijkLocatie(voorkeurLocaties: B2bLocatie[], gebiedRuw: stri
       resultaat = "geen_match";
     }
 
-    if (resultaat === "exact") return "exact"; // niet beter te worden, stop meteen
+    if (resultaat === "exact") return { resultaat: "exact", exacteIndex: i }; // niet beter te worden, stop meteen
     if (resultaat === "onbekend" && besteResultaat === "geen_match") besteResultaat = "onbekend";
   }
 
-  return besteResultaat;
+  return { resultaat: besteResultaat, exacteIndex: null };
+}
+
+// Simpele variant voor aanroepers die alleen het resultaat nodig hebben
+// (bv. voldoetAanHardeEisen() in matchScore.ts), zonder de index.
+export function vergelijkLocatie(voorkeurLocaties: B2bLocatie[], gebiedRuw: string | null, plaatsnaam: string | null): LocatieMatchResultaat {
+  return vergelijkLocatieUitgebreid(voorkeurLocaties, gebiedRuw, plaatsnaam).resultaat;
 }

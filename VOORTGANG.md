@@ -1,6 +1,71 @@
 # Voortgang Kooprapport Zakelijk — overdracht naar nieuwe chat
 
-## -5b. Direct vervolg: Vraag 3 (locatie) landelijk gemaakt
+## -6. Nieuwste sessie: matchingmodel-v3 — twee fasen i.p.v. één optelsom
+
+Sjoerd, na testen van v2: "Ik twijfel nu over ons filtersysteem met punten;
+we scoren matches, maar een match kan 90 punten krijgen die in een heel
+ander gebied ligt." Kern van het probleem: locatie was maar 20 van de ~108
+punten in v2's ene grote optelsom, dus een woning kon op de overige negen
+onderdelen zo goed scoren dat een fout gebied (of te duur, verkeerd type, te
+klein, etc.) volledig gecompenseerd werd. Voor iets fundamenteels als
+"ligt dit in het gewenste gebied" hoort geen compensatie te bestaan.
+
+Na een aantal rondes voorstellen-in-tekst (eerst alleen locatie hard maken,
+toen een "vinkje aan = harde eis"-idee per vraag) besliste Sjoerd: "Vinkje
+aan, stop daarmee anders vult diegene dat niet in, gooi dus hele
+puntensysteem op de schop" -- geen opt-in toggles, gewoon een structurele
+knip.
+
+**Nieuwe architectuur: twee fasen.**
+
+- **Fase 1 -- `voldoetAanHardeEisen()` (nieuw, matchScore.ts), synchroon,
+  altijd verplicht.** 7 harde eisen: budget, locatie, woningtype, kamers,
+  woonoppervlakte, buitenruimte, energielabel. Voldoet een kandidaat niet aan
+  ÉÉN daarvan (BEVESTIGD, nooit op basis van ontbrekende scrapedata), dan is
+  het sowieso geen match -- geen punten, geen compensatie. Boven budget mag
+  nog 10% (dezelfde marge als de Funda-zoekopdracht zelf gebruikt, en
+  Nederlandse biedpraktijk: bieden boven vraagprijs is normaal) -- bewust de
+  enige uitzondering met marge, de rest is strikt op het gekozen getal/
+  label/type.
+- **Fase 2 -- `berekenMatchScore()` (herschreven), alleen voor overlevers van
+  fase 1.** Scoort niet meer "voldoet het aan het minimum" (dat staat al
+  vast) maar "hoeveel BETER dan het gevraagde minimum is dit" -- anders zou
+  elke overlever toch weer de volle punten krijgen en zou er niets meer te
+  rangschikken zijn. Budget: hoe verder onder het max, hoe hoger. Locatie:
+  bonus voor de EERST gekozen (dus hoogst geprefereerde) locatie t.o.v. de
+  2e/3e. Woningtype: bonus voor het eerst gekozen type. Kamers/oppervlak:
+  bonus per eenheid boven het minimum. Buitenruimte: tuin > dakterras >
+  balkon. Energielabel: bonus per klasse boven het gekozen minimum. Parkeren
+  en de prioriteitenbonus waren al zuiver rangschikkend en zijn ongewijzigd.
+  Totaal blijft dezelfde 108-ruwe-punten-gekapt-op-100-opzet als v2.
+- **Contract tussen de fasen:** aanroepers (b2bStore.ts, matches-verversen/
+  route.ts, cron/matches-controleren/route.ts) roepen EERST
+  voldoetAanHardeEisen() aan en pas bij `voldoet: true` berekenMatchScore().
+  Bijkomend voordeel: voldoetAanHardeEisen() is synchroon en triggert nooit
+  de CBS-voorzieningenopzoeking (voorzieningenMatch.ts) -- die dure lookup
+  gebeurt nu alleen nog voor kandidaten die de harde eisen al gehaald hebben,
+  i.p.v. voor elke kandidaat tijdens het zoeken. Merkbare snelheids-/
+  kostenwinst bij matches-verversen (100 kandidaten) en de dagelijkse cron.
+- **`lib/services/gebiedIndeling.ts`:** `vergelijkLocatie()` uitgebreid naar
+  `vergelijkLocatieUitgebreid()`, die ook de INDEX teruggeeft van welke
+  gekozen locatie exact matchte (nodig voor de fase-2-bonus "eerst gekozen
+  locatie scoort hoger").
+- **`types/b2b.ts`:** `MIN_MATCH_SCORE` (de oude 60-puntendrempel als
+  afwijzingsgrond) verwijderd -- die rol is nu fase 1. `B2B_DEALBREAKERS`
+  teruggebracht van 11 naar 7 opties: "Geen tuin/balkon", "Prijs boven
+  budget", "Minder kamers dan gewenst" en "Kleinere oppervlakte dan gewenst"
+  verwijderd, want die overlapten volledig met een fase-1-harde-eis en konden
+  dus nooit meer triggeren voor een kandidaat die de dealbreakers-check
+  bereikt. "Slecht energielabel" (eigen vaste grens, "lager dan C", los van
+  de koper-gekozen ondergrens uit Vraag 8) blijft wel bestaan.
+- **`components/zakelijk/MatchesKaart.tsx`:** scorecirkel/labels/toelichting
+  drukken niet meer "voldoet dit" uit maar "hoeveel beter dan gevraagd" --
+  een korte tekstregel bovenaan legt dat nu uit ("elke woning hier voldoet
+  al aan de harde eisen").
+
+`npx tsc --noEmit -p tsconfig.json` schoon.
+
+## -5b. Vorige sessie: Vraag 3 (locatie) landelijk gemaakt
 
 Direct na de matchingmodel-v2-rebuild hieronder testte Sjoerd de nieuwe
 vragenlijst en reageerde op Vraag 3: "Dit waren voorbeelden; mensen moeten

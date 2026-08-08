@@ -1,7 +1,7 @@
 import { randomUUID, randomBytes } from "crypto";
 import { kvGet, kvSet, kvDel, kvZAdd, kvZRangeByScore, kvZRem, kvIncrWithTtl } from "@/lib/services/kvStore";
 import { slugify } from "@/lib/utils/slug";
-import { berekenMatchScore } from "@/lib/services/matchScore";
+import { berekenMatchScore, voldoetAanHardeEisen } from "@/lib/services/matchScore";
 import { vindGekoppeldRapport } from "@/lib/services/matchRapportKoppeling";
 import type {
   B2bOrganisatie,
@@ -348,24 +348,29 @@ export async function verwijderMatch(match: Pick<B2bWoningMatch, "id" | "klantId
 // en geeft de resterende (nog wel passende) matches terug zodat de
 // aanroeper daarna nog weet welke URL's al bekend zijn (voor de dedupe-stap).
 //
-// MATCHINGMODEL V2 (zie het Cowork-gesprek hierover, "matchingsproces onder
-// de loep"): dit herverifieerde voorheen budget, locatie en kenmerken als
-// drie LOSSE vlaggen (onderBudget/buitenBudget/andereLocatie/
-// voldoetNietMeerAanKenmerken). Dat is vervangen door ÉÉN herberekening van
-// de volledige match-score (berekenMatchScore, hetzelfde 100-puntenmodel als
-// bij het scrapen zelf) tegen de HUIDIGE koperVoorkeuren -- scoort een
-// bestaande match niet meer >= MIN_MATCH_SCORE (bv. door een verlaagd budget,
-// een gewijzigde locatievoorkeur, of gewoon een aangescherpte vraag), dan is
-// hij niet langer relevant en gaat hij eruit. Matches zonder verificatie-
-// snapshot (opgeslagen vóór dat veld bestond) scoren via berekenMatchScore
-// vanzelf laag genoeg om ook opgeruimd te worden -- geen aparte "ontbrekende
-// snapshot"-check meer nodig.
+// MATCHINGMODEL V3 (zie het Cowork-gesprek hierover, "ik twijfel over ons
+// filtersysteem met punten"): dit herverifieerde onder v2 de volledige
+// match-score (berekenMatchScore) en keek of die nog boven de
+// MIN_MATCH_SCORE-drempel (60) uitkwam. Dat concept is vervangen door
+// voldoetAanHardeEisen() -- de 7 harde eisen uit fase 1 (budget, locatie,
+// woningtype, kamers, oppervlak, buitenruimte, energielabel), ALTIJD
+// verplicht. Voldoet een bestaande match niet meer aan één daarvan (bv. door
+// een gewijzigd budget of locatievoorkeur), dan gaat hij eruit -- geen
+// scoreberekening meer nodig om dat vast te stellen (voldoetAanHardeEisen is
+// synchroon en triggert nooit een CBS-voorzieningenopzoeking), dus dit is nu
+// ook goedkoper dan voorheen.
 export async function ruimVerouderdeMatchenOp(klantId: string, koperVoorkeuren: B2bKoperVoorkeuren | null): Promise<B2bWoningMatch[]> {
   const bestaande = await listMatchenVoorKlant(klantId);
+  if (!koperVoorkeuren) {
+    // Geen voorkeurenlijst (meer) ingevuld -- er is dan niets om tegen te
+    // toetsen, dus geen enkele bestaande match blijft relevant.
+    for (const match of bestaande) await verwijderMatch(match);
+    return [];
+  }
   const passend: B2bWoningMatch[] = [];
   for (const match of bestaande) {
-    const score = await berekenMatchScore(match, koperVoorkeuren);
-    if (score.voldoetAanMinimum) {
+    const { voldoet } = voldoetAanHardeEisen(match, koperVoorkeuren);
+    if (voldoet) {
       passend.push(match);
     } else {
       await verwijderMatch(match);
@@ -390,6 +395,13 @@ export async function ruimVerouderdeMatchenOp(klantId: string, koperVoorkeuren: 
 // gestoken, die mag nooit stilzwijgend uit het overzicht verdwijnen. Zijn er
 // méér beschermde matches dan maxAantal, dan wordt de cap bewust niet
 // gehaald -- bescherming gaat voor de weergavelimiet.
+//
+// MATCHINGMODEL V3: alle matches die hier binnenkomen, voldoen al aan de 7
+// harde eisen van fase 1 (dat is al gegarandeerd vóór het opslaan, zie
+// matches-verversen/route.ts en cron/matches-controleren/route.ts, en
+// ruimVerouderdeMatchenOp() hierboven ruimt bestaande matches op zodra dat
+// niet meer zo is) -- de score hier is dus puur een rangschikking, geen
+// tweede afwijzingsronde.
 export async function kapMatchenOpMax(klantId: string, maxAantal: number): Promise<void> {
   const huidige = await listMatchenVoorKlant(klantId);
   if (huidige.length <= maxAantal) return;

@@ -44,6 +44,17 @@ import {
 //     proxy-timeout, zie fundaFeed.ts) zag er voorheen identiek uit als "0
 //     passende woningen" -- de "Ververs"-knop toont nu een aparte
 //     foutmelding i.p.v. dat stilzwijgend te verbergen.
+//
+// MATCHINGMODEL V3 (zie het Cowork-gesprek hierover, "ik twijfel over ons
+// filtersysteem met punten; een match kan 90 punten krijgen die in een heel
+// ander gebied ligt"): elke woning die hier getoond wordt, heeft de 7 harde
+// eisen van fase 1 (budget, locatie, woningtype, kamers, oppervlak,
+// buitenruimte, energielabel) al gehaald -- dat gebeurt server-side vóór het
+// opslaan (zie voldoetAanHardeEisen() in matchScore.ts), dus is hier geen
+// aparte "voldoet niet"-status meer nodig. De score/scorecirkel drukt sinds
+// v3 dus NIET meer uit "voldoet dit wel of niet", maar "hoeveel beter dan het
+// gevraagde minimum is dit" -- puur om de al-gekwalificeerde matches
+// onderling te rangschikken.
 // -----------------------------------------------------------------------------
 
 const HUIS_KLEUREN = [
@@ -94,16 +105,19 @@ function MatchThumbnail({ fotoUrl, index }: { fotoUrl: string | null; index: num
   );
 }
 
-// Groen bij een sterke match, ink-grijs daaronder -- bewust maar twee
-// niveaus (geen driekleurenschaal) om de kaarten rustig te houden.
+// Groen bij een uitstekende match, ink-grijs daaronder -- bewust maar twee
+// niveaus (geen driekleurenschaal) om de kaarten rustig te houden. Alle
+// woningen hier voldoen al aan de harde eisen (zie hierboven) -- dit
+// onderscheidt alleen HOEVEEL beter dan het gevraagde minimum, niet of het
+// een match is.
 function scoreKleur(score: number): string {
   return score >= 85 ? "#3B6D11" : "#8A8A85";
 }
 
 function scoreLabel(score: number): string {
-  if (score >= 85) return "Sterke match";
-  if (score >= 60) return "Goede match";
-  return "Match";
+  if (score >= 85) return "Uitstekend boven het gevraagde";
+  if (score >= 60) return "Ruim boven het gevraagde";
+  return "Voldoet aan het gevraagde";
 }
 
 function ScoreRing({ score, groot }: { score: number; groot?: boolean }) {
@@ -401,6 +415,11 @@ export default function MatchesKaart({
           </button>
         </div>
       </div>
+
+      <p className="mt-2 text-[10.5px] text-ink/40">
+        Elke woning hier voldoet al aan de harde eisen (budget, locatie, type, kamers, oppervlak, buitenruimte, energielabel) -- de score
+        rangschikt alleen hoe ver ze daar bovenop uitkomen.
+      </p>
 
       {voorkeurenZinnen.length > 0 && (
         <div className="mt-3 flex flex-wrap items-center gap-1.5 rounded-xl bg-[#EEF0FF]/60 px-3 py-2">

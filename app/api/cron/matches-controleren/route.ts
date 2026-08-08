@@ -8,7 +8,7 @@ import {
   getGebruiker,
 } from "@/lib/services/b2bStore";
 import { haalFundaMatches } from "@/lib/data-sources/fundaFeed";
-import { berekenMatchScore } from "@/lib/services/matchScore";
+import { voldoetAanHardeEisen } from "@/lib/services/matchScore";
 import { stuurNieuweMatchesEmail } from "@/lib/services/email";
 import { APP_BASE_URL } from "@/lib/config/payment";
 import { MAX_ZICHTBARE_MATCHEN } from "@/types/b2b";
@@ -28,14 +28,15 @@ import type { B2bWoningMatch } from "@/types/b2b";
 // op elk moment kan haperen -- één dossier waarvoor dat misgaat mag nooit de
 // hele batch (en dus alle andere organisaties/klanten) laten stoppen.
 //
-// MATCHINGMODEL V2 (zie het Cowork-gesprek hierover, "matchingsproces onder
-// de loep"): budget/locatie/kenmerken worden nu afgeleid uit de volledige
-// koperVoorkeuren-vragenlijst (zie haalFundaMatches in fundaFeed.ts) i.p.v.
-// losse velden op de zoekopdracht -- een dossier zonder ingevulde
-// koperVoorkeuren wordt hier overgeslagen (er is dan simpelweg niets om op te
-// zoeken/scoren). Elke kandidaat wordt net als bij de handmatige "Ververs"-
-// knop (matches-verversen/route.ts) eerst gescoord en alleen bewaard bij
-// >= MIN_MATCH_SCORE (60).
+// MATCHINGMODEL V3 (zie het Cowork-gesprek hierover, "ik twijfel over ons
+// filtersysteem met punten"): budget/locatie/kenmerken worden afgeleid uit de
+// volledige koperVoorkeuren-vragenlijst (zie haalFundaMatches in
+// fundaFeed.ts) -- een dossier zonder ingevulde koperVoorkeuren wordt hier
+// overgeslagen (er is dan simpelweg niets om op te zoeken). Elke kandidaat
+// wordt net als bij de handmatige "Ververs"-knop (matches-verversen/route.ts)
+// eerst getoetst aan de 7 harde eisen van fase 1 (voldoetAanHardeEisen,
+// matchScore.ts) en alleen bij een `voldoet: true` bewaard -- synchroon, geen
+// CBS-voorzieningenopzoeking per kandidaat meer nodig om dat te beslissen.
 //
 // DOSSIER_LIMIET: puur een grens op hoe lang één cron-aanroep duurt, geen
 // functionele limiet -- bij meer actieve dossiers dan dit pakt de volgende
@@ -109,29 +110,22 @@ export async function GET(req: NextRequest) {
         const nieuweItems = feedItems.filter((item) => !bekendeUrls.has(item.url));
         if (nieuweItems.length === 0) continue;
 
-        const gescoord = await Promise.all(
-          nieuweItems.map(async (item) => {
-            const tijdelijkeMatch: B2bWoningMatch = {
-              id: "",
-              klantId: dossier.id,
-              orgId: org.id,
-              bron: "funda",
-              titel: item.titel,
-              url: item.url,
-              prijs: item.prijs,
-              prijsLabel: item.prijsLabel,
-              fotoUrl: item.fotoUrl,
-              verificatie: item.verificatie ?? null,
-              gevondenOp: new Date().toISOString(),
-            };
-            const score = await berekenMatchScore(tijdelijkeMatch, koperVoorkeuren);
-            return { item, score };
-          })
-        );
-
         const nieuwOpgeslagen: typeof nieuweItems = [];
-        for (const { item, score } of gescoord) {
-          if (!score.voldoetAanMinimum) continue;
+        for (const item of nieuweItems) {
+          const tijdelijkeMatch: B2bWoningMatch = {
+            id: "",
+            klantId: dossier.id,
+            orgId: org.id,
+            bron: "funda",
+            titel: item.titel,
+            url: item.url,
+            prijs: item.prijs,
+            prijsLabel: item.prijsLabel,
+            fotoUrl: item.fotoUrl,
+            verificatie: item.verificatie ?? null,
+            gevondenOp: new Date().toISOString(),
+          };
+          if (!voldoetAanHardeEisen(tijdelijkeMatch, koperVoorkeuren).voldoet) continue;
           await maakMatch({
             klantId: dossier.id,
             orgId: org.id,
