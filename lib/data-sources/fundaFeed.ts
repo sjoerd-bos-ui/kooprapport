@@ -575,35 +575,17 @@ function afgeleidBudgetMax(voorkeuren: B2bKoperVoorkeuren): number | null {
   return Math.round(optie.max * (1 + BUDGET_ZOEK_MARGE));
 }
 
-// Matchingmodel v2, Component 2 (locatiescore) -- vertaalt de tot 3 gekozen
-// B2bVoorkeurLocatie-waarden naar 1-3 daadwerkelijke Funda-zoekgebieden.
-// Meerdere Rotterdam-kwadranten (centrum/noord/zuid/oost/west) vallen samen
-// tot ÉÉN zoekopdracht op de HELE stad "rotterdam" -- er bestaat geen
-// doorzoekbaar Funda-gebied per kwadrant (zie gebiedIndeling.ts), en apart
-// per kwadrant-wijk zoeken zou veel te veel proxy-verzoeken kosten. De
-// classificatie naar kwadrant gebeurt pas ná het scrapen, bij het scoren
-// (Component 2, matchScore.ts), o.b.v. Funda's eigen breadcrumb-gebiedsnaam.
-const GEMEENTE_SLUGS: Partial<Record<string, string>> = {
-  schiedam: "schiedam",
-  vlaardingen: "vlaardingen",
-  capelle: "capelle-aan-den-ijssel",
-  barendrecht: "barendrecht",
-  hendrik_ido_ambacht: "hendrik-ido-ambacht",
-};
-const ROTTERDAM_KWADRANTEN = new Set(["rotterdam_centrum", "rotterdam_noord", "rotterdam_zuid", "rotterdam_oost", "rotterdam_west"]);
-
+// Matchingmodel v2, Component 2 (locatiescore) -- vertaalt de tot 3 gekozen,
+// landelijke B2bLocatie-voorkeuren naar 1-3 daadwerkelijke Funda-
+// zoekgebieden. Elke B2bLocatie komt al rechtstreeks uit de live PDOK-
+// autocomplete (LocatieAutocomplete.tsx/plaatsLookup.ts) en bevat dus al de
+// exacte Funda-slug -- geen vertaaltabel meer nodig (was voorheen wel nodig
+// toen dit een vaste 10-regio-lijst was, zie gebiedIndeling.ts voor de
+// geschiedenis daarvan).
 function afgeleideGebiedSlugs(voorkeuren: B2bKoperVoorkeuren): string[] {
   const slugs = new Set<string>();
   for (const locatie of voorkeuren.voorkeurLocaties) {
-    if (ROTTERDAM_KWADRANTEN.has(locatie)) {
-      slugs.add("rotterdam");
-    } else if (locatie === "other") {
-      const a = voorkeuren.voorkeurLocatieAnders;
-      if (a) slugs.add(a.wijkSlug ? `${a.plaatsSlug}/${a.wijkSlug}` : a.plaatsSlug);
-    } else {
-      const slug = GEMEENTE_SLUGS[locatie];
-      if (slug) slugs.add(slug);
-    }
+    slugs.add(locatie.wijkSlug ? `${locatie.plaatsSlug}/${locatie.wijkSlug}` : locatie.plaatsSlug);
   }
   return [...slugs];
 }
@@ -638,9 +620,10 @@ export async function haalFundaMatches(
   );
 
   if (gebiedSlugs.length === 0) {
-    // Geen enkele bruikbare locatie afgeleid (bv. "other" gekozen zonder dat
-    // voorkeurLocatieAnders is ingevuld) -- niets om te doorzoeken, geen
-    // oprechte fout (dus geen `fout: true`), gewoon niets gevonden.
+    // Zou niet moeten voorkomen (voorkeurLocaties is minimaal 1 item, zie
+    // koperVoorkeurenValidatie.ts) -- defensief gehouden voor het geval van
+    // oudere, vóór matchingmodel-v2 opgeslagen dossiers. Geen oprechte fout
+    // (dus geen `fout: true`), gewoon niets gevonden.
     console.log("[fundaFeed] geen bruikbaar zoekgebied afgeleid uit de koper-voorkeuren -- overgeslagen");
     return { items: [], fout: false };
   }

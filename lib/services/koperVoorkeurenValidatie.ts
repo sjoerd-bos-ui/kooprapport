@@ -1,7 +1,6 @@
 import {
   B2B_BUDGET_OPTIES,
   B2B_KOSTEN_KOPER_OPTIES,
-  B2B_VOORKEUR_LOCATIES,
   B2B_WONINGTYPE_VOORKEUREN,
   B2B_MIN_KAMERS_OPTIES,
   B2B_MIN_OPPERVLAK_OPTIES,
@@ -68,14 +67,14 @@ export function valideerKoperVoorkeuren(input: unknown): { ok: true; waarde: B2b
   if (!isGeldigeWaarde(v.maxKoopprijs, B2B_BUDGET_OPTIES)) return { ok: false, error: "Kies een geldig budget (vraag 1)." };
   if (!isGeldigeWaarde(v.kostenKoper, B2B_KOSTEN_KOPER_OPTIES)) return { ok: false, error: "Beantwoord vraag 2 (kosten koper)." };
 
-  if (!isGeldigeArray(v.voorkeurLocaties, B2B_VOORKEUR_LOCATIES, MAX_VOORKEUR_LOCATIES) || (v.voorkeurLocaties as unknown[]).length === 0) {
+  if (!Array.isArray(v.voorkeurLocaties) || v.voorkeurLocaties.length === 0 || v.voorkeurLocaties.length > MAX_VOORKEUR_LOCATIES) {
     return { ok: false, error: `Kies minimaal 1 en maximaal ${MAX_VOORKEUR_LOCATIES} locaties (vraag 3).` };
   }
-  const voorkeurLocaties = v.voorkeurLocaties as B2bKoperVoorkeuren["voorkeurLocaties"];
-  const voorkeurLocatieAnders = voorkeurLocaties.includes("other") ? valideerLocatie(v.voorkeurLocatieAnders) : null;
-  if (voorkeurLocaties.includes("other") && !voorkeurLocatieAnders) {
-    return { ok: false, error: "Kies een locatie uit de suggesties bij 'Andere' (vraag 3)." };
+  const voorkeurLocatiesRuw = v.voorkeurLocaties.map(valideerLocatie);
+  if (voorkeurLocatiesRuw.some((l) => l === null)) {
+    return { ok: false, error: "Kies elke locatie uit de suggesties (vraag 3)." };
   }
+  const voorkeurLocaties = voorkeurLocatiesRuw as B2bLocatie[];
 
   if (!isGeldigeArray(v.woningtypes, B2B_WONINGTYPE_VOORKEUREN) || (v.woningtypes as unknown[]).length === 0) {
     return { ok: false, error: "Kies minimaal 1 woningtype (vraag 4)." };
@@ -116,7 +115,6 @@ export function valideerKoperVoorkeuren(input: unknown): { ok: true; waarde: B2b
       maxKoopprijs: v.maxKoopprijs as B2bKoperVoorkeuren["maxKoopprijs"],
       kostenKoper: v.kostenKoper as B2bKoperVoorkeuren["kostenKoper"],
       voorkeurLocaties,
-      voorkeurLocatieAnders,
       woningtypes,
       woningtypeAnders,
       minKamers: v.minKamers as B2bKoperVoorkeuren["minKamers"],

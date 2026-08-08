@@ -1,7 +1,7 @@
 import type { B2bWoningMatch, B2bKoperVoorkeuren, B2bMatchVerificatie, B2bDealbreaker, B2bPrioriteitOptie, B2bWoningtypeVoorkeur } from "@/types/b2b";
 import { B2B_BUDGET_OPTIES, B2B_MIN_KAMERS_OPTIES, B2B_MIN_OPPERVLAK_OPTIES, B2B_MIN_ENERGIELABEL_OPTIES, MIN_MATCH_SCORE } from "@/types/b2b";
 import { ENERGIELABEL_VOLGORDE_FUNDA, BUDGET_ZOEK_MARGE } from "@/lib/data-sources/fundaFeed";
-import { classificeerGebied, zijnAangrenzend } from "@/lib/services/gebiedIndeling";
+import { vergelijkLocatie } from "@/lib/services/gebiedIndeling";
 import { afstandTotWens, heeftDatabron, haalVoorzieningenVoorAdres, VOORZIENING_DICHTBIJ_KM, type VoorzieningenResultaat } from "@/lib/services/voorzieningenMatch";
 
 // -----------------------------------------------------------------------------
@@ -69,29 +69,24 @@ function scoreBudget(prijs: number | null, voorkeuren: B2bKoperVoorkeuren): Matc
 }
 
 // --- Component 2: locatie (20) ------------------------------------------------
-// BEWUSTE KEUZE: een niet te classificeren locatie (adres past bij geen van
-// de 10 vaste gebieden -- zie gebiedIndeling.ts) krijgt de LAAGSTE tier (5),
-// niet de middelste. In tegenstelling tot bv. "kamers ontbreekt" (waar de
-// oorzaak vrijwel altijd onze eigen scrapebeperking is) is een niet-
-// classificeerbare locatie vaker een oprecht signaal dat de woning buiten de
-// bekende voorkeursgebieden ligt -- en locatie is bovendien het enige
-// onderdeel dat ook de daadwerkelijke ZOEKOPDRACHT bepaalt (zie fundaFeed.ts)
-// dus een kandidaat komt sowieso al uit een gezocht gebied; alleen de
-// FIJNMAZIGE kwadrant-classificatie kan hier mislukken.
+// LANDELIJK (zie gebiedIndeling.ts voor de geschiedenis: dit was een vaste
+// 10-Rotterdam-regio-lijst, nu een tekstvergelijking tegen de vrij, landelijk
+// gekozen B2bLocatie-voorkeuren). Omdat de Funda-zoekopdracht zelf al is
+// afgebakend tot precies de gekozen plaatsen/wijken (zie afgeleideGebiedSlugs
+// in fundaFeed.ts), is "geen_match" bij een NIEUW gevonden kandidaat zeldzaam
+// -- vooral relevant bij het herscoren van een al opgeslagen match na een
+// wijziging van de koper-voorkeuren (zie ruimVerouderdeMatchenOp in
+// b2bStore.ts), waar dat wél een oprecht signaal is.
 function scoreLocatie(verificatie: B2bMatchVerificatie | null, voorkeuren: B2bKoperVoorkeuren): MatchScoreOnderdeel {
   const basis = { key: "locatie", label: "Locatie", maxPunten: 20 };
-  const gebied = classificeerGebied(verificatie?.gebiedRuw ?? null, verificatie?.plaatsnaam ?? null);
-  if (!gebied) {
-    return { ...basis, punten: 5, toelichting: "Ligging kon niet met zekerheid worden geclassificeerd." };
+  const resultaat = vergelijkLocatie(voorkeuren.voorkeurLocaties, verificatie?.gebiedRuw ?? null, verificatie?.plaatsnaam ?? null);
+  if (resultaat === "exact") {
+    return { ...basis, punten: 20, toelichting: "Ligt in een van de gekozen voorkeurslocaties." };
   }
-  if (voorkeuren.voorkeurLocaties.includes(gebied)) {
-    return { ...basis, punten: 20, toelichting: "Ligt in een van de gekozen voorkeursgebieden." };
+  if (resultaat === "onbekend") {
+    return { ...basis, punten: 12, toelichting: "Ligging kon niet met zekerheid worden bevestigd." };
   }
-  const grenst = voorkeuren.voorkeurLocaties.some((v) => zijnAangrenzend(gebied, v));
-  if (grenst) {
-    return { ...basis, punten: 15, toelichting: "Ligt in een gebied dat aan de voorkeur grenst." };
-  }
-  return { ...basis, punten: 5, toelichting: "Ligt buiten de gekozen voorkeursgebieden." };
+  return { ...basis, punten: 4, toelichting: "Ligt buiten de gekozen voorkeurslocaties." };
 }
 
 // --- Component 3: woningtype (15) ---------------------------------------------

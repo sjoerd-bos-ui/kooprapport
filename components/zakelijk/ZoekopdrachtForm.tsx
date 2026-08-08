@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { B2bZoekopdracht, B2bKoperVoorkeuren } from "@/types/b2b";
-import { B2B_BUDGET_OPTIES, B2B_VOORKEUR_LOCATIES, B2B_WONINGTYPE_VOORKEUREN } from "@/types/b2b";
+import { B2B_BUDGET_OPTIES, B2B_WONINGTYPE_VOORKEUREN } from "@/types/b2b";
 import VoorkeurenVragenlijst from "@/components/zakelijk/VoorkeurenVragenlijst";
 import { MapPinIcon, CheckIcon, BoltIcon } from "@/components/report/icons";
 
@@ -130,11 +130,7 @@ export default function ZoekopdrachtForm({ dossierId, huidig }: { dossierId: str
   }
 
   if (!bewerken) {
-    const locatieChips = koperVoorkeuren
-      ? koperVoorkeuren.voorkeurLocaties.map((loc) =>
-          loc === "other" ? koperVoorkeuren.voorkeurLocatieAnders?.label ?? "Andere locatie" : labelVoor(B2B_VOORKEUR_LOCATIES, loc)
-        )
-      : [];
+    const locatieChips = koperVoorkeuren ? koperVoorkeuren.voorkeurLocaties.map((l) => l.label) : [];
     const woningtypeChips = koperVoorkeuren
       ? koperVoorkeuren.woningtypes.map((w) => (w === "other" ? koperVoorkeuren.woningtypeAnders ?? "Ander type" : labelVoor(B2B_WONINGTYPE_VOORKEUREN, w)))
       : [];

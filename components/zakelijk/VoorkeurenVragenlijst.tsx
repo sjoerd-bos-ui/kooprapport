@@ -6,7 +6,6 @@ import type {
   B2bLocatie,
   B2bBudgetOptie,
   B2bKostenKoperOptie,
-  B2bVoorkeurLocatie,
   B2bWoningtypeVoorkeur,
   B2bMinKamersOptie,
   B2bMinOppervlakOptie,
@@ -21,7 +20,6 @@ import type {
 import {
   B2B_BUDGET_OPTIES,
   B2B_KOSTEN_KOPER_OPTIES,
-  B2B_VOORKEUR_LOCATIES,
   B2B_WONINGTYPE_VOORKEUREN,
   B2B_MIN_KAMERS_OPTIES,
   B2B_MIN_OPPERVLAK_OPTIES,
@@ -59,8 +57,7 @@ import { CheckIcon, ArrowRightIcon } from "@/components/report/icons";
 interface Draft {
   maxKoopprijs: B2bBudgetOptie | null;
   kostenKoper: B2bKostenKoperOptie | null;
-  voorkeurLocaties: B2bVoorkeurLocatie[];
-  voorkeurLocatieAnders: B2bLocatie | null;
+  voorkeurLocaties: B2bLocatie[];
   woningtypes: B2bWoningtypeVoorkeur[];
   woningtypeAnders: string;
   minKamers: B2bMinKamersOptie | null;
@@ -80,7 +77,6 @@ function leegDraft(bestaand: B2bKoperVoorkeuren | null): Draft {
     maxKoopprijs: bestaand?.maxKoopprijs ?? null,
     kostenKoper: bestaand?.kostenKoper ?? null,
     voorkeurLocaties: bestaand?.voorkeurLocaties ?? [],
-    voorkeurLocatieAnders: bestaand?.voorkeurLocatieAnders ?? null,
     woningtypes: bestaand?.woningtypes ?? [],
     woningtypeAnders: bestaand?.woningtypeAnders ?? "",
     minKamers: bestaand?.minKamers ?? null,
@@ -163,6 +159,55 @@ function MultiSelect<T extends string>({
   );
 }
 
+// Landelijke multi-locatiekeuze (Vraag 3, max MAX_VOORKEUR_LOCATIES) --
+// hergebruikt dezelfde live PDOK-autocomplete als de oude zoekopdracht
+// (LocatieAutocomplete.tsx is van zichzelf een single-value component). Elke
+// gekozen locatie wordt een verwijderbare chip; zodra er ruimte over is
+// (waarden.length < max) staat er een leeg invoerveld klaar voor de
+// volgende. `invoerKey` dwingt na elke keuze een remount van
+// LocatieAutocomplete af (het component synct zijn interne teksttoestand
+// niet automatisch terug naar een lege `waarde`-prop, zie de toelichting in
+// dat bestand) zodat het invoerveld weer leeg begint voor de volgende keuze.
+function LocatiePicker({ waarden, max, onWijzigen }: { waarden: B2bLocatie[]; max: number; onWijzigen: (w: B2bLocatie[]) => void }) {
+  const [invoerKey, setInvoerKey] = useState(0);
+
+  function voegToe(locatie: B2bLocatie | null) {
+    if (!locatie) return;
+    const bestaatAl = waarden.some((w) => w.plaatsSlug === locatie.plaatsSlug && w.wijkSlug === locatie.wijkSlug);
+    if (bestaatAl) return;
+    onWijzigen([...waarden, locatie]);
+    setInvoerKey((k) => k + 1);
+  }
+  function verwijder(index: number) {
+    onWijzigen(waarden.filter((_, i) => i !== index));
+  }
+
+  return (
+    <div className="mt-2">
+      {waarden.length > 0 && (
+        <div className="mb-2 flex flex-wrap gap-2">
+          {waarden.map((locatie, i) => (
+            <span
+              key={`${locatie.plaatsSlug}-${locatie.wijkSlug ?? ""}`}
+              className="flex items-center gap-1.5 rounded-full border border-accent bg-[#EEF0FF] px-3 py-1.5 text-[12.5px] font-semibold text-accent"
+            >
+              {locatie.label}
+              <button type="button" onClick={() => verwijder(i)} className="text-accent/50 hover:text-accent" aria-label={`${locatie.label} verwijderen`}>
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      {waarden.length < max ? (
+        <LocatieAutocomplete key={invoerKey} waarde={null} onKiezen={voegToe} />
+      ) : (
+        <p className="text-[11px] text-ink/40">Maximum van {max} locaties bereikt -- verwijder er eerst één om een andere te kiezen.</p>
+      )}
+    </div>
+  );
+}
+
 function Stappenbalk({ stap, totaal }: { stap: number; totaal: number }) {
   return (
     <div className="flex items-center gap-1">
@@ -196,7 +241,7 @@ export default function VoorkeurenVragenlijst({
 
   const stapGeldig: boolean[] = [
     Boolean(draft.maxKoopprijs && draft.kostenKoper),
-    draft.voorkeurLocaties.length > 0 && (!draft.voorkeurLocaties.includes("other") || Boolean(draft.voorkeurLocatieAnders)),
+    draft.voorkeurLocaties.length > 0,
     Boolean(
       draft.woningtypes.length > 0 &&
         (!draft.woningtypes.includes("other") || draft.woningtypeAnders.trim()) &&
@@ -227,7 +272,6 @@ export default function VoorkeurenVragenlijst({
       maxKoopprijs: draft.maxKoopprijs!,
       kostenKoper: draft.kostenKoper!,
       voorkeurLocaties: draft.voorkeurLocaties,
-      voorkeurLocatieAnders: draft.voorkeurLocaties.includes("other") ? draft.voorkeurLocatieAnders : null,
       woningtypes: draft.woningtypes,
       woningtypeAnders: draft.woningtypes.includes("other") ? draft.woningtypeAnders.trim() || null : null,
       minKamers: draft.minKamers!,
@@ -272,21 +316,8 @@ export default function VoorkeurenVragenlijst({
         {stap === 1 && (
           <div>
             <p className="text-[12.5px] font-semibold text-ink">Waar wil je wonen?</p>
-            <p className="mt-0.5 text-[11.5px] text-ink/45">Kies maximaal {MAX_VOORKEUR_LOCATIES}.</p>
-            <MultiSelect
-              opties={B2B_VOORKEUR_LOCATIES}
-              waarden={draft.voorkeurLocaties}
-              max={MAX_VOORKEUR_LOCATIES}
-              onWijzigen={(w) => zet("voorkeurLocaties", w)}
-            />
-            {draft.voorkeurLocaties.includes("other") && (
-              <div className="mt-3">
-                <p className="text-[11.5px] font-semibold text-ink/60">Welke plaats of wijk precies?</p>
-                <div className="mt-1.5">
-                  <LocatieAutocomplete waarde={draft.voorkeurLocatieAnders} onKiezen={(l) => zet("voorkeurLocatieAnders", l)} />
-                </div>
-              </div>
-            )}
+            <p className="mt-0.5 text-[11.5px] text-ink/45">Zoek een plaats of wijk -- kies maximaal {MAX_VOORKEUR_LOCATIES}.</p>
+            <LocatiePicker waarden={draft.voorkeurLocaties} max={MAX_VOORKEUR_LOCATIES} onWijzigen={(w) => zet("voorkeurLocaties", w)} />
           </div>
         )}
 

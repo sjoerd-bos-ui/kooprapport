@@ -1,95 +1,98 @@
-import type { B2bVoorkeurLocatie } from "@/types/b2b";
+import type { B2bLocatie } from "@/types/b2b";
 
 // -----------------------------------------------------------------------------
-// Matchingmodel v2, Component 2 (locatie-score) -- classificeert een gevonden
-// Funda-woning naar één van de 10 vaste B2bVoorkeurLocatie-gebieden (plus
-// "other"), en levert de aangrenzendheid tussen die gebieden voor de
-// 15-puntentussenstap ("aangrenzende locatie").
+// Matchingmodel v2, Component 2 (locatie-score) -- vergelijkt een gevonden
+// Funda-woning tegen de tot 3 gekozen, landelijke B2bLocatie-voorkeuren.
 //
-// BELANGRIJK, LEES DIT VOOR JE HIER IETS AAN WIJZIGT: "Rotterdam Centrum/
-// Noord/Zuid/Oost/West" bestaan NIET als officieel, doorzoekbaar Funda- of
-// CBS-gebied (in tegenstelling tot bv. "Kralingen-Crooswijk", dat wél zo'n
-// live-geverifieerd, exact gebied is, zie plaatsLookup.ts). Dit is een
-// BEARGUMENTEERDE EIGEN INDELING op basis van de 21 officiële CBS-wijken van
-// Rotterdam (live opgehaald via de PDOK Locatieserver, `fq=type:wijk AND
-// gemeentenaam:Rotterdam` -- niet gegokt welke wijken Rotterdam heeft, wel
-// een eigen keuze in welk kwadrant elke wijk valt): de Maas scheidt Noord/
-// Zuid, en Centrum/Oost/West zijn de resterende, geografisch voor de hand
-// liggende clusters. Overleg met Sjoerd als een klant een scherpere indeling
-// nodig heeft -- dit is bewust een grove, praktische aanpak, geen officiële
-// bron.
-export const ROTTERDAM_KWADRANT_WIJKEN: Record<"rotterdam_centrum" | "rotterdam_noord" | "rotterdam_zuid" | "rotterdam_oost" | "rotterdam_west", string[]> = {
-  rotterdam_centrum: ["Rotterdam Centrum"],
-  // Noord van de Maas, rond/boven het centrum.
-  rotterdam_noord: ["Noord", "Hillegersberg-Schiebroek", "Overschie", "Rotterdam-Noord-West"],
-  // Zuid van de Maas.
-  rotterdam_zuid: ["Charlois", "Feijenoord", "Hoogvliet", "IJsselmonde", "Pernis", "Waalhaven-Eemhaven"],
-  // Oostelijke woon-/kantoorwijken.
-  rotterdam_oost: ["Kralingen-Crooswijk", "Prins Alexander", "Rivium"],
-  // Westelijke/haven- en kustwijken.
-  rotterdam_west: ["Delfshaven", "Hoek van Holland", "Nieuw Mathenesse", "Rozenburg", "Spaanse Polder", "Vondelingenplaat", "Botlek-Europoort-Maasvlakte"],
-};
+// GESCHIEDENIS: dit bestand classificeerde eerder een woning naar één van 10
+// vaste, zelfbedachte Rotterdam-regio's (ROTTERDAM_KWADRANT_WIJKEN) met een
+// aangrenzendheidsgraaf tussen die 10 gebieden. Sjoerd gaf expliciet aan dat
+// een koper overal in Nederland moet kunnen kiezen ("dit waren voorbeelden;
+// mensen moeten alles kunnen kiezen in Nederland natuurlijk") -- de
+// vragenlijst gebruikt nu dezelfde live PDOK-autocomplete als de oude
+// zoekopdracht (LocatieAutocomplete.tsx) voor ALLE 3 locatieslots, niet meer
+// alleen voor een "Andere"-uitzondering. Een vaste, handmatig onderhouden
+// aangrenzendheidsgraaf is voor heel Nederland niet haalbaar/onderhoudbaar,
+// dus die hele opzet is hier vervangen door een generieke tekstvergelijking.
+//
+// Omdat de Funda-zoekopdracht zelf al is afgebakend tot precies de gekozen
+// plaatsen/wijken (zie afgeleideGebiedSlugs in lib/data-sources/fundaFeed.ts,
+// via Funda's eigen `selected_area`), ligt een NIEUW gevonden kandidaat
+// vrijwel altijd al binnen een van de gekozen locaties. Deze vergelijking is
+// dus vooral belangrijk bij het HERSCOREN van een AL OPGESLAGEN match nadat
+// de koper-voorkeuren zijn gewijzigd (zie ruimVerouderdeMatchenOp in
+// b2bStore.ts) -- dan kan een oude match wel degelijk buiten de nieuwe
+// locatiekeuze vallen, en moet dat ook echt zichtbaar worden in de score.
+// -----------------------------------------------------------------------------
 
-// Symmetrische aangrenzendheid tussen de 10 vaste gebieden -- ook een eigen,
-// beargumenteerde inschatting (geen officiële bron), gebaseerd op
-// daadwerkelijke ligging: Centrum grenst aan alle 4 Rotterdamse kwadranten,
-// Capelle ligt naast Kralingen/Prins Alexander (Oost), Schiedam/Vlaardingen
-// grenzen aan elkaar en aan West, Barendrecht/Hendrik-Ido-Ambacht liggen aan
-// de zuidkant van de Maas tegenover Zuid/Oost. "other" heeft bewust geen
-// aangrenzende gebieden (onbekende, vrij ingevulde locatie).
-const AANGRENZEND: Record<B2bVoorkeurLocatie, B2bVoorkeurLocatie[]> = {
-  rotterdam_centrum: ["rotterdam_noord", "rotterdam_zuid", "rotterdam_oost", "rotterdam_west"],
-  rotterdam_noord: ["rotterdam_centrum"],
-  rotterdam_zuid: ["rotterdam_centrum", "barendrecht", "hendrik_ido_ambacht"],
-  rotterdam_oost: ["rotterdam_centrum", "capelle"],
-  rotterdam_west: ["rotterdam_centrum", "schiedam", "vlaardingen"],
-  schiedam: ["rotterdam_west", "vlaardingen"],
-  vlaardingen: ["schiedam", "rotterdam_west"],
-  capelle: ["rotterdam_oost"],
-  barendrecht: ["rotterdam_zuid"],
-  hendrik_ido_ambacht: ["rotterdam_zuid"],
-  other: [],
-};
-
-export function zijnAangrenzend(a: B2bVoorkeurLocatie, b: B2bVoorkeurLocatie): boolean {
-  return AANGRENZEND[a]?.includes(b) ?? false;
+function normaliseer(tekst: string): string {
+  return tekst
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "") // diakritische tekens weg (bv. accenten)
+    .toLowerCase()
+    .trim();
 }
 
-// Losse gemeenten die 1-op-1 overeenkomen met een B2bVoorkeurLocatie-optie --
-// live geverifieerd via PDOK (type: woonplaats) dat dit de officiële
-// plaatsnamen zijn, en via Funda's eigen zoek-URL dat de bijbehorende slug
-// werkt (selected_area=schiedam,vlaardingen,barendrecht,hendrik-ido-ambacht
-// gaf 1.308 resultaten, zie VOORTGANG.md).
-const GEMEENTE_NAAR_LOCATIE: Partial<Record<string, B2bVoorkeurLocatie>> = {
-  schiedam: "schiedam",
-  vlaardingen: "vlaardingen",
-  "capelle aan den ijssel": "capelle",
-  barendrecht: "barendrecht",
-  "hendrik-ido-ambacht": "hendrik_ido_ambacht",
-};
+// Een B2bLocatie.label is óf een plaatsnaam ("Rotterdam") óf "Wijk, Plaats"
+// (bv. "Kralingen, Rotterdam", zie plaatsLookup.ts) -- dit splitst dat weer
+// uit elkaar zodat de plaatsnaam en (indien aanwezig) de wijknaam apart
+// vergeleken kunnen worden tegen Funda's eigen `plaatsnaam`/`gebiedRuw`.
+function ontleedLocatieLabel(locatie: B2bLocatie): { plaats: string; wijk: string | null } {
+  const delen = locatie.label.split(",").map((d) => d.trim());
+  if (delen.length > 1) {
+    return { plaats: normaliseer(delen[delen.length - 1]), wijk: normaliseer(delen[0]) };
+  }
+  return { plaats: normaliseer(delen[0]), wijk: null };
+}
 
-// Classificeert een gevonden woning naar één van de 10 vaste gebieden, o.b.v.
-// `gebiedRuw` (Funda's eigen wijk/buurtnaam uit het BreadcrumbList-blok, zie
-// B2bMatchVerificatie.gebiedRuw) en `plaatsnaam` (addressLocality uit de
-// JSON-LD). `null` = niet te classificeren (bv. een plaats buiten de 10 vaste
-// opties) -- dat is geen fout, gewoon "other" voor de score, zie matchScore.ts.
-export function classificeerGebied(gebiedRuw: string | null, plaatsnaam: string | null): B2bVoorkeurLocatie | null {
-  const plaats = plaatsnaam?.trim().toLowerCase() ?? "";
-  if (plaats && plaats !== "rotterdam") {
-    return GEMEENTE_NAAR_LOCATIE[plaats] ?? null;
-  }
-  // Rotterdam (of plaats onbekend, dan aannemen dat het om Rotterdam-zoeken
-  // ging): classificeer via gebiedRuw tegen de kwadrant-wijkenlijst. Funda's
-  // eigen breadcrumb-naam is soms een BUURT (bv. "Nieuw Crooswijk") i.p.v. de
-  // volledige wijknaam ("Kralingen-Crooswijk") -- daarom substring-match
-  // i.p.v. exacte match, in beide richtingen.
-  const gebied = gebiedRuw?.trim().toLowerCase() ?? "";
-  if (!gebied) return null;
-  for (const [kwadrant, wijken] of Object.entries(ROTTERDAM_KWADRANT_WIJKEN)) {
-    for (const wijk of wijken) {
-      const w = wijk.toLowerCase();
-      if (gebied.includes(w) || w.includes(gebied)) return kwadrant as B2bVoorkeurLocatie;
+function komtOvereen(a: string, b: string): boolean {
+  return a === b || a.includes(b) || b.includes(a);
+}
+
+export type LocatieMatchResultaat = "exact" | "onbekend" | "geen_match";
+
+// Beste resultaat over alle (tot 3) gekozen locaties -- "exact" wint altijd
+// van "onbekend", dat wint altijd van "geen_match" (zie scoreLocatie in
+// matchScore.ts voor de puntentoekenning per resultaat).
+export function vergelijkLocatie(voorkeurLocaties: B2bLocatie[], gebiedRuw: string | null, plaatsnaam: string | null): LocatieMatchResultaat {
+  const candidaatPlaats = plaatsnaam ? normaliseer(plaatsnaam) : null;
+  const candidaatWijk = gebiedRuw ? normaliseer(gebiedRuw) : null;
+
+  let besteResultaat: LocatieMatchResultaat = "geen_match";
+
+  for (const locatie of voorkeurLocaties) {
+    const { plaats: gekozenPlaats, wijk: gekozenWijk } = ontleedLocatieLabel(locatie);
+    let resultaat: LocatieMatchResultaat;
+
+    if (candidaatPlaats == null) {
+      // Geen plaatsnaam bekend uit de scrape -- niets te vergelijken, geen
+      // afwijzingsgrond (zelfde "ontbrekende scrapegegevens" discipline als
+      // elders in matchScore.ts).
+      resultaat = "onbekend";
+    } else if (!komtOvereen(candidaatPlaats, gekozenPlaats)) {
+      // Plaats komt niet overeen met deze gekozen locatie -- duidelijk geen
+      // match voor DIT gekozen item (een ander gekozen item kan nog wel
+      // matchen, vandaar de lus over alle locaties).
+      resultaat = "geen_match";
+    } else if (gekozenWijk == null) {
+      // De koper koos de hele plaats (geen specifieke wijk) -- plaats komt
+      // overeen, dus exacte match, ongeacht de wijk van de kandidaat.
+      resultaat = "exact";
+    } else if (candidaatWijk == null) {
+      // Plaats komt overeen, maar de koper koos een specifieke wijk binnen
+      // die plaats en Funda's eigen wijk/buurtnaam kon niet worden
+      // vastgesteld -- kan niet op wijkniveau bevestigd worden.
+      resultaat = "onbekend";
+    } else if (komtOvereen(candidaatWijk, gekozenWijk)) {
+      resultaat = "exact";
+    } else {
+      // Plaats klopt, maar de wijk wijkt aantoonbaar af van de gekozen wijk.
+      resultaat = "geen_match";
     }
+
+    if (resultaat === "exact") return "exact"; // niet beter te worden, stop meteen
+    if (resultaat === "onbekend" && besteResultaat === "geen_match") besteResultaat = "onbekend";
   }
-  return null;
+
+  return besteResultaat;
 }

@@ -233,7 +233,7 @@ export interface B2bMatchVerificatie {
   // geverifieerd: "Reserveboezemstraat 5" -> breadcrumb "Rotterdam" >
   // "Nieuw Crooswijk" > straatnaam) -- Funda's eigen, al toegekende
   // buurt/wijknaam, betrouwbaarder dan zelf uit het adres proberen af te
-  // leiden. Gebruikt voor de locatie-score (classificeerGebied() in
+  // leiden. Gebruikt voor de locatie-score (vergelijkLocatie() in
   // lib/services/gebiedIndeling.ts).
   gebiedRuw: string | null;
   plaatsnaam: string | null;
@@ -285,44 +285,16 @@ export const B2B_KOSTEN_KOPER_OPTIES: { waarde: B2bKostenKoperOptie; label: stri
 ];
 
 // --- Stap 2: locatie -----------------------------------------------------------
-// Vaste, grove gebiedskeuze i.p.v. de fijnmazige PDOK-wijk/buurt-autocomplete
-// van het oude zoekopdracht-formulier (die blijft wel bestaan, zie
-// B2bLocatie/plaatsLookup.ts -- alleen nu uitsluitend voor de "Anders"-optie
-// hieronder). BELANGRIJK: "Rotterdam Centrum/Noord/Zuid/Oost/West" zijn GEEN
-// officiële CBS-wijken of Funda-doorzoekbare gebieden (in tegenstelling tot
-// bv. "Kralingen-Crooswijk", dat WEL zo'n officieel, live-geverifieerd gebied
-// is) -- dit is een BEARGUMENTEERDE EIGEN INDELING op basis van de 21
-// officiële Rotterdamse CBS-wijken, zie ROTTERDAM_KWADRANT_WIJKEN in
-// lib/services/gebiedIndeling.ts voor de exacte toewijzing en de onderbouwing
-// per wijk. De overige 5 zijn gewone gemeenten/plaatsen (live geverifieerd,
-// zie fetchLiveLocatieSuggesties) en dus wél eenduidig.
-export type B2bVoorkeurLocatie =
-  | "rotterdam_centrum"
-  | "rotterdam_noord"
-  | "rotterdam_zuid"
-  | "rotterdam_oost"
-  | "rotterdam_west"
-  | "schiedam"
-  | "vlaardingen"
-  | "capelle"
-  | "barendrecht"
-  | "hendrik_ido_ambacht"
-  | "other";
-
-export const B2B_VOORKEUR_LOCATIES: { waarde: B2bVoorkeurLocatie; label: string }[] = [
-  { waarde: "rotterdam_centrum", label: "Rotterdam Centrum" },
-  { waarde: "rotterdam_noord", label: "Rotterdam Noord" },
-  { waarde: "rotterdam_zuid", label: "Rotterdam Zuid" },
-  { waarde: "rotterdam_oost", label: "Rotterdam Oost" },
-  { waarde: "rotterdam_west", label: "Rotterdam West" },
-  { waarde: "schiedam", label: "Schiedam" },
-  { waarde: "vlaardingen", label: "Vlaardingen" },
-  { waarde: "capelle", label: "Capelle aan den IJssel" },
-  { waarde: "barendrecht", label: "Barendrecht" },
-  { waarde: "hendrik_ido_ambacht", label: "Hendrik-Ido-Ambacht" },
-  { waarde: "other", label: "Andere" },
-];
-
+// LANDELIJK, via dezelfde live PDOK-locatieserver-autocomplete als de oude
+// zoekopdracht (B2bLocatie/plaatsLookup.ts/LocatieAutocomplete.tsx) -- geen
+// vaste picklist meer. Eerdere versie beperkte dit tot 10 vaste
+// Rotterdam-regio-opties ("Rotterdam Centrum/Noord/... , Schiedam,
+// Vlaardingen, ..."); Sjoerd gaf expliciet aan dat kopers moeten kunnen
+// kiezen uit heel Nederland ("dit waren voorbeelden; mensen moeten alles
+// kunnen kiezen in Nederland natuurlijk"). Elk gekozen `B2bLocatie` is al
+// een exacte, live-gevonden plaats óf wijk (dezelfde discipline als altijd:
+// nooit vrije tekst fuzzy-matchen) en dus meteen ook een geldige
+// Funda-zoekslug (zie afgeleideGebiedSlugs in lib/data-sources/fundaFeed.ts).
 export const MAX_VOORKEUR_LOCATIES = 3;
 
 // --- Stap 3: woning --------------------------------------------------------------
@@ -513,11 +485,10 @@ export const MAX_PRIORITEITEN = 3;
 export interface B2bKoperVoorkeuren {
   maxKoopprijs: B2bBudgetOptie;
   kostenKoper: B2bKostenKoperOptie;
-  voorkeurLocaties: B2bVoorkeurLocatie[]; // max MAX_VOORKEUR_LOCATIES
-  // Alleen ingevuld/relevant als "other" in voorkeurLocaties staat -- exacte
-  // PDOK-gekozen locatie, zelfde discipline als de oude zoekopdracht (nooit
-  // vrije tekst fuzzy-matchen), zie LocatieAutocomplete.tsx.
-  voorkeurLocatieAnders: B2bLocatie | null;
+  // Landelijk, via PDOK-autocomplete gekozen plaatsen/wijken -- max
+  // MAX_VOORKEUR_LOCATIES, minimaal 1. Zie de toelichting bij
+  // MAX_VOORKEUR_LOCATIES hierboven.
+  voorkeurLocaties: B2bLocatie[];
   woningtypes: B2bWoningtypeVoorkeur[];
   woningtypeAnders: string | null;
   minKamers: B2bMinKamersOptie;

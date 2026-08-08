@@ -1,6 +1,53 @@
 # Voortgang Kooprapport Zakelijk — overdracht naar nieuwe chat
 
-## -5. Nieuwste sessie: matchingmodel-v2 — volledige herbouw (13-vragen/100-punten)
+## -5b. Direct vervolg: Vraag 3 (locatie) landelijk gemaakt
+
+Direct na de matchingmodel-v2-rebuild hieronder testte Sjoerd de nieuwe
+vragenlijst en reageerde op Vraag 3: "Dit waren voorbeelden; mensen moeten
+alles kunnen kiezen in Nederland natuurlijk ; maak het systeem ook daarop."
+De net gebouwde Vraag 3 beperkte locatiekeuze namelijk nog tot 10 vaste
+Rotterdam-regio-opties (+ "Andere") -- die vaste lijst is nu volledig
+vervangen door dezelfde landelijke, live PDOK-autocomplete als de oude
+zoekopdracht, voor alle (tot 3) locatieslots.
+
+- `types/b2b.ts`: `B2bVoorkeurLocatie`/`B2B_VOORKEUR_LOCATIES` verwijderd.
+  `B2bKoperVoorkeuren.voorkeurLocaties` is nu `B2bLocatie[]` (was
+  `B2bVoorkeurLocatie[]`); `voorkeurLocatieAnders` (de vroegere
+  "Andere"-uitzondering) is vervallen -- elk van de 3 slots gebruikt nu
+  dezelfde autocomplete, geen aparte "Andere"-optie meer nodig.
+- `lib/services/gebiedIndeling.ts`: volledig herschreven. De vaste
+  Rotterdam-kwadrant-indeling + aangrenzendheidsgraaf (`classificeerGebied`/
+  `zijnAangrenzend`) is vervangen door `vergelijkLocatie()`, een generieke
+  tekstvergelijking (plaats + evt. wijk, genormaliseerd, substring-match in
+  beide richtingen) tussen een gevonden woning en de gekozen
+  `B2bLocatie`-voorkeuren. Een vaste, handmatig onderhouden
+  aangrenzendheidsgraaf is voor heel Nederland niet haalbaar; deze aanpak
+  werkt overal.
+- `lib/services/matchScore.ts` (Component 2, locatie, 20 pt): drie tiers
+  i.p.v. de oude drie (exact/aangrenzend/overig) -- "exact" (20, plaats+wijk
+  bevestigd), "onbekend" (12, kon niet bevestigd worden, geen
+  afwijzingsgrond), "geen_match" (4, aantoonbaar buiten de gekozen
+  locatie(s) -- vooral relevant bij het herscoren van een al opgeslagen match
+  na een gewijzigde locatiekeuze).
+- `lib/data-sources/fundaFeed.ts`: `afgeleideGebiedSlugs()` sterk
+  vereenvoudigd -- elke `B2bLocatie` bevat al de exacte Funda-slug
+  (`plaatsSlug`/`wijkSlug`), dus de vertaaltabellen (`GEMEENTE_SLUGS`,
+  `ROTTERDAM_KWADRANTEN`) zijn vervallen.
+- `lib/services/koperVoorkeurenValidatie.ts`: Vraag 3 valideert nu een array
+  van 1-3 losse `B2bLocatie`-objecten (elk via de bestaande
+  `valideerLocatie()`-helper) i.p.v. een vaste-waarden-array.
+- `components/zakelijk/VoorkeurenVragenlijst.tsx`: nieuwe `LocatiePicker`-
+  subcomponent -- gekozen locaties als verwijderbare chips, met een
+  `LocatieAutocomplete`-invoerveld voor de volgende keuze zolang er ruimte
+  is (max 3). `LocatieAutocomplete` is zelf single-value, dus na elke keuze
+  wordt het invoerveld via een wijzigende `key`-prop geremount zodat het weer
+  leeg begint.
+- `components/zakelijk/ZoekopdrachtForm.tsx`: locatie-chipweergave
+  vereenvoudigd tot `koperVoorkeuren.voorkeurLocaties.map(l => l.label)`.
+
+`npx tsc --noEmit -p tsconfig.json` schoon.
+
+## -5. Vorige sessie: matchingmodel-v2 — volledige herbouw (13-vragen/100-punten)
 
 Sjoerd's opdracht, verbatim: "Matchingsproces onder de loep nemen ; alle data
 zijn van Funda te halen op voorzieningen na - die halen we uit ons eigen
