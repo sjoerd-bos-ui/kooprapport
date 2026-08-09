@@ -138,9 +138,20 @@ export const ENERGIELABEL_VOLGORDE_FUNDA = ["A+++++", "A++++", "A+++", "A++", "A
 // gaf 531 = 284 + 247 resultaten, listings van beide gebieden door elkaar) --
 // geen aparte requests per gebied nodig, dus geen extra proxykosten voor tot
 // 3 gekozen voorkeurlocaties.
+// BESCHIKBAARHEID (Sjoerd: "laten we alleen woningen tonen die de status
+// 'beschikbaar' hebben"): LIVE GEVERIFIEERD in Funda's eigen "Alle filters"-
+// paneel -- een "Beschikbaarheid"-blok met drie losse opties (Beschikbaar/
+// In onderhandeling/Verkocht), standaard staan Beschikbaar EN In
+// onderhandeling allebei aan. Alleen "Beschikbaar" aanvinken en op "Toon
+// resultaten" klikken zet de URL om naar "?availability=available" (de
+// resultaatteller kwam daarbij exact overeen met de teller achter die ene
+// checkbox, dus dit is een echt server-side Funda-filter, geen giswerk).
+// Hiermee filtert Funda zelf onderhandeling/verkocht er al uit -- geen losse
+// scrape-/matchScore-logica nodig om dit hierna nog eens te checken.
 function bouwZoekUrl(gebiedSlugs: string[], budgetMax: number | null, objectType: string | null, pagina = 1): string {
   const params = new URLSearchParams();
   params.set("selected_area", gebiedSlugs.join(","));
+  params.set("availability", "available");
   if (objectType) params.set("object_type", objectType);
   if (budgetMax != null && budgetMax > 0) params.set("price", `0-${Math.round(budgetMax)}`);
   if (pagina > 1) params.set("page", String(pagina));
