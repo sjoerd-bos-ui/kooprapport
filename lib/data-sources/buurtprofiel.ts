@@ -16,10 +16,13 @@ import { VOORZIENING_THEMA_VOLGORDE, VOORZIENING_THEMA_LABEL } from "@/lib/utils
 //      dataderden.cbs.nl-portaal, niet het gewone opendata.cbs.nl)
 //   3. 85560NED "Nabijheid voorzieningen; afstand locatie"  -> voorzieningen
 //      (dit is een grote CBS-tabel met ruim 120 categorieën; we gebruiken
-//      een bewust samengestelde selectie van 9 daarvan, zie
+//      een bewust samengestelde selectie van 10 daarvan, zie
 //      VOORZIENING_DEFINITIES hieronder — expliciet NIET alles, sommige
 //      categorieën zoals sauna/zonnebank/bioscoop passen niet bij de
-//      feitelijke, serieuze toon van dit rapport)
+//      feitelijke, serieuze toon van dit rapport. LET OP: dezelfde selectie
+//      wordt ook hergebruikt door de B2B-matchingscore (Vraag 9, zie
+//      voorzieningenMatch.ts) -- een categorie hier toevoegen verrijkt dus
+//      ALTIJD ook het consumenten-Kooprapport, nooit alleen de B2B-kant.)
 //
 // Geen van deze bronnen kost geld of vereist een sleutel, dus is er (anders
 // dan bv. de Altum-woningwaarde) geen reden om de aanroep zelf uit te
@@ -84,7 +87,7 @@ interface VoorzieningDefinitie {
   zinsdeel: string; // natuurlijke zinsvorm voor buildVoorzieningenTekst, bv. "de huisarts"
 }
 
-// Bewuste selectie van 9 uit de ruim 120 categorieën in 85560NED — gekozen
+// Bewuste selectie van 10 uit de ruim 120 categorieën in 85560NED — gekozen
 // op relevantie voor een koop-/verkoopbeslissing (gezondheid, dagelijkse
 // boodschappen, gezin/onderwijs, bereikbaarheid, buitenruimte). Expliciet
 // NIET toegevoegd: sauna, zonnebank, kunstijsbaan, bioscoop, attractie e.d.
@@ -93,6 +96,13 @@ interface VoorzieningDefinitie {
 const VOORZIENING_DEFINITIES: VoorzieningDefinitie[] = [
   { key: "huisarts", cbsVeld: "AfstandTotHuisartsenpraktijk_5", label: "Huisartsenpraktijk", thema: "dagelijks", zinsdeel: "de huisarts" },
   { key: "apotheek", cbsVeld: "AfstandTotApotheek_10", label: "Apotheek", thema: "dagelijks", zinsdeel: "de apotheek" },
+  // Toegevoegd (Cowork-gesprek over de B2B-voorzieningenscore, vraag "Zorg /
+  // ziekenhuis" belooft dit al): live geverifieerd tegen de CBS 85560NED
+  // DataProperties -- AfstandTotZiekenhuis_11 is de "incl. buitenpolikliniek"-
+  // variant, bewust gekozen boven de "excl."-variant (_15) omdat een
+  // buitenpolikliniek voor de meeste medische bezoeken net zo relevant is als
+  // het hoofdgebouw. Zelfde thema als huisarts/apotheek, geen nieuwe categorie.
+  { key: "ziekenhuis", cbsVeld: "AfstandTotZiekenhuis_11", label: "Ziekenhuis", thema: "dagelijks", zinsdeel: "het dichtstbijzijnde ziekenhuis" },
   { key: "supermarkt", cbsVeld: "AfstandTotGroteSupermarkt_24", label: "Grote supermarkt", thema: "dagelijks", zinsdeel: "een grote supermarkt" },
   { key: "basisschool", cbsVeld: "AfstandTotSchool_60", label: "Basisschool", thema: "gezin", zinsdeel: "de dichtstbijzijnde basisschool" },
   { key: "voortgezetOnderwijs", cbsVeld: "AfstandTotSchool_64", label: "Voortgezet onderwijs", thema: "gezin", zinsdeel: "een school voor voortgezet onderwijs" },

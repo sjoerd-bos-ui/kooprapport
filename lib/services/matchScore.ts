@@ -1,5 +1,5 @@
 import type { B2bWoningMatch, B2bKoperVoorkeuren, B2bMatchVerificatie, B2bDealbreaker, B2bPrioriteitOptie, B2bWoningtypeVoorkeur } from "@/types/b2b";
-import { B2B_BUDGET_OPTIES, B2B_MIN_KAMERS_OPTIES, B2B_MIN_OPPERVLAK_OPTIES, B2B_MIN_ENERGIELABEL_OPTIES } from "@/types/b2b";
+import { B2B_BUDGET_OPTIES, B2B_MIN_KAMERS_OPTIES, B2B_MIN_OPPERVLAK_OPTIES, B2B_MIN_ENERGIELABEL_OPTIES, B2B_VOORZIENING_WENSEN } from "@/types/b2b";
 import { ENERGIELABEL_VOLGORDE_FUNDA, BUDGET_ZOEK_MARGE } from "@/lib/data-sources/fundaFeed";
 import { vergelijkLocatieUitgebreid } from "@/lib/services/gebiedIndeling";
 import { afstandTotWens, heeftDatabron, haalVoorzieningenVoorAdres, VOORZIENING_DICHTBIJ_KM, type VoorzieningenResultaat } from "@/lib/services/voorzieningenMatch";
@@ -320,6 +320,49 @@ function scoreParkeren(verificatie: B2bMatchVerificatie | null, voorkeuren: B2bK
   return { ...basis, punten: 5, toelichting: "Parkeren (eigen of openbaar) is aanwezig." };
 }
 
+// --- Voorzieningen (8) -------------------------------------------------------------
+// NIEUW (Cowork-gesprek "waarom staat voorzieningen op 0"): Vraag 9 had
+// voorheen alleen indirect effect, via de generieke prioriteitenbonus, en
+// alleen als de koper "Nabijheid voorzieningen" óók nog los als topprioriteit
+// koos (Vraag 13). Dat maakte dit voor de meeste dossiers een dode vraag.
+// Nu een eigen, altijd meetellend onderdeel:
+//   - Niets gekozen bij Vraag 9 (optioneel, mag): 0 punten -- geen wens, dus
+//     niets om te belonen. BEWUST 0 en niet "neutraal max", zelfde principe
+//     als de bestaande Prioriteiten-bonus (die ook 0 scoort bij een lege
+//     lijst) -- zie het gesprek hierover, "waarom krijgt het dan alsnog 8
+//     punten".
+//   - Wel iets gekozen: per gekozen wens een tier op een 0-10-schaal (<1 km
+//     =10, tot en met VOORZIENING_DICHTBIJ_KM=6, bevestigd verder weg=2,
+//     afstand onbekend bij een WEL gekozen wens=6 -- neutraal, nooit een
+//     straf voor onze eigen meetgrens), gemiddeld over alle gekozen wensen en
+//     herschaald naar het max van 8 punten voor dit ene onderdeel (dus nooit
+//     "aantal wensen keer 10").
+//
+// Defensief gefilterd tegen B2B_VOORZIENING_WENSEN: een dossier dat de
+// inmiddels verwijderde waarde "workplace" nog bevat (zie types/b2b.ts) mag
+// hier nooit meetellen -- zelfde discipline als de dealbreaker-bugfix.
+function scoreVoorzieningen(voorkeuren: B2bKoperVoorkeuren, voorzieningen: VoorzieningenResultaat): MatchScoreOnderdeel {
+  const basis = { key: "voorzieningen", label: "Voorzieningen", maxPunten: 8 };
+  const gekozen = voorkeuren.belangrijkeVoorzieningen.filter((w) => B2B_VOORZIENING_WENSEN.some((o) => o.waarde === w));
+  if (gekozen.length === 0) {
+    return { ...basis, punten: 0, toelichting: "Geen voorzieningen als belangrijk aangegeven." };
+  }
+  const tiers = gekozen.map((wens) => {
+    const afstand = afstandTotWens(voorzieningen.items, wens);
+    if (afstand == null) return 6;
+    if (afstand <= 1) return 10;
+    if (afstand <= VOORZIENING_DICHTBIJ_KM) return 6;
+    return 2;
+  });
+  const gemiddelde = tiers.reduce((a, b) => a + b, 0) / tiers.length;
+  const punten = Math.max(0, Math.min(8, Math.round((gemiddelde / 10) * 8)));
+  return {
+    ...basis,
+    punten,
+    toelichting: `Scoort gemiddeld ${gemiddelde.toFixed(1)}/10 over de ${gekozen.length} opgegeven voorziening(en).`,
+  };
+}
+
 // --- Dealbreakers (-20 bij trigger) ---------------------------------------------------
 // Vier van de oorspronkelijke opties (no_outdoor_space, price_over_budget,
 // too_few_rooms, too_small_area) zijn verwijderd uit B2B_DEALBREAKERS (zie
@@ -390,17 +433,6 @@ function tierVoorComponent(onderdeel: MatchScoreOnderdeel): number {
   return Math.round((onderdeel.punten / onderdeel.maxPunten) * 10);
 }
 
-function tierAmenitiesNearby(voorkeuren: B2bKoperVoorkeuren, voorzieningen: VoorzieningenResultaat): number {
-  const wensenMetDatabron = voorkeuren.belangrijkeVoorzieningen.filter(heeftDatabron);
-  if (!voorzieningen.gevonden || wensenMetDatabron.length === 0) return 5;
-  const afstanden = wensenMetDatabron.map((w) => afstandTotWens(voorzieningen.items, w)).filter((a): a is number => a != null);
-  if (afstanden.length === 0) return 5;
-  const kortste = Math.min(...afstanden);
-  if (kortste <= 1) return 10;
-  if (kortste <= VOORZIENING_DICHTBIJ_KM) return 5;
-  return 0;
-}
-
 function tierConditionYear(verificatie: B2bMatchVerificatie | null): number {
   const bouwjaar = verificatie?.bouwjaar ?? null;
   if (bouwjaar == null) return 5;
@@ -412,13 +444,16 @@ function tierConditionYear(verificatie: B2bMatchVerificatie | null): number {
 function scorePrioriteitenBonus(
   voorkeuren: B2bKoperVoorkeuren,
   verificatie: B2bMatchVerificatie | null,
-  voorzieningen: VoorzieningenResultaat,
   onderdelenPerKey: Record<string, MatchScoreOnderdeel>
 ): MatchScoreOnderdeel {
   const basis = { key: "prioriteiten", label: "Prioriteiten", maxPunten: 10 };
   if (voorkeuren.prioriteiten.length === 0) {
     return { ...basis, punten: 0, toelichting: "Geen prioriteiten opgegeven." };
   }
+  // "amenities_nearby" hergebruikt sinds de nieuwe Voorzieningen-component
+  // (zie scoreVoorzieningen hierboven) gewoon tierVoorComponent, net als elk
+  // ander onderdeel -- de eerdere aparte tierAmenitiesNearby-functie is
+  // vervallen, dat was dubbele logica voor hetzelfde signaal.
   const koppeling: Record<B2bPrioriteitOptie, () => number> = {
     location: () => tierVoorComponent(onderdelenPerKey.locatie),
     price: () => tierVoorComponent(onderdelenPerKey.budget),
@@ -427,7 +462,7 @@ function scorePrioriteitenBonus(
     outdoor_space: () => tierVoorComponent(onderdelenPerKey.buitenruimte),
     energy_efficiency: () => tierVoorComponent(onderdelenPerKey.energielabel),
     parking: () => tierVoorComponent(onderdelenPerKey.parkeren),
-    amenities_nearby: () => tierAmenitiesNearby(voorkeuren, voorzieningen),
+    amenities_nearby: () => tierVoorComponent(onderdelenPerKey.voorzieningen),
     quiet_location: () => 5,
     condition_year: () => tierConditionYear(verificatie),
   };
@@ -451,10 +486,14 @@ export async function berekenMatchScore(match: B2bWoningMatch, voorkeuren: B2bKo
 
   const verificatie = match.verificatie;
 
-  // Voorzieningen (Vraag 9 / dealbreaker "no_amenities" / prioriteit
-  // "amenities_nearby") -- alleen ophalen als er ook daadwerkelijk iets mee
-  // gedaan wordt, en alleen voor kandidaten die fase 1 al gehaald hebben
-  // (zie de aanroepers) -- dat is precies waar de kostenbesparing zit.
+  // Voorzieningen (Vraag 9 -> scoreVoorzieningen / dealbreaker "no_amenities"
+  // / prioriteit "amenities_nearby", die laatste twee hergebruiken nu ook
+  // gewoon scoreVoorzieningen) -- alleen ophalen als er ook daadwerkelijk
+  // iets mee gedaan wordt, en alleen voor kandidaten die fase 1 al gehaald
+  // hebben (zie de aanroepers) -- dat is precies waar de kostenbesparing zit.
+  // Heeft geen enkele gekozen wens een databron, dan scoort scoreVoorzieningen
+  // toch al overal neutraal (tier 6) -- de CBS-opzoeking overslaan verandert
+  // dus niets aan de uitkomst, alleen aan de kosten.
   const heeftVoorzieningenBehoefte =
     voorkeuren.belangrijkeVoorzieningen.some(heeftDatabron) ||
     voorkeuren.dealbreakers.includes("no_amenities") ||
@@ -471,12 +510,23 @@ export async function berekenMatchScore(match: B2bWoningMatch, voorkeuren: B2bKo
   const buitenruimte = scoreBuitenruimte(verificatie, voorkeuren);
   const energielabel = scoreEnergielabel(verificatie, voorkeuren);
   const parkeren = scoreParkeren(verificatie, voorkeuren);
+  const voorzieningenScore = scoreVoorzieningen(voorkeuren, voorzieningen);
   const { getriggerd, onderdeel: dealbreakerOnderdeel } = evalueerDealbreakers(verificatie, voorzieningen, voorkeuren);
 
-  const onderdelenPerKey: Record<string, MatchScoreOnderdeel> = { budget, locatie, type, kamers, oppervlak, buitenruimte, energielabel, parkeren };
-  const prioriteiten = scorePrioriteitenBonus(voorkeuren, verificatie, voorzieningen, onderdelenPerKey);
+  const onderdelenPerKey: Record<string, MatchScoreOnderdeel> = {
+    budget,
+    locatie,
+    type,
+    kamers,
+    oppervlak,
+    buitenruimte,
+    energielabel,
+    parkeren,
+    voorzieningen: voorzieningenScore,
+  };
+  const prioriteiten = scorePrioriteitenBonus(voorkeuren, verificatie, onderdelenPerKey);
 
-  const onderdelen = [budget, locatie, type, kamers, oppervlak, buitenruimte, energielabel, parkeren, dealbreakerOnderdeel, prioriteiten];
+  const onderdelen = [budget, locatie, type, kamers, oppervlak, buitenruimte, energielabel, parkeren, voorzieningenScore, dealbreakerOnderdeel, prioriteiten];
   const ruwTotaal = onderdelen.reduce((som, o) => som + o.punten, 0);
   const totaal = Math.max(0, Math.min(100, ruwTotaal));
 

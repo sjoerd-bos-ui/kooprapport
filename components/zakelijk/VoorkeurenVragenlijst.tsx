@@ -83,7 +83,12 @@ function leegDraft(bestaand: B2bKoperVoorkeuren | null): Draft {
     minOppervlak: bestaand?.minOppervlak ?? null,
     buitenruimte: bestaand?.buitenruimte ?? null,
     minEnergielabel: bestaand?.minEnergielabel ?? null,
-    belangrijkeVoorzieningen: bestaand?.belangrijkeVoorzieningen ?? [],
+    // Zelfde bescherming als bij dealbreakers hierboven: "workplace" bestond
+    // eerder als optie (zie types/b2b.ts) en is verwijderd -- een bestaand
+    // dossier met die waarde nog in belangrijkeVoorzieningen filteren we hier
+    // weg, anders lijkt de stap "ingevuld" terwijl de server 'm alsnog zou
+    // afwijzen bij opslaan.
+    belangrijkeVoorzieningen: (bestaand?.belangrijkeVoorzieningen ?? []).filter((w) => B2B_VOORZIENING_WENSEN.some((o) => o.waarde === w)),
     parkeren: bestaand?.parkeren ?? null,
     // BUGFIX (matchingmodel v3, B2B_DEALBREAKERS is van 11 naar 7 opties
     // getrimd): een bestaand dossier kan nog een inmiddels verwijderde

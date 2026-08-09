@@ -370,7 +370,12 @@ export const B2B_MIN_ENERGIELABEL_OPTIES: { waarde: B2bMinEnergielabelOptie; lab
 // hebben daar BEWUST geen databron voor (CBS' "Nabijheid voorzieningen"-tabel
 // kent geen categorie voor sportfaciliteiten, horeca of werklocaties), dus
 // die drie tellen in de score altijd neutraal mee, nooit als afwijzingsgrond.
-export type B2bVoorzieningWens = "schools" | "shops" | "public_transport" | "healthcare" | "sports" | "restaurants" | "park" | "workplace";
+// BUGFIX/opschoning (Cowork-gesprek "waarom staat voorzieningen op 0"):
+// "workplace" ("Werkplek in de buurt") is verwijderd -- CBS 85560NED heeft
+// hiervoor geen adres-specifieke afstandsdata, alleen een grove telling
+// "aantal banen binnen 10/20/50 km" die niet in hetzelfde afstandsmodel past
+// als de rest. Geen vinkje laten staan dat nooit iets kon opleveren.
+export type B2bVoorzieningWens = "schools" | "shops" | "public_transport" | "healthcare" | "sports" | "restaurants" | "park";
 
 export const B2B_VOORZIENING_WENSEN: { waarde: B2bVoorzieningWens; label: string }[] = [
   { waarde: "schools", label: "Scholen / kinderopvang" },
@@ -380,7 +385,6 @@ export const B2B_VOORZIENING_WENSEN: { waarde: B2bVoorzieningWens; label: string
   { waarde: "sports", label: "Sport / recreatie" },
   { waarde: "restaurants", label: "Horeca / restaurants" },
   { waarde: "park", label: "Park / groen" },
-  { waarde: "workplace", label: "Werkplek in de buurt" },
 ];
 
 export type B2bParkerenVoorkeur = "private_required" | "private_preferred" | "public_ok" | "no_car";

@@ -27,6 +27,7 @@ export const VOORZIENING_THEMA_LABEL: Record<VoorzieningThema, string> = {
 export const VOORZIENING_KLEUR: Record<string, string> = {
   huisarts: "#4F46E5",
   apotheek: "#7C3AED",
+  ziekenhuis: "#DC2626",
   supermarkt: "#0D9488",
   basisschool: "#DB2777",
   voortgezetOnderwijs: "#DB2777",

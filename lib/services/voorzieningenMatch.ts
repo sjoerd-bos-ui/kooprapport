@@ -28,21 +28,26 @@ import type { VoorzieningAfstand } from "@/types/report";
 // krijgen.
 // -----------------------------------------------------------------------------
 
-// 8 vragenlijst-categorieën -> CBS 85560NED-voorzieningkeys (zie
-// VOORZIENING_DEFINITIES in buurtprofiel.ts). "sports"/"restaurants"/
-// "workplace" hebben BEWUST geen CBS-bron (die tabel kent geen categorie voor
-// sportfaciliteiten, horeca of werklocaties) -- lege array = "geen databron",
-// nooit "0 km" of een gok. matchScore.ts telt zo'n wens dan altijd neutraal
-// mee, nooit als afwijzingsgrond.
+// 7 vragenlijst-categorieën -> CBS 85560NED-voorzieningkeys (zie
+// VOORZIENING_DEFINITIES in buurtprofiel.ts, gedeeld met het consumenten-
+// Kooprapport). "sports"/"restaurants" hebben BEWUST (nog) geen CBS-bron --
+// niet omdat de tabel die categorieën niet kent (café/restaurant/zwembad
+// bestaan er wel, live geverifieerd), maar omdat toevoegen aan de gedeelde
+// VOORZIENING_DEFINITIES ook het consumenten-Kooprapport zou raken (nieuw
+// thema nodig, buiten scope van deze stap -- zie het Cowork-gesprek
+// hierover). Lege array = "geen databron", nooit "0 km" of een gok.
+// matchScore.ts telt zo'n wens dan altijd neutraal mee, nooit als
+// afwijzingsgrond. ("workplace" bestond hier eerder ook als lege array, maar
+// is inmiddels helemaal uit B2bVoorzieningWens verwijderd -- die categorie
+// heeft ÜBERHAUPT geen bruikbare CBS-afstandsdata, zie types/b2b.ts.)
 const WENS_NAAR_CBS_KEYS: Record<B2bVoorzieningWens, string[]> = {
   schools: ["basisschool", "voortgezetOnderwijs", "kinderdagverblijf"],
   shops: ["supermarkt"],
   public_transport: ["treinstation"],
-  healthcare: ["huisarts", "apotheek"],
+  healthcare: ["huisarts", "apotheek", "ziekenhuis"],
   sports: [],
   restaurants: [],
   park: ["park"],
-  workplace: [],
 };
 
 // "Dichtbij genoeg" -- eigen, praktische drempel (geen officiële CBS-norm):
@@ -74,19 +79,26 @@ export async function haalVoorzieningenVoorAdres(funda_titel: string): Promise<V
 }
 
 // Kortste afstand tot een voorziening die bij deze wens hoort, of `null` als
-// er geen databron (sports/restaurants/workplace) of geen cijfer bekend is --
-// bewust hetzelfde onderscheid als de rest van dit project: `null` is nooit
+// er geen databron (sports/restaurants) of geen cijfer bekend is -- bewust
+// hetzelfde onderscheid als de rest van dit project: `null` is nooit
 // "0 km"/"veraf", altijd "niet te bepalen".
+//
+// `?? []` bij de lookup is BEWUST defensief: `wens` komt bij een bestaand
+// (nog niet opnieuw opgeslagen) koperVoorkeuren-dossier rechtstreeks uit de
+// database, niet via het TypeScript-type. Een dossier dat de inmiddels
+// verwijderde waarde "workplace" nog bevat (zie types/b2b.ts) zou hier anders
+// een crash geven op `.length` van `undefined` -- zelfde soort bug als eerder
+// bij de dealbreakers, nu in één keer voorkomen i.p.v. achteraf gefixt.
 export function afstandTotWens(items: VoorzieningAfstand[], wens: B2bVoorzieningWens): number | null {
-  const keys = WENS_NAAR_CBS_KEYS[wens];
+  const keys = WENS_NAAR_CBS_KEYS[wens] ?? [];
   if (keys.length === 0) return null;
   const afstanden = items.filter((i) => keys.includes(i.key)).map((i) => i.afstandKm);
   return afstanden.length > 0 ? Math.min(...afstanden) : null;
 }
 
-// Heeft deze wens ÜBERHAUPT een CBS-databron? Gebruikt om sports/
-// restaurants/workplace expliciet als "niet meetbaar" te behandelen i.p.v.
-// impliciet als "0 van de 0 gevonden = ver weg".
+// Heeft deze wens ÜBERHAUPT een CBS-databron? Gebruikt om sports/restaurants
+// expliciet als "niet meetbaar" te behandelen i.p.v. impliciet als "0 van de
+// 0 gevonden = ver weg".
 export function heeftDatabron(wens: B2bVoorzieningWens): boolean {
-  return WENS_NAAR_CBS_KEYS[wens].length > 0;
+  return (WENS_NAAR_CBS_KEYS[wens] ?? []).length > 0;
 }
