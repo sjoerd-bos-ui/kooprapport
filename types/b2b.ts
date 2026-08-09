@@ -329,12 +329,19 @@ export const B2B_MIN_KAMERS_OPTIES: { waarde: B2bMinKamersOptie; label: string; 
 
 export type B2bMinOppervlakOptie = "up_to_60" | "60_80" | "80_100" | "100_120" | "120_plus";
 
-export const B2B_MIN_OPPERVLAK_OPTIES: { waarde: B2bMinOppervlakOptie; label: string; minArea: number; maxArea: number | null }[] = [
-  { waarde: "up_to_60", label: "Tot 60 m²", minArea: 0, maxArea: 60 },
-  { waarde: "60_80", label: "60 - 80 m²", minArea: 60, maxArea: 80 },
-  { waarde: "80_100", label: "80 - 100 m²", minArea: 80, maxArea: 100 },
-  { waarde: "100_120", label: "100 - 120 m²", minArea: 100, maxArea: 120 },
-  { waarde: "120_plus", label: "120 m²+", minArea: 120, maxArea: null },
+// BUGFIX/verduidelijking: dit is en was al een MINIMUM-filter (faaltOppervlak
+// en scoreOppervlak in matchScore.ts kijken alleen naar minArea, er is geen
+// bovengrens) -- de oude labels ("60 - 80 m²") suggereerden een bandbreedte
+// met een plafond die er in de praktijk niet was. Labels hier aangepast naar
+// echte minimumtaal ("Vanaf 60 m²"); het nooit-gebruikte maxArea-veld is
+// geschrapt. De `waarde`-sleutels blijven ongewijzigd (bestaande dossiers
+// blijven zo geldig valideren).
+export const B2B_MIN_OPPERVLAK_OPTIES: { waarde: B2bMinOppervlakOptie; label: string; minArea: number }[] = [
+  { waarde: "up_to_60", label: "Geen minimum", minArea: 0 },
+  { waarde: "60_80", label: "Vanaf 60 m²", minArea: 60 },
+  { waarde: "80_100", label: "Vanaf 80 m²", minArea: 80 },
+  { waarde: "100_120", label: "Vanaf 100 m²", minArea: 100 },
+  { waarde: "120_plus", label: "Vanaf 120 m²", minArea: 120 },
 ];
 
 export type B2bBuitenruimteVoorkeur = "garden_required" | "balcony_ok" | "no_preference" | "not_important";
