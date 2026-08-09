@@ -34,7 +34,7 @@ import type { B2bWoningMatch } from "@/types/b2b";
 // fundaFeed.ts) -- een dossier zonder ingevulde koperVoorkeuren wordt hier
 // overgeslagen (er is dan simpelweg niets om op te zoeken). Elke kandidaat
 // wordt net als bij de handmatige "Ververs"-knop (matches-verversen/route.ts)
-// eerst getoetst aan de 7 harde eisen van fase 1 (voldoetAanHardeEisen,
+// eerst getoetst aan de 8 harde eisen van fase 1 (voldoetAanHardeEisen,
 // matchScore.ts) en alleen bij een `voldoet: true` bewaard -- synchroon, geen
 // CBS-voorzieningenopzoeking per kandidaat meer nodig om dat te beslissen.
 //

@@ -237,6 +237,18 @@ export interface B2bMatchVerificatie {
   // lib/services/gebiedIndeling.ts).
   gebiedRuw: string | null;
   plaatsnaam: string | null;
+  // BUGFIX (Sjoerd: "de beschikbaar-fix werkt niet, ook niet op Vercel"):
+  // de eerdere fix zette alleen een URL-filter op de ZOEKOPDRACHT
+  // (availability=available in fundaFeed.ts), dus een al opgeslagen match
+  // werd nooit meer herzien als de woning nadien onder bod/verkocht ging.
+  // Live geverifieerd (Chrome-DOM, zowel een "Onder bod"- als een
+  // "Beschikbaar"-woning): Funda toont de status als een gewone dt/dd-rij
+  // "Status" op de detailpagina (<dt>Status</dt><dd>Beschikbaar</dd>),
+  // exact hetzelfde patroon als Bouwjaar/Aantal kamers/etc. Ruwe tekst hier
+  // bewaard ("Beschikbaar", "Onder bod", "Verkocht onder voorbehoud",
+  // "Onder optie", ...) -- classificatie (voldoet/faalt) gebeurt in
+  // matchScore.ts, niet hier.
+  status: string | null;
 }
 
 // -----------------------------------------------------------------------------
@@ -531,7 +543,7 @@ export interface B2bWoningMatch {
   // MATCHINGMODEL V2/V3: het losse `locatieLabel`-veld (dat er hier ooit
   // stond) is vervallen. V3 (zie het Cowork-gesprek "ik twijfel over ons
   // filtersysteem met punten"): "is deze match nog steeds geldig" is nu
-  // "voldoet hij nog steeds aan de 7 harde eisen van fase 1 tegen de HUIDIGE
+  // "voldoet hij nog steeds aan de 8 harde eisen van fase 1 tegen de HUIDIGE
   // koperVoorkeuren" (zie voldoetAanHardeEisen() in matchScore.ts en
   // ruimVerouderdeMatchenOp in b2bStore.ts) -- geen scoredrempel meer, een
   // score zegt sinds v3 alleen nog iets over de RANGSCHIKKING tussen

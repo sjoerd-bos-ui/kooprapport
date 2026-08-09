@@ -16,11 +16,12 @@ import { afstandTotWens, heeftDatabron, haalVoorzieningenVoorAdres, VOORZIENING_
 // "ligt dit in het gebied dat ik wil" hoort geen compensatie te bestaan.
 //
 // v3 knipt dit in tweeën:
-//   FASE 1 -- voldoetAanHardeEisen(): 7 harde eisen (budget, locatie,
-//   woningtype, kamers, oppervlak, buitenruimte, energielabel), ALTIJD
-//   verplicht, geen koper-instelbaar vinkje (Sjoerd expliciet: "vinkje aan,
-//   stop daarmee anders vult diegene dat niet in"). Voldoet een kandidaat
-//   niet aan ÉÉN van de 7, dan is het sowieso geen match -- geen punten, geen
+//   FASE 1 -- voldoetAanHardeEisen(): 8 harde eisen (budget, locatie,
+//   woningtype, kamers, oppervlak, buitenruimte, energielabel,
+//   beschikbaarheid), ALTIJD verplicht, geen koper-instelbaar vinkje (Sjoerd
+//   expliciet: "vinkje aan, stop daarmee anders vult diegene dat niet in").
+//   Voldoet een kandidaat niet aan ÉÉN van de 8, dan is het sowieso geen
+//   match -- geen punten, geen
 //   compensatie, geen uitzondering. Alleen een BEVESTIGDE overtreding leidt
 //   tot afwijzing; ontbrekende scrapegegevens zijn nooit een afwijzingsgrond
 //   (zelfde discipline als altijd in dit project).
@@ -69,7 +70,7 @@ export interface MatchScore {
   dealbreakersGetriggerd: B2bDealbreaker[];
 }
 
-// Welke van de 7 harde eisen niet gehaald zijn -- leeg als de kandidaat aan
+// Welke van de 8 harde eisen niet gehaald zijn -- leeg als de kandidaat aan
 // alles voldoet. `afgewezenOp` is puur voor transparantie/logging (zie de
 // aanroepers), niet iets dat verder in de UI hoeft te verschijnen.
 export interface HardeEisenResultaat {
@@ -148,6 +149,29 @@ function faaltEnergielabel(verificatie: B2bMatchVerificatie | null, voorkeuren: 
   return rang > ENERGIELABEL_VOLGORDE_FUNDA.indexOf(minLabel);
 }
 
+// BUGFIX (Sjoerd: "de beschikbaar-fix werkt niet, ook niet op Vercel"): de
+// eerdere fix (bouwZoekUrl in fundaFeed.ts, ?availability=available) filtert
+// alleen NIEUWE zoekresultaten -- een match die al was opgeslagen vóórdat de
+// woning onder bod/verkocht ging, werd nooit meer herzien, want
+// beschikbaarheid zat niet bij de 7 harde eisen die bij elke ververs/cron-
+// cyclus opnieuw gecheckt worden (zie ruimVerouderdeMatchenOp in
+// b2bStore.ts). Nu wél, als 8e harde eis -- dit is de check die bestaande
+// matches daadwerkelijk laat evicten zodra hun status verandert.
+//
+// BEWUST een allowlist ("Beschikbaar" is de enige geldige waarde") i.p.v.
+// een blocklist van bekende afwijswaarden: Funda's statuslabel is altijd
+// aanwezig op de detailpagina (live geverifieerd, zowel "Beschikbaar" als
+// "Onder bod"), dus een bevestigde, van "Beschikbaar" afwijkende tekst is
+// hier een net zo harde overtreding als bij de andere 7 eisen -- maar we
+// hoeven zo niet elke toekomstige Funda-statustekst (bv. een nieuwe
+// tussenvorm) te kennen om hem alsnog correct af te wijzen. `status: null`
+// (rij ontbreekt, scrape mislukt) is zoals altijd geen afwijzingsgrond.
+function faaltBeschikbaarheid(verificatie: B2bMatchVerificatie | null): boolean {
+  const status = verificatie?.status ?? null;
+  if (!status) return false;
+  return status.trim().toLowerCase() !== "beschikbaar";
+}
+
 export function voldoetAanHardeEisen(match: B2bWoningMatch, voorkeuren: B2bKoperVoorkeuren): HardeEisenResultaat {
   const verificatie = match.verificatie;
   const checks: [string, boolean][] = [
@@ -158,6 +182,7 @@ export function voldoetAanHardeEisen(match: B2bWoningMatch, voorkeuren: B2bKoper
     ["oppervlak", faaltOppervlak(verificatie, voorkeuren)],
     ["buitenruimte", faaltBuitenruimte(verificatie, voorkeuren)],
     ["energielabel", faaltEnergielabel(verificatie, voorkeuren)],
+    ["beschikbaarheid", faaltBeschikbaarheid(verificatie)],
   ];
   const afgewezenOp = checks.filter(([, faalt]) => faalt).map(([key]) => key);
   return { voldoet: afgewezenOp.length === 0, afgewezenOp };

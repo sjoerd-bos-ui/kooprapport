@@ -352,10 +352,11 @@ export async function verwijderMatch(match: Pick<B2bWoningMatch, "id" | "klantId
 // filtersysteem met punten"): dit herverifieerde onder v2 de volledige
 // match-score (berekenMatchScore) en keek of die nog boven de
 // MIN_MATCH_SCORE-drempel (60) uitkwam. Dat concept is vervangen door
-// voldoetAanHardeEisen() -- de 7 harde eisen uit fase 1 (budget, locatie,
-// woningtype, kamers, oppervlak, buitenruimte, energielabel), ALTIJD
-// verplicht. Voldoet een bestaande match niet meer aan één daarvan (bv. door
-// een gewijzigd budget of locatievoorkeur), dan gaat hij eruit -- geen
+// voldoetAanHardeEisen() -- de 8 harde eisen uit fase 1 (budget, locatie,
+// woningtype, kamers, oppervlak, buitenruimte, energielabel,
+// beschikbaarheid), ALTIJD verplicht. Voldoet een bestaande match niet meer
+// aan één daarvan (bv. door een gewijzigd budget/locatievoorkeur, of doordat
+// de woning inmiddels onder bod/verkocht is), dan gaat hij eruit -- geen
 // scoreberekening meer nodig om dat vast te stellen (voldoetAanHardeEisen is
 // synchroon en triggert nooit een CBS-voorzieningenopzoeking), dus dit is nu
 // ook goedkoper dan voorheen.

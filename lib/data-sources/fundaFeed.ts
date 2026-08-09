@@ -521,6 +521,10 @@ function leesLokaleVerificatieData(html: string, ld: FundaJsonLd): LokaleVerific
     woningsubtypeRuw: leesWoningsubtypeRuw(html),
     gebiedRuw: extractBreadcrumbGebied(html),
     plaatsnaam: ld.address?.addressLocality ?? null,
+    // BUGFIX (zie de toelichting bij `status` in types/b2b.ts): live
+    // geverifieerd dat dit gewoon een dt/dd-rij "Status" is, zelfde patroon
+    // als Bouwjaar/Aantal kamers hierboven -- geen aparte parsing nodig.
+    status: leesDtWaarde(html, "Status"),
   };
 }
 
