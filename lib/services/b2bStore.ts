@@ -3,6 +3,7 @@ import { kvGet, kvSet, kvDel, kvZAdd, kvZRangeByScore, kvZRem, kvIncrWithTtl } f
 import { slugify } from "@/lib/utils/slug";
 import { berekenMatchScore, voldoetAanHardeEisen } from "@/lib/services/matchScore";
 import { vindGekoppeldRapport } from "@/lib/services/matchRapportKoppeling";
+import { haalListingDetails } from "@/lib/data-sources/fundaFeed";
 import type {
   B2bOrganisatie,
   B2bGebruiker,
@@ -13,6 +14,7 @@ import type {
   B2bTierWijzigingsverzoek,
   B2bWoningMatch,
   B2bKoperVoorkeuren,
+  B2bMatchVerificatie,
 } from "@/types/b2b";
 
 // -----------------------------------------------------------------------------
@@ -327,6 +329,24 @@ export async function maakMatch(match: Omit<B2bWoningMatch, "id" | "gevondenOp">
   return record;
 }
 
+// BUGFIX (Sjoerd: "bij minimaal 60m² geeft die nog steeds woningen van 54
+// m²"): match.verificatie is tot nu toe een EENMALIGE snapshot van het
+// moment waarop de match werd gevonden (zie maakMatch hierboven) -- die
+// wordt daarna nooit meer ververst, alleen opnieuw GETOETST (zie
+// ruimVerouderdeMatchenOp). Als de scrape op het vindmoment een veld niet
+// kon lezen (bv. woonoppervlak: null, zie de "kon niet worden vastgesteld"-
+// bugfixes in fundaFeed.ts), dan bleef dat veld voor ALTIJD null, ook nadat
+// de scraper zelf inmiddels gefixt was -- faaltOppervlak() behandelt
+// "onbekend" bewust nooit als afwijzingsgrond, dus zo'n match bleef stilzwijgend
+// staan, ook al was de woning in werkelijkheid te klein. Deze functie
+// persisteert een ververste verificatie-snapshot zodat zo'n match zich maar
+// ÉÉN keer hoeft te "herstellen" -- zie de her-verificatiestap in
+// ruimVerouderdeMatchenOp hieronder.
+export async function bijwerkenMatchVerificatie(match: B2bWoningMatch, verificatie: B2bMatchVerificatie): Promise<void> {
+  const bijgewerkt: B2bWoningMatch = { ...match, verificatie };
+  await kvSet(matchKey(match.id), JSON.stringify(bijgewerkt));
+}
+
 export async function listMatchenVoorKlant(klantId: string): Promise<B2bWoningMatch[]> {
   const ids = await kvZRangeByScore(klantMatchenIndexKey(klantId), VER_IN_DE_TOEKOMST);
   const matches = await Promise.all(ids.map(async (id) => {
@@ -360,6 +380,39 @@ export async function verwijderMatch(match: Pick<B2bWoningMatch, "id" | "klantId
 // scoreberekening meer nodig om dat vast te stellen (voldoetAanHardeEisen is
 // synchroon en triggert nooit een CBS-voorzieningenopzoeking), dus dit is nu
 // ook goedkoper dan voorheen.
+//
+// VERVOLG (Sjoerd: "bij minimaal 60m² geeft die nog steeds woningen van 54
+// m², ook bij andere fix dit nu goed"): "opnieuw toetsen" gebeurde tot nu toe
+// tegen de BEVROREN verificatie-snapshot van het vindmoment (match.
+// verificatie) -- als daarin een veld ontbrak (scrape-gat, zie de
+// woonoppervlak-bugfixes in fundaFeed.ts), bleef dat veld voor altijd null en
+// werd de bijbehorende harde eis dus voor altijd als "onbekend, niet
+// afwijzen" behandeld, zelfs nadat de scraper zelf allang was gefixt. Elke
+// match met zo'n gat krijgt hieronder eerst een verse detailpagina-fetch
+// (haalListingDetails, fundaFeed.ts) voordat hij tegen de harde eisen wordt
+// getoetst -- en die verse snapshot wordt meteen ook opgeslagen
+// (bijwerkenMatchVerificatie), zodat een match zich maar één keer hoeft te
+// "herstellen".
+//
+// Velden die voldoetAanHardeEisen() daadwerkelijk raadpleegt (oppervlak,
+// kamers, energielabel, beschikbaarheid, woningtype) EN die op een normale
+// Funda-detailpagina altijd behoren te bestaan (in tegenstelling tot bv.
+// perceeloppervlak, dat bij appartementen legitiem altijd null is) -- zie
+// bijwerkenMatchVerificatie hierboven voor de bug die dit oplost.
+function heeftOnvolledigeVerificatie(v: B2bMatchVerificatie | null): boolean {
+  if (!v) return true;
+  return v.woonoppervlak == null || v.kamers == null || v.energielabel == null || v.status == null || v.woningtypeFamilie == null;
+}
+
+// Bovengrens op het aantal her-verificatie-fetches per aanroep: dit voegt
+// een echte Funda-detailpagina-fetch toe (dezelfde proxy/kosten als een
+// nieuwe kandidaat, zie fundaFeed.ts) -- bij veel dossiers met verouderde
+// snapshots mag dit de TIJDSBUDGET_MS van de cron (matches-controleren/
+// route.ts) niet laten ontsporen. 5 is ruim genoeg om normale gevallen (een
+// handvol matches met een gat) in één ronde te helen; de rest volgt gewoon
+// bij de volgende aanroep.
+const MAX_HERVERIFICATIES_PER_AANROEP = 5;
+
 export async function ruimVerouderdeMatchenOp(klantId: string, koperVoorkeuren: B2bKoperVoorkeuren | null): Promise<B2bWoningMatch[]> {
   const bestaande = await listMatchenVoorKlant(klantId);
   if (!koperVoorkeuren) {
@@ -369,10 +422,20 @@ export async function ruimVerouderdeMatchenOp(klantId: string, koperVoorkeuren: 
     return [];
   }
   const passend: B2bWoningMatch[] = [];
+  let herverificaties = 0;
   for (const match of bestaande) {
-    const { voldoet } = voldoetAanHardeEisen(match, koperVoorkeuren);
+    let teToetsen = match;
+    if (herverificaties < MAX_HERVERIFICATIES_PER_AANROEP && heeftOnvolledigeVerificatie(match.verificatie)) {
+      herverificaties++;
+      const verse = await haalListingDetails(match.url).catch(() => null);
+      if (verse?.verificatie) {
+        teToetsen = { ...match, verificatie: verse.verificatie };
+        await bijwerkenMatchVerificatie(match, verse.verificatie);
+      }
+    }
+    const { voldoet } = voldoetAanHardeEisen(teToetsen, koperVoorkeuren);
     if (voldoet) {
-      passend.push(match);
+      passend.push(teToetsen);
     } else {
       await verwijderMatch(match);
     }

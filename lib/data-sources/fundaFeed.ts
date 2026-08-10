@@ -580,7 +580,12 @@ function formatPrijs(bedrag: number | null): string | null {
   return `${new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(bedrag)} k.k.`;
 }
 
-async function haalListingDetails(detailUrl: string): Promise<FundaFeedItem | null> {
+// Geëxporteerd (was intern) zodat b2bStore.ts hem kan hergebruiken om de
+// verificatie-snapshot van een AL OPGESLAGEN match te verversen -- zie de
+// toelichting bij `heeftOnvolledigeVerificatie`/de her-verificatiestap in
+// ruimVerouderdeMatchenOp (b2bStore.ts): dezelfde detailpagina-scrape, alleen
+// nu ook bruikbaar buiten een nieuwe zoekopdracht om.
+export async function haalListingDetails(detailUrl: string): Promise<FundaFeedItem | null> {
   try {
     const res = await fetchMetTimeout(detailUrl, FUNDA_DETAIL_TIMEOUT_MS);
     if (!res.ok) return null;
