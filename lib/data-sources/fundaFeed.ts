@@ -486,6 +486,31 @@ function leesWoningsubtypeRuw(html: string): string | null {
   return leesDtWaarde(html, "Soort woonhuis") ?? leesDtWaarde(html, "Soort appartement");
 }
 
+// BUGFIX (Sjoerd: "'Woonoppervlak kon niet worden vastgesteld' geeft die
+// melding vaker"): woonoppervlak kwam tot nu toe UITSLUITEND uit de
+// iconenrij bovenaan de pagina (m2Match hieronder) -- een fragiele,
+// class-naam-afhankelijke match die stopt te werken zodra Funda die rij ooit
+// anders opbouwt. Live gevonden (via een aparte fetch op een echte woning,
+// "Albinusstraat 12"): de Kenmerken-tabel heeft ONDER "Oppervlakten en
+// inhoud" > "Gebruiksoppervlakten" een eigen "Wonen"-rij (bv. "158 m²"),
+// exact hetzelfde dt/dd-patroon dat al bewezen betrouwbaar is voor Bouwjaar/
+// Perceel/Vraagprijs per m² (leesExtraKenmerken hierboven). Twee
+// onafhankelijke bronnen voor hetzelfde cijfer -- dt/dd-tabel als voorkeur
+// (het beproefde patroon), iconenrij als terugval, dus één van de twee moet
+// het bijna altijd kunnen ophalen. Kon geen van beide ondubbelzinnig de ruwe
+// (ongehydrateerde) HTML tonen om dit definitief te bevestigen -- deze
+// toevoeging is dus een robuustheidsverbetering, niet een 100% bevestigde
+// rootcause-fix; als de melding hierna nog vaak voorkomt, is een concreet
+// voorbeeldadres de volgende stap.
+function leesWoonoppervlak(html: string): number | null {
+  const uitTabel = leesGetal(leesDtWaarde(html, "Wonen"));
+  if (uitTabel != null) return uitTabel;
+  const m2Match = html.match(
+    /<span class="md:font-semibold">(\d+)\s*m²<\/span><span class="ml-1 hidden text-neutral-50 md:inline-block">wonen<\/span>/i
+  );
+  return m2Match ? Number(m2Match[1]) : null;
+}
+
 function leesLokaleVerificatieData(html: string, ld: FundaJsonLd): LokaleVerificatie {
   const types = Array.isArray(ld["@type"]) ? ld["@type"] : ld["@type"] ? [ld["@type"]] : [];
   const woningtypeFamilie: LokaleVerificatie["woningtypeFamilie"] = types.includes("Huis")
@@ -497,9 +522,6 @@ function leesLokaleVerificatieData(html: string, ld: FundaJsonLd): LokaleVerific
   const slaapMatch = html.match(
     /<span class="md:font-semibold">(\d+)<\/span><span class="ml-1 hidden text-neutral-50 md:inline-block">slaapkamers<\/span>/i
   );
-  const m2Match = html.match(
-    /<span class="md:font-semibold">(\d+)\s*m²<\/span><span class="ml-1 hidden text-neutral-50 md:inline-block">wonen<\/span>/i
-  );
   const labelMatch = html.match(
     /<span class="md:font-semibold">([^<]*)<\/span><span class="ml-1 hidden text-neutral-50 md:inline-block">energielabel<\/span>/i
   );
@@ -509,7 +531,7 @@ function leesLokaleVerificatieData(html: string, ld: FundaJsonLd): LokaleVerific
   return {
     woningtypeFamilie,
     slaapkamers: slaapMatch ? Number(slaapMatch[1]) : null,
-    woonoppervlak: m2Match ? Number(m2Match[1]) : null,
+    woonoppervlak: leesWoonoppervlak(html),
     energielabel: labelMatch ? labelMatch[1].trim() : null,
     ...leesBuitenruimte(html),
     ...leesExtraKenmerken(html),
