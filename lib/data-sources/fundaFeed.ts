@@ -580,6 +580,47 @@ function formatPrijs(bedrag: number | null): string | null {
   return `${new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(bedrag)} k.k.`;
 }
 
+// BUGFIX (Sjoerd: concreet voorbeeld met exacte voorkeuren -- wij 4 matches,
+// Funda zelf 5 voor precies dezelfde zoekopdracht, ontbrekende woning bleek
+// "Polanenstraat 9-01"): live nagebouwd (zelfde zoek-URL, alle 5 kandidaten
+// stuk voor stuk tegen onze harde eisen gehouden, inclusief het ld+json-blok
+// van de Polanenstraat-detailpagina zelf) -- prijs, woningtype, kamers,
+// energielabel, status en locatie zagen er voor DIE woning identiek
+// betrouwbaar uit als de 4 die wij wel al toonden. Geen enkel veld wees op
+// een fout in voldoetAanHardeEisen of de parsing zelf. De enige overgebleven
+// verklaring: haalListingDetails() deed één enkele fetch per detailpagina
+// zonder retry -- een eenmalige proxy-hik (timeout, 429, tijdelijke
+// CAPTCHA-pagina i.p.v. de listing) op precies DIE ene aanvraag liet de hele
+// kandidaat stilzwijgend vallen (`catch { return null }`), terwijl de andere
+// 4 gewoon in één keer slaagden. Zonder retry is zo'n eenmalige hik
+// onherkenbaar én onherstelbaar. Vandaar hieronder: één automatische
+// herpoging bij falen (net zo goed op een gegooide fout als op een niet-ok
+// status of een ontbrekend ld+json-blok), vóórdat de kandidaat pas echt wordt
+// losgelaten.
+async function haalListingDetailsPoging(detailUrl: string): Promise<FundaFeedItem | null> {
+  const res = await fetchMetTimeout(detailUrl, FUNDA_DETAIL_TIMEOUT_MS);
+  if (!res.ok) return null;
+  const html = await res.text();
+  const ld = extractJsonLd(html);
+  if (!ld) return null;
+
+  const verificatie = leesLokaleVerificatieData(html, ld);
+
+  const straat = ld.address?.streetAddress ?? ld.name ?? "";
+  const plaats = ld.address?.addressLocality ?? "";
+  const titel = [straat, plaats].filter(Boolean).join(", ") || ld.name || "Woning";
+  const prijs = naarPrijsGetal(ld.offers?.price);
+
+  return {
+    titel,
+    url: detailUrl,
+    prijs,
+    prijsLabel: formatPrijs(prijs),
+    fotoUrl: ld.image ?? null,
+    verificatie,
+  };
+}
+
 // Geëxporteerd (was intern) zodat b2bStore.ts hem kan hergebruiken om de
 // verificatie-snapshot van een AL OPGESLAGEN match te verversen -- zie de
 // toelichting bij `heeftOnvolledigeVerificatie`/de her-verificatiestap in
@@ -587,28 +628,22 @@ function formatPrijs(bedrag: number | null): string | null {
 // nu ook bruikbaar buiten een nieuwe zoekopdracht om.
 export async function haalListingDetails(detailUrl: string): Promise<FundaFeedItem | null> {
   try {
-    const res = await fetchMetTimeout(detailUrl, FUNDA_DETAIL_TIMEOUT_MS);
-    if (!res.ok) return null;
-    const html = await res.text();
-    const ld = extractJsonLd(html);
-    if (!ld) return null;
-
-    const verificatie = leesLokaleVerificatieData(html, ld);
-
-    const straat = ld.address?.streetAddress ?? ld.name ?? "";
-    const plaats = ld.address?.addressLocality ?? "";
-    const titel = [straat, plaats].filter(Boolean).join(", ") || ld.name || "Woning";
-    const prijs = naarPrijsGetal(ld.offers?.price);
-
-    return {
-      titel,
-      url: detailUrl,
-      prijs,
-      prijsLabel: formatPrijs(prijs),
-      fotoUrl: ld.image ?? null,
-      verificatie,
-    };
-  } catch {
+    const eersteResultaat = await haalListingDetailsPoging(detailUrl);
+    if (eersteResultaat) return eersteResultaat;
+  } catch (err) {
+    console.warn(`[fundaFeed] detailpagina-poging 1 mislukt voor ${detailUrl}:`, err instanceof Error ? err.message : err);
+  }
+  // Eén herpoging, met een korte pauze zodat een transiënte proxy-/
+  // ratelimit-hik (zie toelichting hierboven) niet meteen weer misgaat.
+  await new Promise((r) => setTimeout(r, 750));
+  try {
+    const tweedeResultaat = await haalListingDetailsPoging(detailUrl);
+    if (!tweedeResultaat) {
+      console.warn(`[fundaFeed] detailpagina ook bij herpoging niet leesbaar: ${detailUrl}`);
+    }
+    return tweedeResultaat;
+  } catch (err) {
+    console.warn(`[fundaFeed] detailpagina-herpoging ook mislukt voor ${detailUrl}:`, err instanceof Error ? err.message : err);
     return null;
   }
 }
@@ -746,9 +781,15 @@ export async function haalFundaMatches(
 
   try {
     const resultaten = await Promise.all(nieuweLinks.map((url) => haalListingDetails(url)));
-    const mislukt = resultaten.filter((item) => item === null).length;
-    if (mislukt > 0) {
-      console.log(`[fundaFeed] LIVE ${mislukt}/${nieuweLinks.length} link(s) niet leesbaar (detailpagina-fout)`);
+    // BUGFIX (Polanenstraat-casus, zie de toelichting bij haalListingDetails):
+    // dit logde voorheen alleen een AANTAL, nooit WELKE link(s) het betrof --
+    // onmogelijk om een eenmalige, niet-reproduceerbare hik achteraf te
+    // onderzoeken. Nu staan de URL's er gewoon bij.
+    const mislukteUrls = nieuweLinks.filter((_, i) => resultaten[i] === null);
+    if (mislukteUrls.length > 0) {
+      console.log(
+        `[fundaFeed] LIVE ${mislukteUrls.length}/${nieuweLinks.length} link(s) niet leesbaar (detailpagina-fout, ook na herpoging): ${mislukteUrls.join(", ")}`
+      );
     }
     return { items: resultaten.filter((item): item is FundaFeedItem => item !== null).filter(bijBudget), fout: false };
   } catch (err) {
