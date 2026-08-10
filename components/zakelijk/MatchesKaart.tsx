@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import type { B2bWoningMatch, B2bRapportAanvraag, B2bZoekopdracht, B2bKoperVoorkeuren } from "@/types/b2b";
 import { B2B_PRIORITEITEN, B2B_DEALBREAKERS } from "@/types/b2b";
 import { vindGekoppeldRapport } from "@/lib/services/matchRapportKoppeling";
-import { berekenMatchScore, type MatchScore, type MatchScoreOnderdeel, type MatchScoreDetailRegel } from "@/lib/services/matchScore";
+import type { MatchScore, MatchScoreOnderdeel, MatchScoreDetailRegel } from "@/lib/services/matchScore";
 import {
   BoltIcon,
   ArrowRightIcon,
@@ -483,23 +483,43 @@ export default function MatchesKaart({
 
   const koperVoorkeuren = zoekopdracht?.koperVoorkeuren ?? null;
 
+  // BUGFIX (Sjoerd: "de CBS databron geeft bij voorzieningen aan bij allemaal
+  // onbekend"): berekenMatchScore() deed hier voorheen rechtstreeks een CBS-
+  // OData-opzoeking (voorzieningenMatch.ts/buurtprofiel.ts) VANUIT DE BROWSER
+  // -- live geverifieerd dat opendata.cbs.nl geen CORS-headers zet, dus die
+  // fetch faalde daar altijd stilzwijgend op (PDOK zet wél `Access-Control-
+  // Allow-Origin: *`, dus de adresresolutie werkte toevallig wel). De
+  // berekening is daarom verplaatst naar een nieuwe server-side route
+  // (/api/zakelijk/klanten/[id]/matches-score, server-naar-server heeft geen
+  // CORS-beperking) -- deze effect roept die nu aan i.p.v. berekenMatchScore
+  // rechtstreeks te importeren en client-side uit te voeren.
   useEffect(() => {
     let actief = true;
     setScoresLaden(true);
     (async () => {
-      const resultaten = await Promise.all(
-        matches.map(async (match) => ({ match, score: await berekenMatchScore(match, koperVoorkeuren) }))
-      );
-      if (!actief) return;
-      resultaten.sort((a, b) => b.score.totaal - a.score.totaal);
-      setGescoord(resultaten);
-      setScoresLaden(false);
+      try {
+        const res = await fetch(`/api/zakelijk/klanten/${dossierId}/matches-score`, { method: "POST" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data: { gescoord: { match: B2bWoningMatch; score: MatchScore }[] } = await res.json();
+        if (!actief) return;
+        setGescoord(data.gescoord);
+      } catch {
+        // Val bij een mislukte aanroep terug op de matches zonder score
+        // (allemaal 0, geen onderdelen) i.p.v. de hele lijst stil te laten
+        // verdwijnen -- de kaarten blijven zo zichtbaar, alleen de
+        // rangschikking/toelichting ontbreekt dan tijdelijk.
+        if (actief) {
+          setGescoord(matches.map((match) => ({ match, score: { totaal: 0, ruwTotaal: 0, onderdelen: [], dealbreakersGetriggerd: [] } })));
+        }
+      } finally {
+        if (actief) setScoresLaden(false);
+      }
     })();
     return () => {
       actief = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [matches, JSON.stringify(koperVoorkeuren)]);
+  }, [matches, dossierId]);
 
   async function ververs() {
     setVerverst(true);
