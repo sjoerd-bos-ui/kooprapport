@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import type { B2bWoningMatch, B2bRapportAanvraag, B2bZoekopdracht, B2bKoperVoorkeuren } from "@/types/b2b";
 import { B2B_PRIORITEITEN, B2B_DEALBREAKERS } from "@/types/b2b";
 import { vindGekoppeldRapport } from "@/lib/services/matchRapportKoppeling";
-import { berekenMatchScore, type MatchScore } from "@/lib/services/matchScore";
+import { berekenMatchScore, type MatchScore, type MatchScoreOnderdeel, type MatchScoreDetailRegel } from "@/lib/services/matchScore";
 import {
   BoltIcon,
   ArrowRightIcon,
@@ -150,28 +150,163 @@ function ScoreRing({ score, groot }: { score: number; groot?: boolean }) {
   );
 }
 
-function ScoreToelichting({ score }: { score: MatchScore }) {
+// Getabde scoretoelichting (Cowork-gesprek "visualize deze schermen dat je
+// bovenaan kan klikken", eerst als mockup goedgekeurd) -- verving de vorige
+// platte lijst van alle 11 onderdelen onder elkaar. Vier tabs, elk met een
+// eigen invalshoek op dezelfde `score.onderdelen`:
+//   - Algemeen: de 8 rangschikkende/harde-eis-onderdelen (budget t/m parkeren)
+//     als rustige label+balkje+cijfer-rijen, BEWUST zonder iconen of badges
+//     (Sjoerd: "mooier maken maar niet te druk") -- alleen de balkkleur
+//     verschuift van groen naar amber/rood bij een lager percentage.
+//   - Voorzieningen/Inleveren/Belangrijkst: de drie onderdelen die sinds de
+//     matchScore.ts-uitbreiding een `detail`-array hebben (per-voorziening
+//     afstand, per-dealbreaker status, per-prioriteit deelscore) -- die
+//     detailregels renderen als kleine kleurgecodeerde pilletjes
+//     (DetailRegel hieronder), gedeeld tussen alle drie tabs.
+const ALGEMEEN_KEYS = ["budget", "locatie", "type", "kamers", "oppervlak", "buitenruimte", "energielabel", "parkeren"];
+
+type ScoreTabKey = "algemeen" | "voorzieningen" | "inleveren" | "belangrijkst";
+
+const SCORE_TABS: { key: ScoreTabKey; label: string }[] = [
+  { key: "algemeen", label: "Algemeen" },
+  { key: "voorzieningen", label: "Voorzieningen" },
+  { key: "inleveren", label: "Inleveren" },
+  { key: "belangrijkst", label: "Belangrijkst" },
+];
+
+const DETAIL_STATUS_STIJL: Record<MatchScoreDetailRegel["status"], { bg: string; tekst: string }> = {
+  goed: { bg: "bg-[#EAF3DE]", tekst: "text-[#27500A]" },
+  matig: { bg: "bg-[#FAEEDA]", tekst: "text-[#633806]" },
+  slecht: { bg: "bg-[#FBEAEA]", tekst: "text-rust" },
+  onbekend: { bg: "bg-ink/5", tekst: "text-ink/40" },
+};
+
+function DetailRegel({ regel }: { regel: MatchScoreDetailRegel }) {
+  const stijl = DETAIL_STATUS_STIJL[regel.status];
   return (
-    <div className="flex flex-col gap-2.5">
-      {score.onderdelen.map((o) => (
-        <div key={o.key}>
-          <div className="flex items-center justify-between gap-2 text-[11.5px]">
-            <span className="text-ink/60">{o.label}</span>
-            <span className={`font-semibold ${o.punten < 0 ? "text-rust" : "text-ink/40"}`}>
-              {o.maxPunten > 0 ? `${o.punten}/${o.maxPunten}` : o.punten}
-            </span>
+    <div className="flex items-center justify-between gap-2 py-1.5">
+      <span className="text-[11.5px] text-ink/70">{regel.label}</span>
+      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${stijl.bg} ${stijl.tekst}`}>{regel.waarde}</span>
+    </div>
+  );
+}
+
+function AlgemeenRegel({ onderdeel }: { onderdeel: MatchScoreOnderdeel }) {
+  const ratio = onderdeel.maxPunten > 0 ? Math.max(0, Math.min(1, onderdeel.punten / onderdeel.maxPunten)) : 0;
+  const kleur = ratio >= 0.75 ? "#3B6D11" : ratio >= 0.5 ? "#D97706" : "#B7302B";
+  return (
+    <div className="flex items-center gap-2.5 py-1.5">
+      <span className="flex-1 text-[11.5px] text-ink/70">{onderdeel.label}</span>
+      <div className="h-1 w-12 shrink-0 overflow-hidden rounded-full bg-mist">
+        <div className="h-full rounded-full" style={{ width: `${ratio * 100}%`, background: kleur }} />
+      </div>
+      <span className="w-10 shrink-0 text-right text-[11px] font-semibold text-ink/60">
+        {onderdeel.punten}/{onderdeel.maxPunten}
+      </span>
+    </div>
+  );
+}
+
+function OnderdeelKop({ onderdeel }: { onderdeel: MatchScoreOnderdeel }) {
+  return (
+    <div className="flex items-baseline justify-between gap-2">
+      <span className="text-[11.5px] font-semibold text-ink">{onderdeel.label}</span>
+      <span className="text-[13px] font-semibold text-ink">
+        {onderdeel.punten}
+        <span className="font-normal text-ink/40">/{onderdeel.maxPunten}</span>
+      </span>
+    </div>
+  );
+}
+
+function ScoreTabs({ score }: { score: MatchScore }) {
+  const [tab, setTab] = useState<ScoreTabKey>("algemeen");
+  const perKey = Object.fromEntries(score.onderdelen.map((o) => [o.key, o])) as Record<string, MatchScoreOnderdeel>;
+  const algemeenOnderdelen = ALGEMEEN_KEYS.map((k) => perKey[k]).filter((o): o is MatchScoreOnderdeel => o != null);
+  const voorzieningen = perKey.voorzieningen;
+  const dealbreakers = perKey.dealbreakers;
+  const prioriteiten = perKey.prioriteiten;
+
+  return (
+    <div>
+      <div className="flex gap-1 border-b border-line">
+        {SCORE_TABS.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            onClick={() => setTab(t.key)}
+            className={`flex-1 border-b-2 px-1 pb-2 text-[11px] font-semibold transition-colors ${
+              tab === t.key ? "border-accent text-ink" : "border-transparent text-ink/40 hover:text-ink/60"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+      <div className="pt-3">
+        {tab === "algemeen" && (
+          <div className="flex flex-col divide-y divide-mist">
+            {algemeenOnderdelen.map((o) => (
+              <AlgemeenRegel key={o.key} onderdeel={o} />
+            ))}
           </div>
-          {o.maxPunten > 0 && (
-            <div className="mt-1 h-1 overflow-hidden rounded-full bg-mist">
-              <div
-                className="h-full rounded-full bg-[#3B6D11]"
-                style={{ width: `${Math.max(0, Math.min(100, (o.punten / o.maxPunten) * 100))}%` }}
-              />
+        )}
+
+        {tab === "voorzieningen" && voorzieningen && (
+          <div>
+            <OnderdeelKop onderdeel={voorzieningen} />
+            <p className="mt-1 text-[10.5px] text-ink/40">{voorzieningen.toelichting}</p>
+            {voorzieningen.detail && voorzieningen.detail.length > 0 && (
+              <div className="mt-2 flex flex-col divide-y divide-mist">
+                {voorzieningen.detail.map((d) => (
+                  <DetailRegel key={d.label} regel={d} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {tab === "inleveren" && dealbreakers && (
+          <div>
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="text-[11.5px] font-semibold text-ink">Dealbreakers</span>
+              <span className={`text-[11.5px] font-semibold ${dealbreakers.punten < 0 ? "text-rust" : "text-[#27500A]"}`}>
+                {dealbreakers.toelichting}
+              </span>
             </div>
-          )}
-          <p className="mt-0.5 text-[10.5px] text-ink/40">{o.toelichting}</p>
-        </div>
-      ))}
+            {dealbreakers.detail && dealbreakers.detail.length > 0 ? (
+              <div className="mt-2 flex flex-col divide-y divide-mist">
+                {dealbreakers.detail.map((d) => (
+                  <DetailRegel key={d.label} regel={d} />
+                ))}
+              </div>
+            ) : (
+              <p className="mt-2 text-[10.5px] text-ink/40">Geen dealbreakers opgegeven.</p>
+            )}
+            <div className="mt-3 rounded-lg bg-mist p-2.5">
+              <p className="text-[10px] leading-relaxed text-ink/50">
+                &quot;Waar zou je op willen inleveren&quot; wordt nog niet in de score verwerkt.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {tab === "belangrijkst" && prioriteiten && (
+          <div>
+            <OnderdeelKop onderdeel={prioriteiten} />
+            <p className="mt-1 text-[10.5px] text-ink/40">{prioriteiten.toelichting}</p>
+            {prioriteiten.detail && prioriteiten.detail.length > 0 ? (
+              <div className="mt-2 flex flex-col divide-y divide-mist">
+                {prioriteiten.detail.map((d) => (
+                  <DetailRegel key={d.label} regel={d} />
+                ))}
+              </div>
+            ) : (
+              <p className="mt-2 text-[10.5px] text-ink/40">Geen prioriteiten opgegeven.</p>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -182,7 +317,7 @@ function ScoreToelichting({ score }: { score: MatchScore }) {
 function ScoreModal({ match, score, onSluiten }: { match: B2bWoningMatch; score: MatchScore; onSluiten: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 px-4" onClick={onSluiten}>
-      <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-overlay" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-[380px] rounded-2xl bg-white p-5 shadow-overlay" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="truncate text-[12.5px] font-semibold text-ink">{match.titel}</p>
@@ -192,7 +327,7 @@ function ScoreModal({ match, score, onSluiten }: { match: B2bWoningMatch; score:
         </div>
         <p className="mt-4 text-[10.5px] font-bold uppercase tracking-wide text-ink/35">Waarom deze score</p>
         <div className="mt-2.5">
-          <ScoreToelichting score={score} />
+          <ScoreTabs score={score} />
         </div>
         <button
           type="button"

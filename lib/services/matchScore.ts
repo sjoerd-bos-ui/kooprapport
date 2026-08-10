@@ -1,5 +1,13 @@
 import type { B2bWoningMatch, B2bKoperVoorkeuren, B2bMatchVerificatie, B2bDealbreaker, B2bPrioriteitOptie, B2bWoningtypeVoorkeur } from "@/types/b2b";
-import { B2B_BUDGET_OPTIES, B2B_MIN_KAMERS_OPTIES, B2B_MIN_OPPERVLAK_OPTIES, B2B_MIN_ENERGIELABEL_OPTIES, B2B_VOORZIENING_WENSEN } from "@/types/b2b";
+import {
+  B2B_BUDGET_OPTIES,
+  B2B_MIN_KAMERS_OPTIES,
+  B2B_MIN_OPPERVLAK_OPTIES,
+  B2B_MIN_ENERGIELABEL_OPTIES,
+  B2B_VOORZIENING_WENSEN,
+  B2B_DEALBREAKERS,
+  B2B_PRIORITEITEN,
+} from "@/types/b2b";
 import { ENERGIELABEL_VOLGORDE_FUNDA, BUDGET_ZOEK_MARGE } from "@/lib/data-sources/fundaFeed";
 import { vergelijkLocatieUitgebreid } from "@/lib/services/gebiedIndeling";
 import { afstandTotWens, heeftDatabron, haalVoorzieningenVoorAdres, VOORZIENING_DICHTBIJ_KM, type VoorzieningenResultaat } from "@/lib/services/voorzieningenMatch";
@@ -55,12 +63,25 @@ import { afstandTotWens, heeftDatabron, haalVoorzieningenVoorAdres, VOORZIENING_
 // overlap.
 // -----------------------------------------------------------------------------
 
+// Per-item uitsplitsing voor de getabde scoretoelichting in MatchesKaart.tsx
+// (Cowork-gesprek "visualize deze schermen dat je bovenaan kan klikken" --
+// eerst als mockup goedgekeurd, nu gebouwd). Optioneel: alleen voorzieningen/
+// dealbreakers/prioriteiten vullen dit, de overige onderdelen (budget,
+// locatie, etc.) hebben geen zinvolle sub-items en laten dit gewoon leeg.
+// `status` is puur voor kleurcodering in de UI, geen nieuw scoreconcept.
+export interface MatchScoreDetailRegel {
+  label: string;
+  waarde: string;
+  status: "goed" | "matig" | "slecht" | "onbekend";
+}
+
 export interface MatchScoreOnderdeel {
   key: string;
   label: string;
   punten: number;
   maxPunten: number;
   toelichting: string;
+  detail?: MatchScoreDetailRegel[];
 }
 
 export interface MatchScore {
@@ -381,10 +402,22 @@ function scoreVoorzieningen(voorkeuren: B2bKoperVoorkeuren, voorzieningen: Voorz
   });
   const gemiddelde = tiers.reduce((a, b) => a + b, 0) / tiers.length;
   const punten = Math.max(0, Math.min(8, Math.round((gemiddelde / 10) * 8)));
+  // Per-item uitsplitsing (zie MatchScoreDetailRegel hierboven) -- zelfde
+  // drempels als de tiers hierboven, alleen nu ook zichtbaar gemaakt i.p.v.
+  // alleen meegewogen in het gemiddelde.
+  const detail: MatchScoreDetailRegel[] = gekozen.map((wens) => {
+    const label = B2B_VOORZIENING_WENSEN.find((o) => o.waarde === wens)?.label ?? wens;
+    const afstand = afstandTotWens(voorzieningen.items, wens);
+    if (afstand == null) return { label, waarde: "onbekend", status: "onbekend" };
+    if (afstand <= 1) return { label, waarde: `${afstand.toFixed(1)} km`, status: "goed" };
+    if (afstand <= VOORZIENING_DICHTBIJ_KM) return { label, waarde: `${afstand.toFixed(1)} km`, status: "matig" };
+    return { label, waarde: `${afstand.toFixed(1)} km`, status: "slecht" };
+  });
   return {
     ...basis,
     punten,
     toelichting: `Scoort gemiddeld ${gemiddelde.toFixed(1)}/10 over de ${gekozen.length} opgegeven voorziening(en).`,
+    detail,
   };
 }
 
@@ -430,12 +463,26 @@ function isDealbreakerGetriggerd(
   }
 }
 
+// "busy_road_noise"/"too_far_from_work"/"other" hebben geen databron (zie
+// isDealbreakerGetriggerd hierboven, geeft daar altijd `false`) -- voor de
+// UI-uitsplitsing is dat een ander signaal dan "gecheckt en niet geraakt",
+// dus apart zichtbaar gemaakt i.p.v. stilzwijgend als "goed" te tonen.
+function heeftDealbreakerDatabron(db: B2bDealbreaker): boolean {
+  return db !== "busy_road_noise" && db !== "too_far_from_work" && db !== "other";
+}
+
 function evalueerDealbreakers(
   verificatie: B2bMatchVerificatie | null,
   voorzieningen: VoorzieningenResultaat,
   voorkeuren: B2bKoperVoorkeuren
 ): { getriggerd: B2bDealbreaker[]; onderdeel: MatchScoreOnderdeel } {
   const getriggerd = voorkeuren.dealbreakers.filter((db) => isDealbreakerGetriggerd(db, verificatie, voorzieningen, voorkeuren));
+  const detail: MatchScoreDetailRegel[] = voorkeuren.dealbreakers.map((db) => {
+    const label = B2B_DEALBREAKERS.find((o) => o.waarde === db)?.label ?? db;
+    if (getriggerd.includes(db)) return { label, waarde: "geraakt", status: "slecht" };
+    if (!heeftDealbreakerDatabron(db)) return { label, waarde: "geen databron", status: "onbekend" };
+    return { label, waarde: "niet geraakt", status: "goed" };
+  });
   return {
     getriggerd,
     onderdeel: {
@@ -444,6 +491,7 @@ function evalueerDealbreakers(
       punten: getriggerd.length > 0 ? -20 : 0,
       maxPunten: 0,
       toelichting: getriggerd.length > 0 ? `Raakt ${getriggerd.length} opgegeven dealbreaker(s).` : "Geen dealbreakers geraakt.",
+      detail,
     },
   };
 }
@@ -493,10 +541,47 @@ function scorePrioriteitenBonus(
   };
   const tiers = voorkeuren.prioriteiten.map((p) => koppeling[p]());
   const gemiddelde = Math.round(tiers.reduce((a, b) => a + b, 0) / tiers.length);
+  // Per-item uitsplitsing: waar mogelijk de ECHTE punten/maxPunten van het
+  // onderliggende onderdeel tonen (bv. "scoort 18/20") i.p.v. de abstracte
+  // 0-10-tier -- dat zegt de gebruiker (de makelaar) meer. "quiet_location"
+  // heeft geen eigen onderdeel (altijd tier 5, geen databron) en
+  // "condition_year" heeft geen los scoreonderdeel (alleen een bouwjaar-tier)
+  // -- die twee krijgen dus een eigen, eerlijke weergave i.p.v. een
+  // niet-bestaande "X/Y".
+  const directOnderdeelPerPrioriteit: Partial<Record<B2bPrioriteitOptie, string>> = {
+    location: "locatie",
+    price: "budget",
+    size: "oppervlak",
+    rooms: "kamers",
+    outdoor_space: "buitenruimte",
+    energy_efficiency: "energielabel",
+    parking: "parkeren",
+    amenities_nearby: "voorzieningen",
+  };
+  const detail: MatchScoreDetailRegel[] = voorkeuren.prioriteiten.map((p) => {
+    const label = B2B_PRIORITEITEN.find((o) => o.waarde === p)?.label ?? p;
+    const onderdeelKey = directOnderdeelPerPrioriteit[p];
+    if (onderdeelKey) {
+      const onderdeel = onderdelenPerKey[onderdeelKey];
+      const ratio = onderdeel.maxPunten > 0 ? onderdeel.punten / onderdeel.maxPunten : 0.5;
+      const status = ratio >= 0.75 ? "goed" : ratio >= 0.5 ? "matig" : "slecht";
+      return { label, waarde: `scoort ${onderdeel.punten}/${onderdeel.maxPunten}`, status };
+    }
+    if (p === "condition_year") {
+      const bouwjaar = verificatie?.bouwjaar ?? null;
+      if (bouwjaar == null) return { label, waarde: "onbekend", status: "onbekend" };
+      const tier = tierConditionYear(verificatie);
+      const status = tier >= 8 ? "goed" : tier >= 5 ? "matig" : "slecht";
+      return { label, waarde: `bouwjaar ${bouwjaar}`, status };
+    }
+    // quiet_location -- geen databron, zie koppeling hierboven (altijd tier 5)
+    return { label, waarde: "geen databron", status: "onbekend" };
+  });
   return {
     ...basis,
     punten: gemiddelde,
     toelichting: `Scoort gemiddeld ${gemiddelde}/10 op de ${voorkeuren.prioriteiten.length} opgegeven prioriteit(en).`,
+    detail,
   };
 }
 
