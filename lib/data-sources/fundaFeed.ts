@@ -494,21 +494,38 @@ function leesWoningsubtypeRuw(html: string): string | null {
 // "Albinusstraat 12"): de Kenmerken-tabel heeft ONDER "Oppervlakten en
 // inhoud" > "Gebruiksoppervlakten" een eigen "Wonen"-rij (bv. "158 m²"),
 // exact hetzelfde dt/dd-patroon dat al bewezen betrouwbaar is voor Bouwjaar/
-// Perceel/Vraagprijs per m² (leesExtraKenmerken hierboven). Twee
-// onafhankelijke bronnen voor hetzelfde cijfer -- dt/dd-tabel als voorkeur
-// (het beproefde patroon), iconenrij als terugval, dus één van de twee moet
-// het bijna altijd kunnen ophalen. Kon geen van beide ondubbelzinnig de ruwe
-// (ongehydrateerde) HTML tonen om dit definitief te bevestigen -- deze
-// toevoeging is dus een robuustheidsverbetering, niet een 100% bevestigde
-// rootcause-fix; als de melding hierna nog vaak voorkomt, is een concreet
-// voorbeeldadres de volgende stap.
+// Perceel/Vraagprijs per m² (leesExtraKenmerken hierboven).
+//
+// VERVOLG (Sjoerd meldde: blijft optreden op een live match, "2-Kamer-
+// appartementen (Bouwnr. 35)"): rootcause nu WEL bevestigd, via een snelle
+// web_fetch i.p.v. Chrome op een vergelijkbare nieuwbouw/projectwoning
+// (Funda "Bouwnr."-listing in Amsterdam). Bij nieuwbouw toont Funda het
+// woonoppervlak als "ca. 96 m²" i.p.v. "96 m²" (circa-maat, want nog niet
+// NEN2580-conform gemeten -- de pagina zelf vermeldt dit expliciet), en de
+// dt/dd-tekst "Wonen" bleek op die pagina niet (meer) als kale
+// "<dt>Wonen</dt>" te matchen -- vermoedelijk door extra opmaak (bv. een
+// info-icoon bij het label voor de circa-disclaimer) die leesDtWaarde's
+// strikte "\s*label\s*"-patroon breekt. leesGetal zelf kan "ca. 96 m²" prima
+// aan (het stript alles behalve cijfers), dus het probleem zit in het NIET
+// VINDEN van de dt/dd-rij, niet in het interpreteren van de waarde.
+//
+// Nieuwe derde fallback (platteTekstMatch): werkt op de HTML met alle tags
+// eruit gestript, zodat opmaak rond het "Wonen"-label (iconen, spans,
+// knoppen, nesting) er niet meer toe doet -- alleen de tekstuele nabijheid
+// van het woord "Wonen" en een daaropvolgend "<getal> m²" (met optioneel
+// "ca.") telt nog. Drie onafhankelijke bronnen nu: dt/dd-tabel (voorkeur),
+// iconenrij (terugval 1), platte-tekst-nabijheid (terugval 2, vangt o.a.
+// nieuwbouw/Bouwnr.-listings).
 function leesWoonoppervlak(html: string): number | null {
   const uitTabel = leesGetal(leesDtWaarde(html, "Wonen"));
   if (uitTabel != null) return uitTabel;
   const m2Match = html.match(
     /<span class="md:font-semibold">(\d+)\s*m²<\/span><span class="ml-1 hidden text-neutral-50 md:inline-block">wonen<\/span>/i
   );
-  return m2Match ? Number(m2Match[1]) : null;
+  if (m2Match) return Number(m2Match[1]);
+  const platteTekst = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+  const nabijheidMatch = platteTekst.match(/\bWonen\b\s*(?:ca\.?\s*)?(\d{1,4})\s*m²/i);
+  return nabijheidMatch ? Number(nabijheidMatch[1]) : null;
 }
 
 function leesLokaleVerificatieData(html: string, ld: FundaJsonLd): LokaleVerificatie {
