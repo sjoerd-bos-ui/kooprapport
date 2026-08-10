@@ -87,12 +87,12 @@ interface VoorzieningDefinitie {
   zinsdeel: string; // natuurlijke zinsvorm voor buildVoorzieningenTekst, bv. "de huisarts"
 }
 
-// Bewuste selectie van 10 uit de ruim 120 categorieën in 85560NED — gekozen
+// Bewuste selectie van 13 uit de ruim 120 categorieën in 85560NED — gekozen
 // op relevantie voor een koop-/verkoopbeslissing (gezondheid, dagelijkse
-// boodschappen, gezin/onderwijs, bereikbaarheid, buitenruimte). Expliciet
-// NIET toegevoegd: sauna, zonnebank, kunstijsbaan, bioscoop, attractie e.d.
-// — die bestaan wel in de CBS-tabel maar passen niet bij de feitelijke,
-// serieuze toon van dit rapport.
+// boodschappen, gezin/onderwijs, bereikbaarheid, buitenruimte, sport/horeca).
+// Expliciet NIET toegevoegd: sauna, zonnebank, kunstijsbaan, bioscoop,
+// attractie e.d. — die bestaan wel in de CBS-tabel maar passen niet bij de
+// feitelijke, serieuze toon van dit rapport.
 const VOORZIENING_DEFINITIES: VoorzieningDefinitie[] = [
   { key: "huisarts", cbsVeld: "AfstandTotHuisartsenpraktijk_5", label: "Huisartsenpraktijk", thema: "dagelijks", zinsdeel: "de huisarts" },
   { key: "apotheek", cbsVeld: "AfstandTotApotheek_10", label: "Apotheek", thema: "dagelijks", zinsdeel: "de apotheek" },
@@ -110,6 +110,24 @@ const VOORZIENING_DEFINITIES: VoorzieningDefinitie[] = [
   { key: "treinstation", cbsVeld: "AfstandTotTreinstationsTotaal_105", label: "Treinstation", thema: "bereikbaarheid", zinsdeel: "het dichtstbijzijnde treinstation" },
   { key: "opritHoofdweg", cbsVeld: "AfstandTotOpritHoofdverkeersweg_104", label: "Oprit hoofdweg", thema: "bereikbaarheid", zinsdeel: "een oprit van de snelweg" },
   { key: "park", cbsVeld: "AfstandTotOpenbaarGroenTotaal_91", label: "Park / openbaar groen", thema: "bereikbaarheid", zinsdeel: "een park of andere groenvoorziening" },
+  // Toegevoegd (Cowork-gesprek "voorzieningen staat bij sommige geen
+  // databron gekoppeld -- fix dit"): B2B-vraag 9 heeft "Sport / recreatie" en
+  // "Horeca / restaurants" als keuzes, maar voorzieningenMatch.ts kende hier
+  // eerder BEWUST geen CBS-bron aan toe (zie de oude toelichting daar) --
+  // niet omdat de data niet bestond, maar om het consumenten-Kooprapport niet
+  // impliciet mee uit te breiden zonder een aparte afweging. Nu alsnog
+  // toegevoegd, live geverifieerd tegen de CBS 85560NED DataProperties:
+  // AfstandTotSportterrein_99 ("sportveld, sporthal, zwembad, kunstijsbaan
+  // e.d.", topicgroep "Sport") is de bredere, representatievere keuze boven
+  // het smallere AfstandTotZwembad_108. Voor horeca zijn zowel "Cafés e.d."
+  // als "Restaurants" aparte CBS-categorieën (AfstandTotCafeED_36 resp.
+  // AfstandTotRestaurant_44) -- beide toegevoegd, WENS_NAAR_CBS_KEYS in
+  // voorzieningenMatch.ts neemt de kortste afstand van de twee. Thema
+  // "dagelijks" (geen nieuwe VoorzieningThema-waarde nodig): sport/horeca
+  // passen inhoudelijk prima bij het bestaande label "Dagelijks leven".
+  { key: "sportterrein", cbsVeld: "AfstandTotSportterrein_99", label: "Sportterrein", thema: "dagelijks", zinsdeel: "het dichtstbijzijnde sportterrein" },
+  { key: "cafeED", cbsVeld: "AfstandTotCafeED_36", label: "Café e.d.", thema: "dagelijks", zinsdeel: "een café" },
+  { key: "restaurant", cbsVeld: "AfstandTotRestaurant_44", label: "Restaurant", thema: "dagelijks", zinsdeel: "een restaurant" },
 ];
 
 const NABIJHEID_SELECT = VOORZIENING_DEFINITIES.map((d) => d.cbsVeld).join(",");

@@ -35,4 +35,7 @@ export const VOORZIENING_KLEUR: Record<string, string> = {
   treinstation: "#0EA5E9",
   opritHoofdweg: "#64748B",
   park: "#16A34A",
+  sportterrein: "#EA580C",
+  cafeED: "#A16207",
+  restaurant: "#BE123C",
 };

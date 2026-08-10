@@ -30,23 +30,28 @@ import type { VoorzieningAfstand } from "@/types/report";
 
 // 7 vragenlijst-categorieën -> CBS 85560NED-voorzieningkeys (zie
 // VOORZIENING_DEFINITIES in buurtprofiel.ts, gedeeld met het consumenten-
-// Kooprapport). "sports"/"restaurants" hebben BEWUST (nog) geen CBS-bron --
-// niet omdat de tabel die categorieën niet kent (café/restaurant/zwembad
-// bestaan er wel, live geverifieerd), maar omdat toevoegen aan de gedeelde
-// VOORZIENING_DEFINITIES ook het consumenten-Kooprapport zou raken (nieuw
-// thema nodig, buiten scope van deze stap -- zie het Cowork-gesprek
-// hierover). Lege array = "geen databron", nooit "0 km" of een gok.
-// matchScore.ts telt zo'n wens dan altijd neutraal mee, nooit als
-// afwijzingsgrond. ("workplace" bestond hier eerder ook als lege array, maar
-// is inmiddels helemaal uit B2bVoorzieningWens verwijderd -- die categorie
-// heeft ÜBERHAUPT geen bruikbare CBS-afstandsdata, zie types/b2b.ts.)
+// Kooprapport).
+//
+// BUGFIX (Cowork-gesprek "voorzieningen staat bij sommige geen databron
+// gekoppeld -- fix dit"): "sports"/"restaurants" hadden hier eerder BEWUST
+// geen CBS-bron (lege array) -- de tabel kent café/restaurant/sportterrein
+// wel, maar toevoegen aan de gedeelde VOORZIENING_DEFINITIES raakt ook het
+// consumenten-Kooprapport, dus dat was bewust uitgesteld. Inmiddels alsnog
+// toegevoegd (zie de toelichting bij "sportterrein"/"cafeED"/"restaurant" in
+// VOORZIENING_DEFINITIES, buurtprofiel.ts) -- alle 7 wensen hebben nu een
+// echte CBS-databron, geen enkele meer met een lege array.
+// ("workplace" bestond hier eerder ook als lege array, maar is inmiddels
+// helemaal uit B2bVoorzieningWens verwijderd -- die categorie heeft
+// ÜBERHAUPT geen bruikbare CBS-afstandsdata, zie types/b2b.ts. Een lege array
+// blijft dus mogelijk/ondersteund voor een toekomstige categorie zonder
+// databron, alleen komt dat nu voor geen van de 7 huidige wensen meer voor.)
 const WENS_NAAR_CBS_KEYS: Record<B2bVoorzieningWens, string[]> = {
   schools: ["basisschool", "voortgezetOnderwijs", "kinderdagverblijf"],
   shops: ["supermarkt"],
   public_transport: ["treinstation"],
   healthcare: ["huisarts", "apotheek", "ziekenhuis"],
-  sports: [],
-  restaurants: [],
+  sports: ["sportterrein"],
+  restaurants: ["cafeED", "restaurant"],
   park: ["park"],
 };
 
@@ -79,9 +84,10 @@ export async function haalVoorzieningenVoorAdres(funda_titel: string): Promise<V
 }
 
 // Kortste afstand tot een voorziening die bij deze wens hoort, of `null` als
-// er geen databron (sports/restaurants) of geen cijfer bekend is -- bewust
-// hetzelfde onderscheid als de rest van dit project: `null` is nooit
-// "0 km"/"veraf", altijd "niet te bepalen".
+// er geen databron (nu geen van de 7 wensen meer, maar de functie blijft
+// hierop voorbereid) of geen cijfer bekend is -- bewust hetzelfde onderscheid
+// als de rest van dit project: `null` is nooit "0 km"/"veraf", altijd "niet
+// te bepalen".
 //
 // `?? []` bij de lookup is BEWUST defensief: `wens` komt bij een bestaand
 // (nog niet opnieuw opgeslagen) koperVoorkeuren-dossier rechtstreeks uit de
@@ -96,9 +102,11 @@ export function afstandTotWens(items: VoorzieningAfstand[], wens: B2bVoorziening
   return afstanden.length > 0 ? Math.min(...afstanden) : null;
 }
 
-// Heeft deze wens ÜBERHAUPT een CBS-databron? Gebruikt om sports/restaurants
-// expliciet als "niet meetbaar" te behandelen i.p.v. impliciet als "0 van de
-// 0 gevonden = ver weg".
+// Heeft deze wens ÜBERHAUPT een CBS-databron? Alle 7 huidige wensen hebben er
+// inmiddels een (zie WENS_NAAR_CBS_KEYS hierboven) -- deze functie blijft
+// bestaan voor een eventuele toekomstige wens zonder databron, zodat die dan
+// expliciet als "niet meetbaar" behandeld wordt i.p.v. impliciet als "0 van
+// de 0 gevonden = ver weg".
 export function heeftDatabron(wens: B2bVoorzieningWens): boolean {
   return (WENS_NAAR_CBS_KEYS[wens] ?? []).length > 0;
 }

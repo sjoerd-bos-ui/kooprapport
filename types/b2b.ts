@@ -378,10 +378,15 @@ export const B2B_MIN_ENERGIELABEL_OPTIES: { waarde: B2bMinEnergielabelOptie; lab
 // --- Stap 4: voorzieningen ---------------------------------------------------------
 // Zie lib/services/voorzieningenMatch.ts voor de koppeling met het bestaande
 // CBS-gebaseerde buurtprofiel (lib/data-sources/buurtprofiel.ts, al gebruikt
-// voor de consumenten-Kooprapporten) -- "sports"/"restaurants"/"workplace"
-// hebben daar BEWUST geen databron voor (CBS' "Nabijheid voorzieningen"-tabel
-// kent geen categorie voor sportfaciliteiten, horeca of werklocaties), dus
-// die drie tellen in de score altijd neutraal mee, nooit als afwijzingsgrond.
+// voor de consumenten-Kooprapporten). Alle 7 wensen hebben inmiddels een
+// echte CBS-databron (zie VOORZIENING_DEFINITIES in buurtprofiel.ts) --
+// "sports"/"restaurants" hadden die eerder bewust nog niet (niet omdat CBS'
+// "Nabijheid voorzieningen"-tabel geen categorie voor sportfaciliteiten/
+// horeca kent -- die bestaat wel, AfstandTotSportterrein_99 resp.
+// AfstandTotCafeED_36/AfstandTotRestaurant_44 -- maar omdat toevoegen aan de
+// gedeelde definitielijst ook het consumenten-Kooprapport zou raken).
+// "workplace" is wél helemaal verwijderd (zie de bugfix hieronder): daar
+// bestaat ÜBERHAUPT geen bruikbare adres-specifieke CBS-afstandsdata voor.
 // BUGFIX/opschoning (Cowork-gesprek "waarom staat voorzieningen op 0"):
 // "workplace" ("Werkplek in de buurt") is verwijderd -- CBS 85560NED heeft
 // hiervoor geen adres-specifieke afstandsdata, alleen een grove telling
