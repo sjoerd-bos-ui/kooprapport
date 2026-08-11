@@ -616,7 +616,15 @@ function scorePrioriteitenBonus(
   onderdelenPerKey: Record<string, MatchScoreOnderdeel>
 ): MatchScoreOnderdeel {
   const basis = { key: "prioriteiten", label: "Prioriteiten", maxPunten: 10 };
-  if (voorkeuren.prioriteiten.length === 0) {
+  // BUGFIX/opschoning (Cowork-gesprek "Rust/ligging eruit halen"):
+  // "quiet_location" bestaat niet meer in B2bPrioriteitOptie (types/b2b.ts)
+  // -- geen bruikbare geluids-/rustdata per adres, scoorde dus altijd exact
+  // hetzelfde neutrale tier voor elke woning. Defensief gefilterd, zelfde
+  // patroon als bij de eerdere "workplace"/"park"-opschoningen: een bestaand
+  // dossier met "quiet_location" nog in prioriteiten mag hier nooit een
+  // crash geven (koppeling[p] zou anders `undefined` zijn).
+  const gekozen = voorkeuren.prioriteiten.filter((p) => B2B_PRIORITEITEN.some((o) => o.waarde === p));
+  if (gekozen.length === 0) {
     return { ...basis, punten: 0, toelichting: "Geen prioriteiten opgegeven." };
   }
   // "amenities_nearby" hergebruikt sinds de nieuwe Voorzieningen-component
@@ -632,18 +640,15 @@ function scorePrioriteitenBonus(
     energy_efficiency: () => tierVoorComponent(onderdelenPerKey.energielabel),
     parking: () => tierVoorComponent(onderdelenPerKey.parkeren),
     amenities_nearby: () => tierVoorComponent(onderdelenPerKey.voorzieningen),
-    quiet_location: () => 5,
     condition_year: () => tierConditionYear(verificatie),
   };
-  const tiers = voorkeuren.prioriteiten.map((p) => koppeling[p]());
+  const tiers = gekozen.map((p) => koppeling[p]());
   const gemiddelde = Math.round(tiers.reduce((a, b) => a + b, 0) / tiers.length);
   // Per-item uitsplitsing: waar mogelijk de ECHTE punten/maxPunten van het
   // onderliggende onderdeel tonen (bv. "scoort 18/20") i.p.v. de abstracte
-  // 0-10-tier -- dat zegt de gebruiker (de makelaar) meer. "quiet_location"
-  // heeft geen eigen onderdeel (altijd tier 5, geen databron) en
-  // "condition_year" heeft geen los scoreonderdeel (alleen een bouwjaar-tier)
-  // -- die twee krijgen dus een eigen, eerlijke weergave i.p.v. een
-  // niet-bestaande "X/Y".
+  // 0-10-tier -- dat zegt de gebruiker (de makelaar) meer. "condition_year"
+  // heeft geen los scoreonderdeel (alleen een bouwjaar-tier), die krijgt dus
+  // een eigen, eerlijke weergave i.p.v. een niet-bestaande "X/Y".
   const directOnderdeelPerPrioriteit: Partial<Record<B2bPrioriteitOptie, string>> = {
     location: "locatie",
     price: "budget",
@@ -654,7 +659,7 @@ function scorePrioriteitenBonus(
     parking: "parkeren",
     amenities_nearby: "voorzieningen",
   };
-  const detail: MatchScoreDetailRegel[] = voorkeuren.prioriteiten.map((p) => {
+  const detail: MatchScoreDetailRegel[] = gekozen.map((p) => {
     const label = B2B_PRIORITEITEN.find((o) => o.waarde === p)?.label ?? p;
     const onderdeelKey = directOnderdeelPerPrioriteit[p];
     if (onderdeelKey) {
@@ -663,15 +668,12 @@ function scorePrioriteitenBonus(
       const status = ratio >= 0.75 ? "goed" : ratio >= 0.5 ? "matig" : "slecht";
       return { label, waarde: `scoort ${onderdeel.punten}/${onderdeel.maxPunten}`, status };
     }
-    if (p === "condition_year") {
-      const bouwjaar = verificatie?.bouwjaar ?? null;
-      if (bouwjaar == null) return { label, waarde: "onbekend", status: "onbekend" };
-      const tier = tierConditionYear(verificatie);
-      const status = tier >= 8 ? "goed" : tier >= 5 ? "matig" : "slecht";
-      return { label, waarde: `bouwjaar ${bouwjaar}`, status };
-    }
-    // quiet_location -- geen databron, zie koppeling hierboven (altijd tier 5)
-    return { label, waarde: "geen databron", status: "onbekend" };
+    // condition_year -- enige overgebleven optie zonder los scoreonderdeel.
+    const bouwjaar = verificatie?.bouwjaar ?? null;
+    if (bouwjaar == null) return { label, waarde: "onbekend", status: "onbekend" };
+    const tier = tierConditionYear(verificatie);
+    const status = tier >= 8 ? "goed" : tier >= 5 ? "matig" : "slecht";
+    return { label, waarde: `bouwjaar ${bouwjaar}`, status };
   });
   return {
     ...basis,

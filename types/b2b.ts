@@ -497,10 +497,19 @@ export const B2B_AFWEGINGEN: { waarde: B2bAfweging; label: string }[] = [
 export const MAX_AFWEGINGEN = 3;
 
 // --- Stap 7: prioriteiten -----------------------------------------------------------
-// "quiet_location" (geen geluid-/rustdata) en "condition_year" (benaderd via
-// bouwjaar, zie hieronder) hebben een beperktere databasis dan de rest -- zie
-// scorePrioriteitenBonus() in matchScore.ts voor de precieze, per-prioriteit
-// onderbouwing.
+// "condition_year" (benaderd via bouwjaar, zie tierConditionYear in
+// matchScore.ts) heeft een beperktere databasis dan de rest, maar wel een
+// echte.
+//
+// BUGFIX/opschoning (Cowork-gesprek "Belangrijkst laatste blok -- zet in
+// tabel welke we ophalen en welke databron hieraan gekoppeld is" -> "Rust/
+// ligging eruit halen en bouwen"): "quiet_location" ("Rust / ligging") is
+// verwijderd -- er bestaat GEEN bruikbare geluids-/rustdata per adres (geen
+// CBS-tabel, geen andere aangesloten databron), dus deze prioriteit scoorde
+// altijd exact hetzelfde neutrale tier (5/10), ongeacht welke woning. Zelfde
+// opschoningsprincipe als eerder bij "workplace" (voorzieningen), "park"
+// (voorzieningen) en "longer_commute_for_area" (afwegingen): geen keuze
+// laten staan die nooit een echt onderscheid kan maken.
 export type B2bPrioriteitOptie =
   | "location"
   | "price"
@@ -510,7 +519,6 @@ export type B2bPrioriteitOptie =
   | "energy_efficiency"
   | "parking"
   | "amenities_nearby"
-  | "quiet_location"
   | "condition_year";
 
 export const B2B_PRIORITEITEN: { waarde: B2bPrioriteitOptie; label: string }[] = [
@@ -522,7 +530,6 @@ export const B2B_PRIORITEITEN: { waarde: B2bPrioriteitOptie; label: string }[] =
   { waarde: "energy_efficiency", label: "Energielabel / duurzaamheid" },
   { waarde: "parking", label: "Parkeergelegenheid" },
   { waarde: "amenities_nearby", label: "Nabijheid voorzieningen" },
-  { waarde: "quiet_location", label: "Rust / ligging" },
   { waarde: "condition_year", label: "Bouwjaar / staat" },
 ];
 
