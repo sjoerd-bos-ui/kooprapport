@@ -345,16 +345,25 @@ function evalueerDealbreakers(
 // =============================================================================
 
 // Vaste gewichten uit Sjoerds tabel (Stap 2A) -- categorieën die NIET als
-// prioriteit gekozen zijn, krijgen in plaats daarvan het vaste restgewicht.
-// Bewust een losse RUWE-gewichten-stap gevolgd door normalisatie: de 6
-// tabelgewichten (25+20+20+15+10+10) tellen zelf al op tot 100%, maar zodra
-// je (zoals de opgave voorschrijft) maar 3 daarvan gebruikt en de overige 3
-// vervangt door "elk 5%", tellen die twee groepen NIET meer vanzelf op tot
-// 100% -- welke 3 gekozen zijn bepaalt de ruwe som (bv. bij Locatie+Prijs+
-// Woninggrootte: 25+20+20 + 3x5 = 80%, niet 100%). Normaliseren (elk
-// aandeel delen door de totale ruwe som) is de enige manier om, ongeacht
-// welke 3 gekozen zijn, altijd exact op 100% uit te komen -- zoals de opgave
-// expliciet vermeldt ("Totaal = 100%").
+// prioriteit gekozen zijn, krijgen in plaats daarvan het vaste restgewicht
+// van 5% -- dat is een HARDE garantie (zie Sjoerd: "de overige 3 categorieën
+// krijgen elk 5%"), niet een gemiddelde die per situatie verschuift.
+//
+// BUGFIX/verfijning (Sjoerd, na review van de eerste versie): de eerste
+// implementatie normaliseerde alle 6 ruwe gewichten (tabelgewicht bij
+// gekozen, anders 5) samen door de totale som -- daarmee kregen de
+// NIET-gekozen categorieën niet altijd exact 5%, dat percentage verschoof
+// per combinatie. Sjoerds voorkeursformule verdeelt in plaats daarvan EERST
+// het restgewicht (aantal niet-gekozen categorieën x 5%) vast toe, en
+// verdeelt wat er dan nog overblijft (100% - restgewicht) UITSLUITEND over de
+// gekozen categorieën, evenredig aan hun onderlinge tabelgewicht. Bij precies
+// 3 gekozen categorieën (het normale geval, Vraag 13 vraagt max 3) is dat
+// altijd 100% - 3x5% = 85% te verdelen, exact zoals Sjoerds voorbeeld
+// (25/65, 20/65, 20/65 van 85% bij Locatie+Prijs+Woninggrootte). Bij minder
+// dan 3 gekozen (mag ook, Vraag 13 vereist minimaal 1) schaalt dit gewoon
+// mee: meer niet-gekozen categorieën x 5% resterend, minder te verdelen over
+// de gekozen. Altijd exact 100% totaal, en "de rest krijgt elk 5%" is hier
+// altijd letterlijk waar in plaats van "meestal".
 const PRIORITEIT_TABELGEWICHT: Record<B2bPrioriteitOptie, number> = {
   location: 25,
   price: 20,
@@ -367,14 +376,26 @@ const RESTGEWICHT = 5;
 
 function berekenGewichten(gekozenPrioriteiten: B2bPrioriteitOptie[]): Record<B2bPrioriteitOptie, number> {
   const alleCategorieen = B2B_PRIORITEITEN.map((o) => o.waarde);
-  const ruw: Partial<Record<B2bPrioriteitOptie, number>> = {};
-  for (const cat of alleCategorieen) {
-    ruw[cat] = gekozenPrioriteiten.includes(cat) ? PRIORITEIT_TABELGEWICHT[cat] : RESTGEWICHT;
-  }
-  const som = alleCategorieen.reduce((s, c) => s + (ruw[c] ?? RESTGEWICHT), 0);
   const genormaliseerd: Partial<Record<B2bPrioriteitOptie, number>> = {};
+
+  if (gekozenPrioriteiten.length === 0) {
+    // Defensief (Vraag 13 vereist normaal minimaal 1) -- geen enkele
+    // categorie is dan "belangrijker", dus alles weegt gelijk mee.
+    const gelijk = 100 / alleCategorieen.length;
+    for (const cat of alleCategorieen) genormaliseerd[cat] = gelijk;
+    return genormaliseerd as Record<B2bPrioriteitOptie, number>;
+  }
+
+  const nietGekozen = alleCategorieen.filter((c) => !gekozenPrioriteiten.includes(c));
+  const teVerdelen = 100 - nietGekozen.length * RESTGEWICHT; // bv. 3 gekozen -> 100 - 3x5 = 85%
+  const somTabelgewichtenGekozen = gekozenPrioriteiten.reduce((s, c) => s + PRIORITEIT_TABELGEWICHT[c], 0);
   for (const cat of alleCategorieen) {
-    genormaliseerd[cat] = som > 0 ? ((ruw[cat] ?? RESTGEWICHT) / som) * 100 : 100 / alleCategorieen.length;
+    if (gekozenPrioriteiten.includes(cat)) {
+      genormaliseerd[cat] =
+        somTabelgewichtenGekozen > 0 ? (PRIORITEIT_TABELGEWICHT[cat] / somTabelgewichtenGekozen) * teVerdelen : teVerdelen / gekozenPrioriteiten.length;
+    } else {
+      genormaliseerd[cat] = RESTGEWICHT;
+    }
   }
   return genormaliseerd as Record<B2bPrioriteitOptie, number>;
 }
