@@ -109,23 +109,58 @@ const VOORZIENING_DEFINITIES: VoorzieningDefinitie[] = [
   { key: "kinderdagverblijf", cbsVeld: "AfstandTotKinderdagverblijf_52", label: "Kinderdagverblijf", thema: "gezin", zinsdeel: "het dichtstbijzijnde kinderdagverblijf" },
   { key: "treinstation", cbsVeld: "AfstandTotTreinstationsTotaal_105", label: "Treinstation", thema: "bereikbaarheid", zinsdeel: "het dichtstbijzijnde treinstation" },
   { key: "opritHoofdweg", cbsVeld: "AfstandTotOpritHoofdverkeersweg_104", label: "Oprit hoofdweg", thema: "bereikbaarheid", zinsdeel: "een oprit van de snelweg" },
+  // BUGFIX (Sjoerd: "Sport / recreatie" en "Park / groen" komen voortdurend
+  // op onbekend uit): live geverifieerd, rechtstreeks tegen de CBS 85560NED
+  // OData-data (niet alleen de DataProperties-schema-namen, maar de
+  // daadwerkelijke WAARDEN) voor twee volledig verschillende Rotterdamse
+  // buurten (Kralingen Oost + Delfshaven) -- AfstandTotOpenbaarGroenTotaal_91
+  // (dit veld) staat voor BEIDE op `null`, terwijl een controleveld uit een
+  // andere topicgroep (AfstandTotHuisartsenpraktijk_5) voor beide gewoon een
+  // waarde teruggaf. Root cause zit dus niet in onze query/veldnaam, maar bij
+  // CBS zelf: dit veld valt onder topicgroep "Groenvoorzieningen", en CBS'
+  // EIGEN tabelbeschrijving (DataProperties, ID 137) zegt letterlijk dat deze
+  // hele groep sinds verslagjaar 2017 niet meer is bijgewerkt ("de volgende
+  // jaargang is 2020... waarschijnlijk eind 2025 gepubliceerd") -- en op
+  // vandaag (11-8-2026) blijkt die publicatie er dus kennelijk nog steeds
+  // niet te zijn, of niet voor deze buurtindeling. Ook de twee meest voor de
+  // hand liggende alternatieven binnen dezelfde groep (AfstandTotParkOf
+  // Plantsoen_92, AfstandTotBos_94) zijn live gecontroleerd en staan om
+  // dezelfde reden ook op `null` -- er is dus geen ander bruikbaar CBS-veld
+  // voor "park/groen" binnen deze tabel. Blijft daarom bewust staan (geeft nu
+  // een eerlijke "onbekend" i.p.v. een geraden afstand) totdat CBS deze groep
+  // vernieuwt, of totdat er een aparte databron (bv. PDOK/OSM groenlagen)
+  // voor in de plaats komt -- dat laatste is een apart, groter traject, geen
+  // quick fix.
   { key: "park", cbsVeld: "AfstandTotOpenbaarGroenTotaal_91", label: "Park / openbaar groen", thema: "bereikbaarheid", zinsdeel: "een park of andere groenvoorziening" },
   // Toegevoegd (Cowork-gesprek "voorzieningen staat bij sommige geen
   // databron gekoppeld -- fix dit"): B2B-vraag 9 heeft "Sport / recreatie" en
   // "Horeca / restaurants" als keuzes, maar voorzieningenMatch.ts kende hier
   // eerder BEWUST geen CBS-bron aan toe (zie de oude toelichting daar) --
   // niet omdat de data niet bestond, maar om het consumenten-Kooprapport niet
-  // impliciet mee uit te breiden zonder een aparte afweging. Nu alsnog
-  // toegevoegd, live geverifieerd tegen de CBS 85560NED DataProperties:
+  // impliciet mee uit te breiden zonder een aparte afweging. Voor horeca zijn
+  // zowel "Cafés e.d." als "Restaurants" aparte CBS-categorieën
+  // (AfstandTotCafeED_36 resp. AfstandTotRestaurant_44) -- beide toegevoegd,
+  // WENS_NAAR_CBS_KEYS in voorzieningenMatch.ts neemt de kortste afstand van
+  // de twee. Thema "dagelijks" (geen nieuwe VoorzieningThema-waarde nodig):
+  // sport/horeca passen inhoudelijk prima bij het bestaande label "Dagelijks
+  // leven".
+  //
+  // BUGFIX (zelfde "komt voortdurend op onbekend"-melding als bij "park"
+  // hierboven): voor sport was oorspronkelijk gekozen voor
   // AfstandTotSportterrein_99 ("sportveld, sporthal, zwembad, kunstijsbaan
-  // e.d.", topicgroep "Sport") is de bredere, representatievere keuze boven
-  // het smallere AfstandTotZwembad_108. Voor horeca zijn zowel "Cafés e.d."
-  // als "Restaurants" aparte CBS-categorieën (AfstandTotCafeED_36 resp.
-  // AfstandTotRestaurant_44) -- beide toegevoegd, WENS_NAAR_CBS_KEYS in
-  // voorzieningenMatch.ts neemt de kortste afstand van de twee. Thema
-  // "dagelijks" (geen nieuwe VoorzieningThema-waarde nodig): sport/horeca
-  // passen inhoudelijk prima bij het bestaande label "Dagelijks leven".
-  { key: "sportterrein", cbsVeld: "AfstandTotSportterrein_99", label: "Sportterrein", thema: "dagelijks", zinsdeel: "het dichtstbijzijnde sportterrein" },
+  // e.d.") als de bredere, representatievere keuze boven het smallere
+  // AfstandTotZwembad_108 -- maar AfstandTotSportterrein_99 valt onder
+  // topicgroep "Semi-openbaar groen", een SUBGROEP van diezelfde bevroren
+  // "Groenvoorzieningen"-groep als "park" hierboven, en bleek bij dezelfde
+  // live steekproef (twee Rotterdamse buurten) ook consequent `null`.
+  // AfstandTotZwembad_108 valt daarentegen onder de volledig aparte,
+  // actief bijgehouden topicgroep "Sport" (samen met bv. kunstijsbaan) en gaf
+  // bij diezelfde steekproef gewoon een echte waarde terug (2,0 km). Bewust
+  // gewisseld: een smallere maar WERKENDE indicator is beter dan een bredere
+  // die voor iedereen permanent "onbekend" oplevert. De oude key
+  // "sportterrein" is bewust niet hergebruikt (zou nu een misleidende naam
+  // zijn) -- de nieuwe key heet gewoon "zwembad".
+  { key: "zwembad", cbsVeld: "AfstandTotZwembad_108", label: "Zwembad", thema: "dagelijks", zinsdeel: "het dichtstbijzijnde zwembad" },
   { key: "cafeED", cbsVeld: "AfstandTotCafeED_36", label: "Café e.d.", thema: "dagelijks", zinsdeel: "een café" },
   { key: "restaurant", cbsVeld: "AfstandTotRestaurant_44", label: "Restaurant", thema: "dagelijks", zinsdeel: "een restaurant" },
 ];

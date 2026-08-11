@@ -45,12 +45,25 @@ import type { VoorzieningAfstand } from "@/types/report";
 // ÜBERHAUPT geen bruikbare CBS-afstandsdata, zie types/b2b.ts. Een lege array
 // blijft dus mogelijk/ondersteund voor een toekomstige categorie zonder
 // databron, alleen komt dat nu voor geen van de 7 huidige wensen meer voor.)
+// BUGFIX (Sjoerd: "Sport / recreatie" en "Park / groen" komen voortdurend op
+// onbekend uit): live geverifieerd tegen de daadwerkelijke CBS-waarden (niet
+// alleen de veldnamen) -- AfstandTotOpenbaarGroenTotaal_91 ("park") en
+// AfstandTotSportterrein_99 vallen allebei onder CBS' topicgroep
+// "Groenvoorzieningen", die volgens CBS' eigen documentatie sinds
+// verslagjaar 2017 niet meer is bijgewerkt en voor elke geteste buurt `null`
+// teruggeeft. "sports" is daarom hierboven (VOORZIENING_DEFINITIES,
+// buurtprofiel.ts) verhuisd naar AfstandTotZwembad_108 -- andere, wél actief
+// bijgehouden topicgroep, live bevestigd met een echte waarde. Voor "park"
+// bestaat er geen bruikbaar alternatief binnen deze CBS-tabel (ook de
+// naastgelegen velden AfstandTotParkOfPlantsoen_92/AfstandTotBos_94 zijn
+// leeg) -- die blijft dus terecht op "onbekend" staan totdat CBS deze groep
+// vernieuwt. Zie de uitgebreide toelichting in buurtprofiel.ts.
 const WENS_NAAR_CBS_KEYS: Record<B2bVoorzieningWens, string[]> = {
   schools: ["basisschool", "voortgezetOnderwijs", "kinderdagverblijf"],
   shops: ["supermarkt"],
   public_transport: ["treinstation"],
   healthcare: ["huisarts", "apotheek", "ziekenhuis"],
-  sports: ["sportterrein"],
+  sports: ["zwembad"],
   restaurants: ["cafeED", "restaurant"],
   park: ["park"],
 };
