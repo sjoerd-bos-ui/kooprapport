@@ -721,23 +721,22 @@ export interface FundaZoekResultaat {
   fout: boolean;
 }
 
-// Matchingmodel v2, Component 1 (budgetscore): tiers op 100%/105%/110% van
-// het gekozen maximum (zie het opgegeven puntensysteem) -- de Funda-
-// zoekopdracht zelf scant daarom bewust tot 110% boven het gekozen maximum,
-// anders zouden de 15- en 10-puntentussenstappen nooit een kandidaat te zien
-// krijgen. Boven de 110% is er sowieso 0 punten op dit onderdeel, dus verder
-// scannen heeft geen zin. Gedeeld met matchScore.ts (dezelfde marge moet
-// hier en bij het scoren gebruikt worden, anders vindt de zoekopdracht
-// kandidaten die het scoremodel meteen weer afwijst als "nooit gezien").
-export const BUDGET_ZOEK_MARGE = 0.1;
-
+// BUDGET IS EEN STRIKTE GRENS (Sjoerd: "de 10% eruit halen") -- dit scande
+// eerder bewust 10% boven het gekozen maximum (BUDGET_ZOEK_MARGE), destijds
+// omdat matchScore.ts diezelfde marge gebruikte om een vraagprijs net boven
+// het budget niet meteen af te wijzen. Nu de harde eis in matchScore.ts zelf
+// óók geen marge meer toepast (faaltBudget), zou verder scannen dan het
+// exacte maximum alleen nog kandidaten opleveren die toch worden afgewezen
+// -- pure proxy-kosten zonder nut. `afgeleidBudgetMax` is daarom nu een
+// simpele doorgeefluik i.p.v. een verhoogde waarde.
+//
 // NIEUW (continu budget i.p.v. buckets, zie types/b2b.ts): `maxKoopprijs` is
 // nu een getal of `null`. Defensief tegen oudere dossiers met nog een
 // bucket-string (bv. "350k_450k") -- `typeof === "number"` behandelt die
 // hetzelfde als `null` (geen grens), zelfde patroon als in matchScore.ts.
 function afgeleidBudgetMax(voorkeuren: B2bKoperVoorkeuren): number | null {
   if (typeof voorkeuren.maxKoopprijs !== "number" || voorkeuren.maxKoopprijs <= 0) return null;
-  return Math.round(voorkeuren.maxKoopprijs * (1 + BUDGET_ZOEK_MARGE));
+  return Math.round(voorkeuren.maxKoopprijs);
 }
 
 // Matchingmodel v2, Component 2 (locatiescore) -- vertaalt de tot 3 gekozen,

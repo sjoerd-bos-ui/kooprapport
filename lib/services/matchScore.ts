@@ -1,6 +1,6 @@
 import type { B2bWoningMatch, B2bKoperVoorkeuren, B2bMatchVerificatie, B2bWoningtypeVoorkeur } from "@/types/b2b";
 import { B2B_MIN_KAMERS_OPTIES, B2B_MIN_OPPERVLAK_OPTIES, B2B_MIN_ENERGIELABEL_OPTIES } from "@/types/b2b";
-import { ENERGIELABEL_VOLGORDE_FUNDA, BUDGET_ZOEK_MARGE } from "@/lib/data-sources/fundaFeed";
+import { ENERGIELABEL_VOLGORDE_FUNDA } from "@/lib/data-sources/fundaFeed";
 import { vergelijkLocatieUitgebreid } from "@/lib/services/gebiedIndeling";
 
 // -----------------------------------------------------------------------------
@@ -59,11 +59,11 @@ function geldigMaxKoopprijs(voorkeuren: B2bKoperVoorkeuren): number | null {
 function faaltBudget(prijs: number | null, voorkeuren: B2bKoperVoorkeuren): boolean {
   const max = geldigMaxKoopprijs(voorkeuren);
   if (max == null || prijs == null) return false; // "onzeker" budget of vraagprijs onbekend -- geen grens toe te passen
-  // 10%-marge: dezelfde BUDGET_ZOEK_MARGE waarmee de Funda-zoekopdracht zelf
-  // al scant (zie fundaFeed.ts) -- in Nederland wordt vaak boven de
-  // vraagprijs geboden, dus een vraagprijs net boven het maximum sluit een
-  // woning in de praktijk niet automatisch uit.
-  return prijs > max * (1 + BUDGET_ZOEK_MARGE);
+  // STRIKTE GRENS (Sjoerd: "de 10% eruit halen") -- deze eis stond eerder
+  // 10% marge toe (BUDGET_ZOEK_MARGE, gedeeld met de Funda-zoekopdracht in
+  // fundaFeed.ts, want in Nederland wordt vaak boven de vraagprijs geboden).
+  // Nu een harde afkap op precies het opgegeven maximum, geen coulance meer.
+  return prijs > max;
 }
 
 function faaltLocatie(verificatie: B2bMatchVerificatie | null, voorkeuren: B2bKoperVoorkeuren): boolean {
