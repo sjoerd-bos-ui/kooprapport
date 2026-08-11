@@ -1,4 +1,4 @@
-import type { B2bWoningMatch, B2bKoperVoorkeuren, B2bMatchVerificatie, B2bDealbreaker, B2bPrioriteitOptie, B2bWoningtypeVoorkeur } from "@/types/b2b";
+import type { B2bWoningMatch, B2bKoperVoorkeuren, B2bMatchVerificatie, B2bDealbreaker, B2bPrioriteitOptie, B2bWoningtypeVoorkeur, B2bAfweging } from "@/types/b2b";
 import {
   B2B_BUDGET_OPTIES,
   B2B_MIN_KAMERS_OPTIES,
@@ -6,6 +6,7 @@ import {
   B2B_MIN_ENERGIELABEL_OPTIES,
   B2B_VOORZIENING_WENSEN,
   B2B_DEALBREAKERS,
+  B2B_AFWEGINGEN,
   B2B_PRIORITEITEN,
 } from "@/types/b2b";
 import { ENERGIELABEL_VOLGORDE_FUNDA, BUDGET_ZOEK_MARGE } from "@/lib/data-sources/fundaFeed";
@@ -514,6 +515,101 @@ function tierConditionYear(verificatie: B2bMatchVerificatie | null): number {
   return 5;
 }
 
+// --- Afwegingen / "Inleveren" (4) --------------------------------------------------
+// BUGFIX (Cowork-gesprek "waar zou je op willen inleveren -- kom met een
+// voorstel"/"hou het zoals het eerste voorstel... maak koppeling direct"):
+// Vraag 12 was tot nu toe PUUR informatief -- geen enkele scorecomponent
+// gebruikte dit (zie de oude toelichting bij B2bAfweging, types/b2b.ts). Van
+// de oorspronkelijke 8 opties bleek er 1 ("langere reistijd voor betere
+// buurt") geen databron te hebben (geen werkadres uitgevraagd, geen
+// routing-API) en is die geschrapt -- de overige 7 hebben allemaal een
+// bestaande databron, hergebruikt uit de acht onderdelen hierboven.
+//
+// Mechanisme, bewust bescheiden (dit was nooit een hoofdcomponent en moet dat
+// ook niet worden): per GEKOZEN afweging (max 3, zie MAX_AFWEGINGEN in
+// types/b2b.ts) een vaste bonus van 2 punten, maar ALLEEN als de afweging
+// voor DEZE match ook daadwerkelijk relevant is -- de "opgegeven" kant moet
+// echt lager scoren dan het maximum, en waar van toepassing moet de
+// "gewonnen" kant (het onderdeel waar de koper dus wél op wil scoren) goed
+// scoren (ratio >= 0,75, dezelfde "goed"-drempel als elders in dit bestand,
+// zie AlgemeenRegel in MatchesKaart.tsx en de prioriteitenbonus hieronder).
+// Is een afweging niet van toepassing (de woning was toch al perfect op dat
+// punt, of de "gewonnen" kant is ook niet goed), dan levert hij geen bonus
+// op -- geen straf, gewoon neutraal. Totaalplafond van 4 punten (nooit meer
+// dan 2 afwegingen tegelijk belonen): dit blijft een kleine correctie op de
+// bestaande score, geen nieuwe manier om te stapelen.
+//
+// "Ik wil niet inleveren" is een expliciete stop: is die gekozen (eventueel
+// naast andere antwoorden, defensief afgevangen), dan wordt er sowieso geen
+// bonus toegepast.
+function isOnderdeelGoed(onderdeel: MatchScoreOnderdeel | undefined): boolean {
+  if (!onderdeel || onderdeel.maxPunten <= 0) return false;
+  return onderdeel.punten / onderdeel.maxPunten >= 0.75;
+}
+
+function isOnderdeelLager(onderdeel: MatchScoreOnderdeel | undefined): boolean {
+  if (!onderdeel) return false;
+  return onderdeel.punten < onderdeel.maxPunten;
+}
+
+function scoreAfwegingen(
+  voorkeuren: B2bKoperVoorkeuren,
+  verificatie: B2bMatchVerificatie | null,
+  onderdelenPerKey: Record<string, MatchScoreOnderdeel>
+): MatchScoreOnderdeel {
+  const basis = { key: "afwegingen", label: "Inleveren", maxPunten: 4 };
+  const gekozen = voorkeuren.afwegingen.filter((a) => B2B_AFWEGINGEN.some((o) => o.waarde === a));
+  if (gekozen.length === 0) {
+    return { ...basis, punten: 0, toelichting: "Geen afwegingen opgegeven." };
+  }
+  if (gekozen.includes("no_tradeoffs")) {
+    return {
+      ...basis,
+      punten: 0,
+      toelichting: "Wil nergens op inleveren -- geen bonus toegepast.",
+      detail: [{ label: "Ik wil niet inleveren", waarde: "geselecteerd", status: "onbekend" }],
+    };
+  }
+
+  // Elke check combineert "de opgegeven kant is echt lager dan ideaal" met
+  // (waar zinvol) "de gewonnen kant is echt goed" -- bv. een kleinere woning
+  // is alleen een bewuste afweging als de locatie er ook echt beter van
+  // wordt. "less_parking"/"fewer_rooms" hebben geen aparte "gewonnen kant" in
+  // het antwoord zelf (puur "ik vind dit minder belangrijk"), dus die kijken
+  // alleen naar de opgegeven kant.
+  const check: Record<Exclude<B2bAfweging, "no_tradeoffs">, () => boolean> = {
+    smaller_for_location: () => isOnderdeelLager(onderdelenPerKey.oppervlak) && isOnderdeelGoed(onderdelenPerKey.locatie),
+    older_for_space: () => tierConditionYear(verificatie) <= 5 && isOnderdeelGoed(onderdelenPerKey.oppervlak),
+    less_outdoor_for_price: () => isOnderdeelLager(onderdelenPerKey.buitenruimte) && isOnderdeelGoed(onderdelenPerKey.budget),
+    worse_energy_for_price: () => isOnderdeelLager(onderdelenPerKey.energielabel) && isOnderdeelGoed(onderdelenPerKey.budget),
+    less_parking: () => isOnderdeelLager(onderdelenPerKey.parkeren),
+    fewer_rooms: () => isOnderdeelLager(onderdelenPerKey.kamers),
+  };
+
+  let aantalGeraakt = 0;
+  const detail: MatchScoreDetailRegel[] = gekozen.map((a) => {
+    const label = B2B_AFWEGINGEN.find((o) => o.waarde === a)?.label ?? a;
+    const test = check[a as Exclude<B2bAfweging, "no_tradeoffs">];
+    const geraakt = test?.() ?? false;
+    if (geraakt) {
+      aantalGeraakt++;
+      return { label, waarde: "van toepassing", status: "goed" };
+    }
+    return { label, waarde: "niet van toepassing bij deze woning", status: "onbekend" };
+  });
+
+  const punten = Math.min(4, aantalGeraakt * 2);
+  return {
+    ...basis,
+    punten,
+    toelichting:
+      aantalGeraakt > 0
+        ? `${aantalGeraakt} opgegeven afweging(en) van toepassing bij deze woning -- kleine bonus toegepast.`
+        : "Geen van de opgegeven afwegingen is bij deze woning van toepassing.",
+    detail,
+  };
+}
+
 function scorePrioriteitenBonus(
   voorkeuren: B2bKoperVoorkeuren,
   verificatie: B2bMatchVerificatie | null,
@@ -634,9 +730,23 @@ export async function berekenMatchScore(match: B2bWoningMatch, voorkeuren: B2bKo
     parkeren,
     voorzieningen: voorzieningenScore,
   };
+  const afwegingen = scoreAfwegingen(voorkeuren, verificatie, onderdelenPerKey);
   const prioriteiten = scorePrioriteitenBonus(voorkeuren, verificatie, onderdelenPerKey);
 
-  const onderdelen = [budget, locatie, type, kamers, oppervlak, buitenruimte, energielabel, parkeren, voorzieningenScore, dealbreakerOnderdeel, prioriteiten];
+  const onderdelen = [
+    budget,
+    locatie,
+    type,
+    kamers,
+    oppervlak,
+    buitenruimte,
+    energielabel,
+    parkeren,
+    voorzieningenScore,
+    dealbreakerOnderdeel,
+    afwegingen,
+    prioriteiten,
+  ];
   const ruwTotaal = onderdelen.reduce((som, o) => som + o.punten, 0);
   const totaal = Math.max(0, Math.min(100, ruwTotaal));
 

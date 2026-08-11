@@ -461,15 +461,24 @@ export const B2B_DEALBREAKERS: { waarde: B2bDealbreaker; label: string }[] = [
 export const MAX_DEALBREAKERS = 3;
 
 // --- Stap 6: afwegingen --------------------------------------------------------------
-// Puur informatief voor de makelaar (weergegeven bij de match, zie
-// MatchesKaart.tsx) -- deze antwoorden voeden GEEN scorecomponent (staan niet
-// in de opgegeven puntenverdeling), in tegenstelling tot vrijwel alle andere
-// vragen.
+// BUGFIX (Cowork-gesprek "waar zou je op willen inleveren -- kom met een
+// voorstel"/"hou het zoals het eerste voorstel... maak koppeling direct"):
+// dit was PUUR informatief (weergegeven bij de match, zie MatchesKaart.tsx)
+// -- deze antwoorden voedden GEEN scorecomponent. Nu wél, zie scoreAfwegingen
+// in matchScore.ts voor het mechanisme (een bescheiden bonus, geen nieuwe
+// hoofdcomponent).
+//
+// "longer_commute_for_area" ("Langere reistijd voor betere buurt") is
+// geschrapt: in tegenstelling tot de andere 7 opties bestaat hiervoor
+// ÜBERHAUPT geen databron -- we vragen geen werkadres uit (zoals bij de
+// dealbreaker "too_far_from_work", zie hierboven) en reistijd (i.p.v. platte
+// afstand) vereist een routing-API die niet is aangesloten. Zelfde
+// opschoningsprincipe als eerder bij "workplace" (voorzieningen) en "park"
+// (Park / groen): geen vinkje laten staan dat nooit iets kon opleveren.
 export type B2bAfweging =
   | "smaller_for_location"
   | "older_for_space"
   | "less_outdoor_for_price"
-  | "longer_commute_for_area"
   | "worse_energy_for_price"
   | "less_parking"
   | "fewer_rooms"
@@ -479,7 +488,6 @@ export const B2B_AFWEGINGEN: { waarde: B2bAfweging; label: string }[] = [
   { waarde: "smaller_for_location", label: "Kleinere woning voor betere locatie" },
   { waarde: "older_for_space", label: "Oudere woning voor meer ruimte" },
   { waarde: "less_outdoor_for_price", label: "Minder buitenruimte voor lagere prijs" },
-  { waarde: "longer_commute_for_area", label: "Langere reistijd voor betere buurt" },
   { waarde: "worse_energy_for_price", label: "Slechter energielabel voor lagere prijs" },
   { waarde: "less_parking", label: "Minder parkeergemak" },
   { waarde: "fewer_rooms", label: "Minder kamers dan ideaal" },

@@ -158,11 +158,14 @@ function ScoreRing({ score, groot }: { score: number; groot?: boolean }) {
 //     als rustige label+balkje+cijfer-rijen, BEWUST zonder iconen of badges
 //     (Sjoerd: "mooier maken maar niet te druk") -- alleen de balkkleur
 //     verschuift van groen naar amber/rood bij een lager percentage.
-//   - Voorzieningen/Inleveren/Belangrijkst: de drie onderdelen die sinds de
-//     matchScore.ts-uitbreiding een `detail`-array hebben (per-voorziening
-//     afstand, per-dealbreaker status, per-prioriteit deelscore) -- die
+//   - Voorzieningen/Belangrijkst: elk één onderdeel met een `detail`-array
+//     (per-voorziening afstand resp. per-prioriteit deelscore) -- die
 //     detailregels renderen als kleine kleurgecodeerde pilletjes
-//     (DetailRegel hieronder), gedeeld tussen alle drie tabs.
+//     (DetailRegel hieronder), gedeeld tussen alle tabs.
+//   - Inleveren: TWEE onderdelen onder elkaar, dealbreakers (vraag 11) en
+//     afwegingen (vraag 12, zie scoreAfwegingen in matchScore.ts) -- inhoudelijk
+//     verwant (allebei "wat kan deze koper hebben"), dus bewust samen op één
+//     tab i.p.v. een aparte vijfde tab erbij.
 const ALGEMEEN_KEYS = ["budget", "locatie", "type", "kamers", "oppervlak", "buitenruimte", "energielabel", "parkeren"];
 
 type ScoreTabKey = "algemeen" | "voorzieningen" | "inleveren" | "belangrijkst";
@@ -225,6 +228,7 @@ function ScoreTabs({ score }: { score: MatchScore }) {
   const algemeenOnderdelen = ALGEMEEN_KEYS.map((k) => perKey[k]).filter((o): o is MatchScoreOnderdeel => o != null);
   const voorzieningen = perKey.voorzieningen;
   const dealbreakers = perKey.dealbreakers;
+  const afwegingen = perKey.afwegingen;
   const prioriteiten = perKey.prioriteiten;
 
   return (
@@ -283,11 +287,19 @@ function ScoreTabs({ score }: { score: MatchScore }) {
             ) : (
               <p className="mt-2 text-[10.5px] text-ink/40">Geen dealbreakers opgegeven.</p>
             )}
-            <div className="mt-3 rounded-lg bg-mist p-2.5">
-              <p className="text-[10px] leading-relaxed text-ink/50">
-                &quot;Waar zou je op willen inleveren&quot; wordt nog niet in de score verwerkt.
-              </p>
-            </div>
+            {afwegingen && (
+              <div className="mt-4">
+                <OnderdeelKop onderdeel={afwegingen} />
+                <p className="mt-1 text-[10.5px] text-ink/40">{afwegingen.toelichting}</p>
+                {afwegingen.detail && afwegingen.detail.length > 0 && (
+                  <div className="mt-2 flex flex-col divide-y divide-mist">
+                    {afwegingen.detail.map((d) => (
+                      <DetailRegel key={d.label} regel={d} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
