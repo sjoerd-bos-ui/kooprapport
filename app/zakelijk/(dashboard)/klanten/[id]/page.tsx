@@ -9,7 +9,8 @@ import DossierVergelijken from "@/components/zakelijk/DossierVergelijken";
 import ZoekopdrachtForm from "@/components/zakelijk/ZoekopdrachtForm";
 import VerwijderDossierKnop from "@/components/zakelijk/VerwijderDossierKnop";
 import MatchesKaart from "@/components/zakelijk/MatchesKaart";
-import KlantdossierTabs from "@/components/zakelijk/KlantdossierTabs";
+import KlantdossierTabs, { type KlantdossierTab } from "@/components/zakelijk/KlantdossierTabs";
+import VerkoperspresentatieGenerator from "@/components/zakelijk/VerkoperspresentatieGenerator";
 import { FileCheckIcon, TrendingUpIcon } from "@/components/report/icons";
 
 function euro(bedrag: number | null | undefined): string {
@@ -47,6 +48,21 @@ export default async function ZakelijkKlantDetailPagina({ params }: { params: Pr
     { tekst: "Dossier aangemaakt", datum: dossier.aangemaaktOp },
     ...rapporten.map((r) => ({ tekst: `Rapport opgevraagd: ${r.adres.label}`, datum: r.aangemaaktOp, href: `/zakelijk/rapporten/${r.id}` })),
   ].sort((a, b) => new Date(a.datum).getTime() - new Date(b.datum).getTime());
+
+  // Verkoperspresentatie: alleen relevant bij een verkoopdossier -- het is een
+  // acquisitietool voor het waardebepalingsgesprek met een (potentiële)
+  // verkoper, heeft geen functie bij een aankoopdossier (zie het
+  // Cowork-gesprek "Verkoper-presentatie generator").
+  const presentatieTab: KlantdossierTab[] =
+    dossier.type === "verkoop"
+      ? [
+          {
+            key: "presentatie",
+            label: "Verkoperspresentatie",
+            content: <VerkoperspresentatieGenerator dossierId={dossier.id} klantnaam={dossier.klantnaam} rapporten={rapporten} />,
+          },
+        ]
+      : [];
 
   return (
     <div>
@@ -148,6 +164,7 @@ export default async function ZakelijkKlantDetailPagina({ params }: { params: Pr
               </div>
             ),
           },
+          ...presentatieTab,
           {
             key: "vergelijken",
             label: "Vergelijken",
