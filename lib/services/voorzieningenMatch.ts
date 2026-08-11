@@ -53,11 +53,17 @@ import type { VoorzieningAfstand } from "@/types/report";
 // verslagjaar 2017 niet meer is bijgewerkt en voor elke geteste buurt `null`
 // teruggeeft. "sports" is daarom hierboven (VOORZIENING_DEFINITIES,
 // buurtprofiel.ts) verhuisd naar AfstandTotZwembad_108 -- andere, wél actief
-// bijgehouden topicgroep, live bevestigd met een echte waarde. Voor "park"
-// bestaat er geen bruikbaar alternatief binnen deze CBS-tabel (ook de
-// naastgelegen velden AfstandTotParkOfPlantsoen_92/AfstandTotBos_94 zijn
-// leeg) -- die blijft dus terecht op "onbekend" staan totdat CBS deze groep
-// vernieuwt. Zie de uitgebreide toelichting in buurtprofiel.ts.
+// bijgehouden topicgroep, live bevestigd met een echte waarde.
+//
+// BUGFIX/opschoning (Sjoerd: "leer dan, dat je zelf initiatief neemt en die
+// eruit haalt"): "park" bestaat niet meer als keuze in B2bVoorzieningWens
+// (types/b2b.ts) -- er was geen bruikbaar alternatief binnen deze CBS-tabel
+// (ook AfstandTotParkOfPlantsoen_92/AfstandTotBos_94, zelfde databron, zijn
+// leeg), dus net als "workplace" eerder: geen vinkje laten staan dat nooit
+// een echte afstand kon opleveren. Bestaande dossiers met "park" nog in
+// belangijkeVoorzieningen worden hier vanzelf genegeerd (zie
+// B2B_VOORZIENING_WENSEN.some(...)-filter in matchScore.ts, zelfde patroon
+// als bij de eerdere "workplace"-opschoning).
 const WENS_NAAR_CBS_KEYS: Record<B2bVoorzieningWens, string[]> = {
   schools: ["basisschool", "voortgezetOnderwijs", "kinderdagverblijf"],
   shops: ["supermarkt"],
@@ -65,7 +71,6 @@ const WENS_NAAR_CBS_KEYS: Record<B2bVoorzieningWens, string[]> = {
   healthcare: ["huisarts", "apotheek", "ziekenhuis"],
   sports: ["zwembad"],
   restaurants: ["cafeED", "restaurant"],
-  park: ["park"],
 };
 
 // "Dichtbij genoeg" -- eigen, praktische drempel (geen officiële CBS-norm):

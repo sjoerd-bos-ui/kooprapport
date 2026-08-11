@@ -378,13 +378,12 @@ export const B2B_MIN_ENERGIELABEL_OPTIES: { waarde: B2bMinEnergielabelOptie; lab
 // --- Stap 4: voorzieningen ---------------------------------------------------------
 // Zie lib/services/voorzieningenMatch.ts voor de koppeling met het bestaande
 // CBS-gebaseerde buurtprofiel (lib/data-sources/buurtprofiel.ts, al gebruikt
-// voor de consumenten-Kooprapporten). Alle 7 wensen hebben inmiddels een
-// echte CBS-databron (zie VOORZIENING_DEFINITIES in buurtprofiel.ts) --
+// voor de consumenten-Kooprapporten). Alle huidige wensen hebben een echte,
+// WERKENDE CBS-databron (zie VOORZIENING_DEFINITIES in buurtprofiel.ts) --
 // "sports"/"restaurants" hadden die eerder bewust nog niet (niet omdat CBS'
 // "Nabijheid voorzieningen"-tabel geen categorie voor sportfaciliteiten/
-// horeca kent -- die bestaat wel, AfstandTotSportterrein_99 resp.
-// AfstandTotCafeED_36/AfstandTotRestaurant_44 -- maar omdat toevoegen aan de
-// gedeelde definitielijst ook het consumenten-Kooprapport zou raken).
+// horeca kent -- die bestaat wel -- maar omdat toevoegen aan de gedeelde
+// definitielijst ook het consumenten-Kooprapport zou raken).
 // "workplace" is wél helemaal verwijderd (zie de bugfix hieronder): daar
 // bestaat ÜBERHAUPT geen bruikbare adres-specifieke CBS-afstandsdata voor.
 // BUGFIX/opschoning (Cowork-gesprek "waarom staat voorzieningen op 0"):
@@ -392,7 +391,24 @@ export const B2B_MIN_ENERGIELABEL_OPTIES: { waarde: B2bMinEnergielabelOptie; lab
 // hiervoor geen adres-specifieke afstandsdata, alleen een grove telling
 // "aantal banen binnen 10/20/50 km" die niet in hetzelfde afstandsmodel past
 // als de rest. Geen vinkje laten staan dat nooit iets kon opleveren.
-export type B2bVoorzieningWens = "schools" | "shops" | "public_transport" | "healthcare" | "sports" | "restaurants" | "park";
+//
+// BUGFIX (Sjoerd: "Park / groen" komt voortdurend op onbekend uit -- "leer
+// dan, dat je zelf initiatief neemt en die eruit haalt"): zelfde soort
+// opschoning als "workplace" hierboven, om dezelfde reden. Live geverifieerd
+// (zie voorzieningenMatch.ts/buurtprofiel.ts) dat CBS' veld voor park/
+// openbaar groen (en de twee dichtstbijzijnde alternatieven binnen diezelfde
+// databron) al sinds verslagjaar 2017 niet meer wordt bijgewerkt en voor
+// elke geteste buurt `null` teruggeeft -- dit is dus, net als "workplace",
+// een vinkje dat nooit een echte afstand kon opleveren. In tegenstelling tot
+// "sports" (waarvoor wél een werkend alternatief bestond, AfstandTotZwembad_
+// 108) is er voor "park" geen bruikbaar CBS-veld binnen deze tabel over.
+// Blijft daarom uit de keuzelijst tot CBS deze groep vernieuwt of er een
+// andere databron voor in de plaats komt -- de gedeelde CBS-koppeling zelf
+// (VOORZIENING_DEFINITIES, buurtprofiel.ts) blijft intact, want die voedt
+// ook het consumenten-Kooprapport, waar een incidentele "onbekend"-regel
+// tussen 13 andere bullets veel minder opvalt dan een structureel dood
+// vinkje in een 3-wensen-keuze hier.
+export type B2bVoorzieningWens = "schools" | "shops" | "public_transport" | "healthcare" | "sports" | "restaurants";
 
 export const B2B_VOORZIENING_WENSEN: { waarde: B2bVoorzieningWens; label: string }[] = [
   { waarde: "schools", label: "Scholen / kinderopvang" },
@@ -401,7 +417,6 @@ export const B2B_VOORZIENING_WENSEN: { waarde: B2bVoorzieningWens; label: string
   { waarde: "healthcare", label: "Zorg / ziekenhuis" },
   { waarde: "sports", label: "Sport / recreatie" },
   { waarde: "restaurants", label: "Horeca / restaurants" },
-  { waarde: "park", label: "Park / groen" },
 ];
 
 export type B2bParkerenVoorkeur = "private_required" | "private_preferred" | "public_ok" | "no_car";
