@@ -429,116 +429,81 @@ export const B2B_PARKEREN_OPTIES: { waarde: B2bParkerenVoorkeur; label: string }
 ];
 
 // --- Stap 5: dealbreakers -----------------------------------------------------------
-// Niet elke dealbreaker is automatisch te detecteren uit Funda-data -- "other"
-// is bewust vrije tekst (dealbreakerAnders) voor de makelaar om handmatig te
-// lezen, geen databron-probleem maar een INTENTIONEEL menselijk vangnet, dus
-// die blijft bestaan.
+// NIEUW SCOREPROCES (Sjoerd, volledige specificatie "Nieuw Scoreproces --
+// Overzicht", Fase 1 "Dealbreakers"): dealbreakers zijn nu vlakke, gelijke
+// straffen (-15) i.p.v. het oude vaste -20-blok, en er tellen er MAXIMAAL 1
+// per woning mee (de eerste geraakte, niet elke geraakte apart) -- zie
+// evalueerDealbreakers() in matchScore.ts.
 //
-// BUGFIX/opschoning (Sjoerd: "Te ver van werk staat hier nog steeds in"):
-// "too_far_from_work" (geen werkadres bekend) is verwijderd -- triggerde
-// nooit automatisch (de oude isDealbreakerGetriggerd()-case in matchScore.ts
-// gaf hier altijd `false` terug), dus een koper die 'm aanvinkte kreeg
-// feitelijk een dode checkbox zonder enig effect. Op eigen initiatief ook
-// "busy_road_noise" (Drukke weg/geluidsoverlast) meteen meegenomen -- had
-// exact hetzelfde probleem (geen geluidsdata beschikbaar, ook altijd
-// `false`), niet apart gemeld maar dezelfde bug als de net gemelde. Zelfde
-// opschoningspatroon als eerder bij "workplace"/"park" (voorzieningen),
-// "longer_commute_for_area" (afwegingen) en "quiet_location" (prioriteiten).
-//
-// MATCHINGMODEL V3 (zie het Cowork-gesprek hierover, "ik twijfel over ons
-// filtersysteem met punten"): vier oorspronkelijke opties ("Geen tuin/
-// balkon", "Prijs boven budget", "Minder kamers dan gewenst", "Kleinere
-// oppervlakte dan gewenst") zijn hier verwijderd. Budget, kamers, oppervlak
-// en buitenruimte zijn sinds v3 ALTIJD een harde eis (zie
-// voldoetAanHardeEisen() in matchScore.ts, fase 1) -- een kandidaat die deze
-// dealbreakers-lijst bereikt, voldoet dus per definitie al aan die vier, dus
-// konden ze nooit meer triggeren. "Slecht energielabel" blijft wél bestaan:
-// die gebruikt een eigen, VASTE grens ("lager dan C"), los van de
-// koper-gekozen ondergrens uit Vraag 8 -- dus geen overlap met de harde eis.
-export type B2bDealbreaker = "no_parking" | "ground_floor_no_elevator" | "poor_energy_label" | "no_amenities" | "other";
+// GEEN 5 losse checkboxes meer: de opgave splitst nadrukkelijk de BRON per
+// dealbreaker uit, en "Geen parkeermogelijkheid" komt uit Vraag 10 (niet
+// Vraag 11) en "Geen voorzieningen in buurt" komt uit Vraag 9 (ook niet
+// Vraag 11) -- dat is dus geen aparte opt-in-checkbox meer hier, maar wordt
+// AUTOMATISCH geëvalueerd uit de al ingevulde antwoorden op die vragen (zie
+// matchScore.ts): "geen parkeermogelijkheid" triggert alleen als de koper bij
+// Vraag 10 "eigen plek verplicht" koos ÉN de woning geen enkele
+// parkeermogelijkheid heeft; "geen voorzieningen in buurt" triggert als alle
+// bij Vraag 9 gekozen voorzieningen te ver weg zijn. Overbodig om dat ook nog
+// eens apart bij Vraag 11 te laten aanvinken. De 3 die HIER overblijven zijn
+// dus precies de dealbreakers die de opgave wél aan "Vraag 11" koppelt en die
+// geen andere vraag als eigen databron hebben:
+// - "Benedenwoning zonder lift" en "Slecht energielabel" -- automatisch
+//   getoetst zodra aangevinkt, tegen Funda-detailgegevens.
+// - "Anders" -- bewust vrije tekst (dealbreakerAnders) voor de makelaar om
+//   handmatig te lezen, geen databron-probleem maar een INTENTIONEEL
+//   menselijk vangnet.
+export type B2bDealbreaker = "ground_floor_no_elevator" | "poor_energy_label" | "other";
 
 export const B2B_DEALBREAKERS: { waarde: B2bDealbreaker; label: string }[] = [
-  { waarde: "no_parking", label: "Geen parkeermogelijkheid" },
   { waarde: "ground_floor_no_elevator", label: "Benedenwoning zonder lift" },
   { waarde: "poor_energy_label", label: "Slecht energielabel (lager dan C)" },
-  { waarde: "no_amenities", label: "Geen voorzieningen in buurt" },
   { waarde: "other", label: "Anders" },
 ];
 
 export const MAX_DEALBREAKERS = 3;
 
-// --- Stap 6: afwegingen --------------------------------------------------------------
-// BUGFIX (Cowork-gesprek "waar zou je op willen inleveren -- kom met een
-// voorstel"/"hou het zoals het eerste voorstel... maak koppeling direct"):
-// dit was PUUR informatief (weergegeven bij de match, zie MatchesKaart.tsx)
-// -- deze antwoorden voedden GEEN scorecomponent. Nu wél, zie scoreAfwegingen
-// in matchScore.ts voor het mechanisme (een bescheiden bonus, geen nieuwe
-// hoofdcomponent).
-//
-// "longer_commute_for_area" ("Langere reistijd voor betere buurt") is
-// geschrapt: in tegenstelling tot de andere 7 opties bestaat hiervoor
-// ÜBERHAUPT geen databron -- we vragen geen werkadres uit (net zomin als bij
-// de inmiddels ook verwijderde dealbreaker "too_far_from_work", zie Stap 5
-// hierboven) en reistijd (i.p.v. platte afstand) vereist een routing-API die
-// niet is aangesloten. Zelfde opschoningsprincipe als eerder bij "workplace"
-// (voorzieningen) en "park" (Park / groen): geen vinkje laten staan dat
-// nooit iets kon opleveren.
-export type B2bAfweging =
-  | "smaller_for_location"
-  | "older_for_space"
-  | "less_outdoor_for_price"
-  | "worse_energy_for_price"
-  | "less_parking"
-  | "fewer_rooms"
-  | "no_tradeoffs";
+// --- Stap 6: afwegingen ("Inleveren", Fase 3 trade-off bonus) ------------------------
+// NIEUW SCOREPROCES (Sjoerd, Fase 3 "Trade-off Bonus"): terug naar precies de
+// 4 conditionele opties uit de opgave (+ de expliciete stop-optie) -- "Minder
+// parkeergemak" en "Minder kamers dan ideaal" zijn hier geschrapt, die stonden
+// niet in de nieuwe Fase-3-tabel (die kent geen eigen conditie/bonusregel voor
+// die twee). Elke overgebleven optie levert nu een VASTE bonus van +5 punten
+// op als de conditie klopt (zie scoreAfwegingen in matchScore.ts), met een
+// totaalplafond van +10 (dus max. 2 afwegingen tellen effectief mee).
+export type B2bAfweging = "smaller_for_location" | "older_for_space" | "less_outdoor_for_price" | "worse_energy_for_price" | "no_tradeoffs";
 
 export const B2B_AFWEGINGEN: { waarde: B2bAfweging; label: string }[] = [
   { waarde: "smaller_for_location", label: "Kleinere woning voor betere locatie" },
   { waarde: "older_for_space", label: "Oudere woning voor meer ruimte" },
   { waarde: "less_outdoor_for_price", label: "Minder buitenruimte voor lagere prijs" },
   { waarde: "worse_energy_for_price", label: "Slechter energielabel voor lagere prijs" },
-  { waarde: "less_parking", label: "Minder parkeergemak" },
-  { waarde: "fewer_rooms", label: "Minder kamers dan ideaal" },
   { waarde: "no_tradeoffs", label: "Ik wil niet inleveren" },
 ];
 
 export const MAX_AFWEGINGEN = 3;
 
-// --- Stap 7: prioriteiten -----------------------------------------------------------
-// "condition_year" (benaderd via bouwjaar, zie tierConditionYear in
-// matchScore.ts) heeft een beperktere databasis dan de rest, maar wel een
-// echte.
-//
-// BUGFIX/opschoning (Cowork-gesprek "Belangrijkst laatste blok -- zet in
-// tabel welke we ophalen en welke databron hieraan gekoppeld is" -> "Rust/
-// ligging eruit halen en bouwen"): "quiet_location" ("Rust / ligging") is
-// verwijderd -- er bestaat GEEN bruikbare geluids-/rustdata per adres (geen
-// CBS-tabel, geen andere aangesloten databron), dus deze prioriteit scoorde
-// altijd exact hetzelfde neutrale tier (5/10), ongeacht welke woning. Zelfde
-// opschoningsprincipe als eerder bij "workplace" (voorzieningen), "park"
-// (voorzieningen) en "longer_commute_for_area" (afwegingen): geen keuze
-// laten staan die nooit een echt onderscheid kan maken.
-export type B2bPrioriteitOptie =
-  | "location"
-  | "price"
-  | "size"
-  | "rooms"
-  | "outdoor_space"
-  | "energy_efficiency"
-  | "parking"
-  | "amenities_nearby"
-  | "condition_year";
+// --- Stap 7: prioriteiten ("Belangrijkst", Fase 2 gewichten) -------------------------
+// NIEUW SCOREPROCES (Sjoerd, Fase 2 "Weighted Scoring"): de 9 losse
+// prioriteitsopties zijn vervangen door precies de 6 categorieën uit de
+// gewichtstabel -- "Aantal kamers" is opgegaan in "Woninggrootte" (samen met
+// oppervlak), "Nabijheid voorzieningen" is opgegaan in "Parkeren &
+// voorzieningen" (samen met parkeren), en "Bouwjaar / staat" (voorheen
+// condition_year) bestaat niet meer als aparte prioriteit -- die kwam niet
+// meer voor in de nieuwe gewichtstabel (bouwjaar blijft wel meetellen, maar
+// alleen nog binnen de "oudere woning voor meer ruimte"-afweging hierboven).
+// Elke koper kiest nog steeds max 3; de 3 gekozen categorieën krijgen hun
+// vaste gewicht uit de tabel, de overige 3 een vast restgewicht -- zie
+// berekenGewichten() in matchScore.ts voor het volledige mechanisme
+// (inclusief de normalisatie die nodig is om altijd op 100% uit te komen).
+export type B2bPrioriteitOptie = "location" | "price" | "size" | "outdoor_space" | "energy_efficiency" | "parking_amenities";
 
 export const B2B_PRIORITEITEN: { waarde: B2bPrioriteitOptie; label: string }[] = [
   { waarde: "location", label: "Locatie" },
   { waarde: "price", label: "Prijs" },
   { waarde: "size", label: "Woninggrootte" },
-  { waarde: "rooms", label: "Aantal kamers" },
   { waarde: "outdoor_space", label: "Buitenruimte" },
   { waarde: "energy_efficiency", label: "Energielabel / duurzaamheid" },
-  { waarde: "parking", label: "Parkeergelegenheid" },
-  { waarde: "amenities_nearby", label: "Nabijheid voorzieningen" },
-  { waarde: "condition_year", label: "Bouwjaar / staat" },
+  { waarde: "parking_amenities", label: "Parkeren & voorzieningen" },
 ];
 
 export const MAX_PRIORITEITEN = 3;

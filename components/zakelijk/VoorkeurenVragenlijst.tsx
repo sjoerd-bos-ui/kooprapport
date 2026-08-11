@@ -100,8 +100,16 @@ function leegDraft(bestaand: B2bKoperVoorkeuren | null): Draft {
     // formulier meteen laat zien wat er nog écht gekozen moet worden.
     dealbreakers: (bestaand?.dealbreakers ?? []).filter((d) => B2B_DEALBREAKERS.some((o) => o.waarde === d)),
     dealbreakerAnders: bestaand?.dealbreakerAnders ?? "",
-    afwegingen: bestaand?.afwegingen ?? [],
-    prioriteiten: bestaand?.prioriteiten ?? [],
+    // NIEUW SCOREPROCES (v4): dezelfde bescherming als bij dealbreakers/
+    // voorzieningen hierboven, nu ook toegepast op afwegingen/prioriteiten --
+    // beide lijsten zijn met de overstap naar v4 getrimd (afwegingen verloor
+    // "less_parking"/"fewer_rooms", prioriteiten verloor "rooms"/
+    // "amenities_nearby"/"condition_year"), dus een ouder dossier kan hier nu
+    // ook stale waarden bevatten. Zonder filter zou de server
+    // (koperVoorkeurenValidatie.ts) zo'n dossier bij opnieuw opslaan alsnog
+    // afwijzen, terwijl het formulier zelf allang "ingevuld" leek.
+    afwegingen: (bestaand?.afwegingen ?? []).filter((a) => B2B_AFWEGINGEN.some((o) => o.waarde === a)),
+    prioriteiten: (bestaand?.prioriteiten ?? []).filter((p) => B2B_PRIORITEITEN.some((o) => o.waarde === p)),
   };
 }
 

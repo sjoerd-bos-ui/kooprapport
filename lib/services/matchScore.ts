@@ -14,61 +14,60 @@ import { vergelijkLocatieUitgebreid } from "@/lib/services/gebiedIndeling";
 import { afstandTotWens, heeftDatabron, haalVoorzieningenVoorAdres, VOORZIENING_DICHTBIJ_KM, type VoorzieningenResultaat } from "@/lib/services/voorzieningenMatch";
 
 // -----------------------------------------------------------------------------
-// Matchingmodel v3 -- TWEE FASEN, i.p.v. één grote optelsom (zie het Cowork-
-// gesprek "ik twijfel over ons filtersysteem met punten; een match kan 90
-// punten krijgen die in een heel ander gebied ligt").
+// Matchingmodel v4 -- volledig herbouwd op Sjoerds eigen specificatie ("Nieuw
+// Scoreproces -- Overzicht"), VIER fasen i.p.v. de vorige twee (v3, budget/
+// locatie/etc. als losse optelpunten):
 //
-// Het probleem met v2 (één optelsom van 10 gewogen componenten): locatie was
-// maar 20 van de ~108 punten, dus een woning kon op de overige negen
-// onderdelen zo goed scoren dat een fout gebied (of te duur, verkeerd type,
-// te klein, etc.) volledig gecompenseerd werd. Voor iets fundamenteels als
-// "ligt dit in het gebied dat ik wil" hoort geen compensatie te bestaan.
+//   FASE 0 -- Must-haves (voldoetAanHardeEisen): ONGEWIJZIGD qua eisen (nog
+//   steeds de 7 harde eisen uit de opgave, budget/locatie/woningtype/kamers/
+//   oppervlak/buitenruimte/energielabel, PLUS "beschikbaarheid" als achtste,
+//   niet in Sjoerds tabel genoemde eis -- die blijft bewust bestaan, want dat
+//   is geen koper-voorkeur maar een advertentiestatus-check (zie de bugfix
+//   hieronder bij faaltBeschikbaarheid) en zonder die eis zouden verkochte/
+//   onder-bod-woningen weer als match terugkomen, precies de eerder opgeloste
+//   bug uit "Filter: alleen woningen met status beschikbaar tonen"). Alles-
+//   of-niets, geen punten: valt een woning hier af, dan wordt hij nooit
+//   getoond en ook nooit gescoord.
 //
-// v3 knipt dit in tweeën:
-//   FASE 1 -- voldoetAanHardeEisen(): 8 harde eisen (budget, locatie,
-//   woningtype, kamers, oppervlak, buitenruimte, energielabel,
-//   beschikbaarheid), ALTIJD verplicht, geen koper-instelbaar vinkje (Sjoerd
-//   expliciet: "vinkje aan, stop daarmee anders vult diegene dat niet in").
-//   Voldoet een kandidaat niet aan ÉÉN van de 8, dan is het sowieso geen
-//   match -- geen punten, geen
-//   compensatie, geen uitzondering. Alleen een BEVESTIGDE overtreding leidt
-//   tot afwijzing; ontbrekende scrapegegevens zijn nooit een afwijzingsgrond
-//   (zelfde discipline als altijd in dit project).
+//   FASE 1 -- Dealbreakers (evalueerDealbreakers): vlakke straf van -15 punten
+//   als een woning een dealbreaker raakt, en er telt maximaal 1 dealbreaker
+//   per woning mee (niet stapelend). NIEUW t.o.v. v3: "Geen parkeermogelijkheid"
+//   en "Geen voorzieningen in buurt" zijn geen losse checkboxes bij Vraag 11
+//   meer -- Sjoerds tabel koppelt die expliciet aan Vraag 10 resp. Vraag 9 als
+//   bron, dus die worden nu AUTOMATISCH getoetst uit de daar al gegeven
+//   antwoorden (zie de toelichting bij B2bDealbreaker, types/b2b.ts). De 3
+//   overgebleven Vraag-11-opties (lift, energielabel, anders) blijven opt-in.
 //
-//   FASE 2 -- berekenMatchScore(): een score, ALLEEN bedoeld om overlevers
-//   van fase 1 onderling te rangschikken, nooit om een afwijzing van fase 1
-//   goed te maken (dat kan ook niet: fase 2 wordt pas berekend voor
-//   kandidaten die fase 1 al gehaald hebben). Waar v2 per onderdeel scoorde
-//   op "voldoet het aan het minimum", scoort v3 op "hoeveel BETER dan het
-//   gevraagde minimum is dit" -- want "voldoet het" is al fase 1's taak, en
-//   zou anders voor bijna elke overlever hetzelfde (het maximum) opleveren,
-//   wat niets meer zou onderscheiden.
+//   FASE 2 -- Weighted scoring (0-100): 6 criteria (locatie, prijs,
+//   woninggrootte, buitenruimte, energielabel, parkeren & voorzieningen),
+//   elk apart gescoord op een 0-100-schaal, en gewogen opgeteld tot één
+//   score. De gewichten komen uit de bij Vraag 13 gekozen prioriteiten (max
+//   3) -- zie berekenGewichten() voor het volledige mechanisme, inclusief de
+//   normalisatie die nodig is om ongeacht de keuze altijd op 100% uit te
+//   komen (Sjoerds tabel geeft vaste gewichten per gekozen categorie plus een
+//   "restgewicht" van 5% voor de rest, en die twee tellen NIET vanzelf op tot
+//   100% voor elke mogelijke combinatie van 3 -- alleen na normalisatie doet
+//   dat dat wel, zie de toelichting daar).
 //
-// BELANGRIJK, contract tussen de twee fasen: de AANROEPER (b2bStore.ts,
+//   FASE 3 -- Trade-off bonus (scoreAfwegingen): een kleine bonus (max +10)
+//   op basis van de bij Vraag 12 gekozen afwegingen, ditmaal berekend op de
+//   RUWE (ongewogen) Fase-2-criteriumscores van diezelfde woning.
+//
+//   Eindscore = Fase 2 (gewogen 0-100) - Fase 1 (0 of 15) + Fase 3 (0-10),
+//   geklemd op 0-100.
+//
+// BELANGRIJK, contract tussen de fasen: de AANROEPER (b2bStore.ts,
 // matches-verversen/route.ts, cron/matches-controleren/route.ts) is
 // verantwoordelijk voor het EERST aanroepen van voldoetAanHardeEisen() en
-// alleen bij `voldoet: true` berekenMatchScore() aan te roepen. Dat is ook
-// een bewuste efficiëntiewinst: de dure voorzieningen-opzoeking (CBS, zie
+// alleen bij `voldoet: true` berekenMatchScore() aan te roepen -- ongewijzigd
+// t.o.v. v3, dat contract verandert niet. Dat is ook een bewuste
+// efficiëntiewinst: de dure voorzieningen-opzoeking (CBS, zie
 // voorzieningenMatch.ts) wordt zo nooit meer uitgevoerd voor een kandidaat
 // die toch al afvalt op een harde eis.
-//
-// DEALBREAKERS (Vraag 11): vier van de oorspronkelijke opties overlapten nu
-// volledig met een harde eis uit fase 1 ("Minder kamers dan gewenst",
-// "Kleinere oppervlakte dan gewenst", "Geen tuin/balkon", "Prijs boven
-// budget") -- die kunnen sinds fase 1 ALTIJD hard is (niet meer optioneel)
-// nooit meer triggeren voor een kandidaat die fase 2 bereikt, dus zijn ze uit
-// B2B_DEALBREAKERS verwijderd (zie types/b2b.ts). "Slecht energielabel"
-// blijft wel bestaan als los dealbreaker-onderdeel met zijn eigen vaste grens
-// ("lager dan C", ongeacht het bij Vraag 8 gekozen minimum) -- dat is een
-// andere, striktere grens dan de harde eis van Vraag 8 zelf, dus geen
-// overlap.
 // -----------------------------------------------------------------------------
 
-// Per-item uitsplitsing voor de getabde scoretoelichting in MatchesKaart.tsx
-// (Cowork-gesprek "visualize deze schermen dat je bovenaan kan klikken" --
-// eerst als mockup goedgekeurd, nu gebouwd). Optioneel: alleen voorzieningen/
-// dealbreakers/prioriteiten vullen dit, de overige onderdelen (budget,
-// locatie, etc.) hebben geen zinvolle sub-items en laten dit gewoon leeg.
+// Per-item uitsplitsing voor de getabde scoretoelichting in MatchesKaart.tsx.
+// Optioneel: alleen onderdelen met zinvolle sub-items vullen dit.
 // `status` is puur voor kleurcodering in de UI, geen nieuw scoreconcept.
 export interface MatchScoreDetailRegel {
   label: string;
@@ -83,13 +82,23 @@ export interface MatchScoreOnderdeel {
   maxPunten: number;
   toelichting: string;
   detail?: MatchScoreDetailRegel[];
+  // NIEUW (v4): het percentage waarmee dit onderdeel meeweegt in de
+  // eindscore -- alleen gevuld bij de 6 Fase-2-criteria (zie
+  // berekenGewichten()). De overige onderdelen (dealbreakers, afwegingen,
+  // de weging-samenvatting) hebben geen eigen gewicht, dat blijft
+  // `undefined`.
+  gewicht?: number;
 }
 
 export interface MatchScore {
-  totaal: number; // gekapt op 100 -- puur een rangschikkingsgetal onder overlevers van fase 1, geen afwijzingsdrempel meer
-  ruwTotaal: number; // ongekapt (componenten tellen op tot 108) -- transparantie
+  totaal: number; // gekapt op 0-100 -- Fase 2 (gewogen) - Fase 1 (dealbreaker) + Fase 3 (bonus)
+  ruwTotaal: number; // ongekapt (kan door de bonus tot 10 boven 100, of door de dealbreaker tot 15 onder 0 uitkomen) -- transparantie
   onderdelen: MatchScoreOnderdeel[];
-  dealbreakersGetriggerd: B2bDealbreaker[];
+  // Labels van de geraakte dealbreaker(s) -- vrije strings i.p.v. B2bDealbreaker,
+  // want "Geen parkeermogelijkheid"/"Geen voorzieningen in buurt" zijn sinds
+  // v4 geen keuzewaarden meer (zie types/b2b.ts) maar worden hier los als tekst
+  // gerapporteerd.
+  dealbreakersGetriggerd: string[];
 }
 
 // Welke van de 8 harde eisen niet gehaald zijn -- leeg als de kandidaat aan
@@ -104,11 +113,17 @@ function euro(bedrag: number): string {
   return new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(bedrag);
 }
 
+function clamp(waarde: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, waarde));
+}
+
 // =============================================================================
-// FASE 1 -- harde eisen (pass/fail, geen punten, geen marge behalve waar
+// FASE 0 -- must-haves (pass/fail, geen punten, geen marge behalve waar
 // expliciet toegelicht). Elke functie geeft `true` terug bij een BEVESTIGDE
 // overtreding; ontbrekende data levert altijd `false` (nooit afwijzen op
-// onze eigen scrapebeperking).
+// onze eigen scrapebeperking). Ongewijzigd t.o.v. v3 -- zie de toelichting
+// bovenaan dit bestand voor waarom "beschikbaarheid" hier als 8e eis bij
+// blijft staan, ook al noemt Sjoerds nieuwe tabel alleen de eerste 7.
 // =============================================================================
 
 function faaltBudget(prijs: number | null, voorkeuren: B2bKoperVoorkeuren): boolean {
@@ -117,9 +132,7 @@ function faaltBudget(prijs: number | null, voorkeuren: B2bKoperVoorkeuren): bool
   // 10%-marge: dezelfde BUDGET_ZOEK_MARGE waarmee de Funda-zoekopdracht zelf
   // al scant (zie fundaFeed.ts) -- in Nederland wordt vaak boven de
   // vraagprijs geboden, dus een vraagprijs net boven het maximum sluit een
-  // woning in de praktijk niet automatisch uit. Bewust dezelfde marge
-  // aangehouden voor deze harde eis i.p.v. een strikt "nooit boven het
-  // maximum", zie het gesprek hierover.
+  // woning in de praktijk niet automatisch uit.
   return prijs > max * (1 + BUDGET_ZOEK_MARGE);
 }
 
@@ -130,8 +143,7 @@ function faaltLocatie(verificatie: B2bMatchVerificatie | null, voorkeuren: B2bKo
 
 // "other" (vrije tekst, Vraag 4 "Anders") is nooit tegen een gescrapete
 // waarde te verifiëren -- staat "other" in de gekozen lijst, dan wordt
-// woningtype hier dus nooit een afwijzingsgrond (de koper accepteerde
-// expliciet "iets anders" naast eventuele specifiek gekozen types).
+// woningtype hier dus nooit een afwijzingsgrond.
 function faaltWoningtype(verificatie: B2bMatchVerificatie | null, voorkeuren: B2bKoperVoorkeuren): boolean {
   if (voorkeuren.woningtypes.length === 0 || voorkeuren.woningtypes.includes("other")) return false;
   const subtype = classificeerWoningsubtype(verificatie);
@@ -171,23 +183,11 @@ function faaltEnergielabel(verificatie: B2bMatchVerificatie | null, voorkeuren: 
   return rang > ENERGIELABEL_VOLGORDE_FUNDA.indexOf(minLabel);
 }
 
-// BUGFIX (Sjoerd: "de beschikbaar-fix werkt niet, ook niet op Vercel"): de
-// eerdere fix (bouwZoekUrl in fundaFeed.ts, ?availability=available) filtert
-// alleen NIEUWE zoekresultaten -- een match die al was opgeslagen vóórdat de
-// woning onder bod/verkocht ging, werd nooit meer herzien, want
-// beschikbaarheid zat niet bij de 7 harde eisen die bij elke ververs/cron-
-// cyclus opnieuw gecheckt worden (zie ruimVerouderdeMatchenOp in
-// b2bStore.ts). Nu wél, als 8e harde eis -- dit is de check die bestaande
-// matches daadwerkelijk laat evicten zodra hun status verandert.
-//
 // BEWUST een allowlist ("Beschikbaar" is de enige geldige waarde") i.p.v.
-// een blocklist van bekende afwijswaarden: Funda's statuslabel is altijd
-// aanwezig op de detailpagina (live geverifieerd, zowel "Beschikbaar" als
-// "Onder bod"), dus een bevestigde, van "Beschikbaar" afwijkende tekst is
-// hier een net zo harde overtreding als bij de andere 7 eisen -- maar we
-// hoeven zo niet elke toekomstige Funda-statustekst (bv. een nieuwe
-// tussenvorm) te kennen om hem alsnog correct af te wijzen. `status: null`
-// (rij ontbreekt, scrape mislukt) is zoals altijd geen afwijzingsgrond.
+// een blocklist van bekende afwijswaarden -- zie de uitgebreide toelichting
+// hierover in de git-geschiedenis van dit bestand (bugfix-sessie
+// "beschikbaar-fix werkt niet"). `status: null` (rij ontbreekt, scrape
+// mislukt) is zoals altijd geen afwijzingsgrond.
 function faaltBeschikbaarheid(verificatie: B2bMatchVerificatie | null): boolean {
   const status = verificatie?.status ?? null;
   if (!status) return false;
@@ -210,50 +210,6 @@ export function voldoetAanHardeEisen(match: B2bWoningMatch, voorkeuren: B2bKoper
   return { voldoet: afgewezenOp.length === 0, afgewezenOp };
 }
 
-// =============================================================================
-// FASE 2 -- rangschikkingsscore voor kandidaten die fase 1 al gehaald hebben.
-// Elk van de 7 "harde-eis"-onderdelen scoort hier NIET meer op "voldoet het"
-// (dat staat al vast) maar op "hoeveel beter dan het gevraagde minimum" --
-// zie de toelichting bovenaan dit bestand. Parkeren, dealbreakers en de
-// prioriteitenbonus waren al zuiver rangschikkend en zijn ongewijzigd.
-// =============================================================================
-
-// --- Budget (20) ---------------------------------------------------------------
-function scoreBudget(prijs: number | null, voorkeuren: B2bKoperVoorkeuren): MatchScoreOnderdeel {
-  const max = B2B_BUDGET_OPTIES.find((o) => o.waarde === voorkeuren.maxKoopprijs)?.max ?? null;
-  const basis = { key: "budget", label: "Budget", maxPunten: 20 };
-  if (max == null || prijs == null) {
-    return { ...basis, punten: 14, toelichting: "Budget of vraagprijs niet met zekerheid vast te stellen." };
-  }
-  const ratio = prijs / max;
-  if (ratio <= 0.9) return { ...basis, punten: 20, toelichting: `Ruim onder het opgegeven budget (max. ${euro(max)}).` };
-  if (ratio <= 1.0) return { ...basis, punten: 16, toelichting: `Binnen het opgegeven budget (max. ${euro(max)}).` };
-  if (ratio <= 1.05) return { ...basis, punten: 12, toelichting: "Tot 5% boven het opgegeven budget." };
-  return { ...basis, punten: 10, toelichting: "Tot 10% boven het opgegeven budget, nog binnen de marge." };
-}
-
-// --- Locatie (20) ----------------------------------------------------------------
-function scoreLocatie(verificatie: B2bMatchVerificatie | null, voorkeuren: B2bKoperVoorkeuren): MatchScoreOnderdeel {
-  const basis = { key: "locatie", label: "Locatie", maxPunten: 20 };
-  const { resultaat, exacteIndex } = vergelijkLocatieUitgebreid(voorkeuren.voorkeurLocaties, verificatie?.gebiedRuw ?? null, verificatie?.plaatsnaam ?? null);
-  if (resultaat === "exact" && exacteIndex != null) {
-    if (exacteIndex === 0) return { ...basis, punten: 20, toelichting: "Ligt in de eerst gekozen voorkeurslocatie." };
-    if (exacteIndex === 1) return { ...basis, punten: 16, toelichting: "Ligt in de op één na gekozen voorkeurslocatie." };
-    return { ...basis, punten: 12, toelichting: "Ligt in een gekozen voorkeurslocatie." };
-  }
-  if (resultaat === "geen_match") {
-    // Zou hier niet moeten voorkomen (fase 1 wijst dit al af) -- defensief gehouden.
-    return { ...basis, punten: 4, toelichting: "Ligt buiten de gekozen voorkeurslocaties." };
-  }
-  return { ...basis, punten: 12, toelichting: "Ligging kon niet met zekerheid worden bevestigd." };
-}
-
-// --- Woningtype (15) ---------------------------------------------------------------
-// "similar"-groepen (grondgebonden aaneengeschakeld / vrijstaand-achtig /
-// gestapeld) bestonden in v2 om een compromis te geven bij een net-niet-
-// matchend type -- nu fase 1 al garandeert dat het type klopt (of "other" is
-// gekozen), heeft dat compromis geen functie meer: hier gaat het alleen nog
-// om HOE goed het matcht (eerst gekozen type > later gekozen type).
 const HUIS_SLEUTELWOORDEN: [B2bWoningtypeVoorkeur, RegExp][] = [
   ["terraced", /tussenwoning/i],
   ["corner", /hoekwoning/i],
@@ -276,123 +232,302 @@ export function classificeerWoningsubtype(v: B2bMatchVerificatie | null): B2bWon
   return null;
 }
 
-function scoreType(verificatie: B2bMatchVerificatie | null, voorkeuren: B2bKoperVoorkeuren): MatchScoreOnderdeel {
-  const basis = { key: "type", label: "Woningtype", maxPunten: 15 };
-  if (voorkeuren.woningtypes.length === 0 || voorkeuren.woningtypes.includes("other")) {
-    return { ...basis, punten: 10, toelichting: "Geen specifiek woningtype als harde eis (of 'Anders' gekozen)." };
-  }
-  const subtype = classificeerWoningsubtype(verificatie);
-  if (!subtype) {
-    return { ...basis, punten: 10, toelichting: "Woningtype kon niet met zekerheid worden bepaald." };
-  }
-  const index = voorkeuren.woningtypes.indexOf(subtype);
-  if (index === 0) return { ...basis, punten: 15, toelichting: "Komt overeen met het eerst gekozen woningtype." };
-  return { ...basis, punten: 12, toelichting: "Komt overeen met een gewenst woningtype." };
+// =============================================================================
+// FASE 1 -- dealbreakers. Vlakke straf van -15 als er minimaal 1 geraakt
+// wordt (nooit stapelend, zie Sjoerds regel "maximaal 1 dealbreaker per
+// woning telt"). Twee automatische checks (geen opt-in nodig, bron is Vraag
+// 10 resp. Vraag 9) plus de 3 opt-in-checkboxes uit Vraag 11.
+// =============================================================================
+
+// Gedeeld met scoreParkerenVoorzieningenCriterium (Fase 2) -- "geen enkele
+// parkeermogelijkheid" is dezelfde feitelijke toestand, ongeacht of het hier
+// als dealbreaker of daar als scorecomponent gebruikt wordt.
+function heeftGeenParkeermogelijkheid(verificatie: B2bMatchVerificatie | null): boolean {
+  if (!verificatie) return false;
+  return !verificatie.heeftEigenParkeerplek && /geen\s+parkeer/i.test(verificatie.parkeerOmschrijving ?? "");
 }
 
-// --- Kamers (12) -------------------------------------------------------------------
-function scoreKamers(verificatie: B2bMatchVerificatie | null, voorkeuren: B2bKoperVoorkeuren): MatchScoreOnderdeel {
-  const basis = { key: "kamers", label: "Kamers", maxPunten: 12 };
+// Gedeeld met scoreParkerenVoorzieningenCriterium (Fase 2) -- "geen van de
+// gekozen voorzieningen binnen fietsafstand" is ook daar het signaal voor een
+// slechte voorzieningenscore, hier voor de dealbreaker.
+function heeftGeenEnkeleVoorzieningInBuurt(voorkeuren: B2bKoperVoorkeuren, voorzieningen: VoorzieningenResultaat): boolean {
+  if (!voorzieningen.gevonden) return false;
+  const wensenMetDatabron = voorkeuren.belangrijkeVoorzieningen.filter(heeftDatabron);
+  if (wensenMetDatabron.length === 0) return false;
+  return wensenMetDatabron.every((w) => {
+    const afstand = afstandTotWens(voorzieningen.items, w);
+    return afstand == null || afstand > VOORZIENING_DICHTBIJ_KM;
+  });
+}
+
+function isOptInDealbreakerGetriggerd(db: Exclude<B2bDealbreaker, "other">, verificatie: B2bMatchVerificatie | null): boolean {
+  switch (db) {
+    case "ground_floor_no_elevator":
+      return verificatie ? verificatie.woonlaag != null && verificatie.woonlaag > 0 && !verificatie.heeftLift : false;
+    case "poor_energy_label": {
+      // Eigen, vaste grens ("lager dan C") -- los van de harde eis uit Vraag 8,
+      // die de KOPER-gekozen ondergrens gebruikt.
+      const rang = verificatie?.energielabel ? ENERGIELABEL_VOLGORDE_FUNDA.indexOf(verificatie.energielabel) : -1;
+      return rang !== -1 && rang > ENERGIELABEL_VOLGORDE_FUNDA.indexOf("C");
+    }
+    default:
+      return false;
+  }
+}
+
+// Defensief tegen bestaande dossiers met een inmiddels verwijderde waarde
+// ("no_parking"/"no_amenities", nu automatisch i.p.v. opt-in, of oudere
+// waarden als "too_far_from_work"/"busy_road_noise") nog in `dealbreakers` --
+// zelfde patroon als eerder bij "workplace"/"park"/"quiet_location": zo'n
+// stale waarde mag hier nooit meer meetellen of crashen.
+function evalueerDealbreakers(
+  verificatie: B2bMatchVerificatie | null,
+  voorzieningen: VoorzieningenResultaat,
+  voorkeuren: B2bKoperVoorkeuren
+): { getriggerd: string[]; onderdeel: MatchScoreOnderdeel } {
+  const detail: MatchScoreDetailRegel[] = [];
+  const getriggerd: string[] = [];
+
+  // Automatisch #1: "Geen parkeermogelijkheid" -- bron Vraag 10, alleen
+  // relevant als de koper daar "eigen plek verplicht" koos (zie Sjoerds
+  // tabel: "Geen parkeermogelijkheid (bij 'eigen plek verplicht')").
+  if (voorkeuren.parkeren === "private_required") {
+    const geraakt = heeftGeenParkeermogelijkheid(verificatie);
+    if (geraakt) getriggerd.push("Geen parkeermogelijkheid");
+    detail.push({ label: "Geen parkeermogelijkheid", waarde: geraakt ? "geraakt" : "niet geraakt", status: geraakt ? "slecht" : "goed" });
+  }
+
+  // Automatisch #2: "Geen voorzieningen in buurt" -- bron Vraag 9, alleen
+  // relevant als daar iets met een echte databron gekozen is.
+  const wensenMetDatabron = voorkeuren.belangrijkeVoorzieningen.filter(heeftDatabron);
+  if (wensenMetDatabron.length > 0) {
+    const geraakt = heeftGeenEnkeleVoorzieningInBuurt(voorkeuren, voorzieningen);
+    if (geraakt) getriggerd.push("Geen voorzieningen in buurt");
+    detail.push({ label: "Geen voorzieningen in buurt", waarde: geraakt ? "geraakt" : "niet geraakt", status: geraakt ? "slecht" : "goed" });
+  }
+
+  // Opt-in: Vraag 11 (lift, energielabel, anders).
+  const optIn = voorkeuren.dealbreakers.filter((db) => B2B_DEALBREAKERS.some((o) => o.waarde === db));
+  for (const db of optIn) {
+    const label = B2B_DEALBREAKERS.find((o) => o.waarde === db)?.label ?? db;
+    if (db === "other") {
+      detail.push({ label, waarde: "handmatig te beoordelen", status: "onbekend" });
+      continue;
+    }
+    const geraakt = isOptInDealbreakerGetriggerd(db as Exclude<B2bDealbreaker, "other">, verificatie);
+    if (geraakt) getriggerd.push(label);
+    detail.push({ label, waarde: geraakt ? "geraakt" : "niet geraakt", status: geraakt ? "slecht" : "goed" });
+  }
+
+  // "Maximaal 1 dealbreaker per woning telt" -- vlakke straf, geen stapeling.
+  const punten = getriggerd.length > 0 ? -15 : 0;
+  return {
+    getriggerd,
+    onderdeel: {
+      key: "dealbreakers",
+      label: "Dealbreakers",
+      punten,
+      maxPunten: 0,
+      toelichting:
+        getriggerd.length > 0
+          ? `Raakt ${getriggerd.length > 1 ? `${getriggerd.length} dealbreakers` : "een dealbreaker"} (${getriggerd.join(", ")}) -- telt als één straf van 15 punten.`
+          : "Geen dealbreakers geraakt.",
+      detail,
+    },
+  };
+}
+
+// =============================================================================
+// FASE 2 -- gewogen score (0-100). Elk criterium levert zelf al een 0-100-
+// score op; berekenGewichten() bepaalt daarna hoe zwaar elk criterium
+// meeweegt in de eindscore, op basis van de bij Vraag 13 gekozen
+// prioriteiten (max 3).
+// =============================================================================
+
+// Vaste gewichten uit Sjoerds tabel (Stap 2A) -- categorieën die NIET als
+// prioriteit gekozen zijn, krijgen in plaats daarvan het vaste restgewicht.
+// Bewust een losse RUWE-gewichten-stap gevolgd door normalisatie: de 6
+// tabelgewichten (25+20+20+15+10+10) tellen zelf al op tot 100%, maar zodra
+// je (zoals de opgave voorschrijft) maar 3 daarvan gebruikt en de overige 3
+// vervangt door "elk 5%", tellen die twee groepen NIET meer vanzelf op tot
+// 100% -- welke 3 gekozen zijn bepaalt de ruwe som (bv. bij Locatie+Prijs+
+// Woninggrootte: 25+20+20 + 3x5 = 80%, niet 100%). Normaliseren (elk
+// aandeel delen door de totale ruwe som) is de enige manier om, ongeacht
+// welke 3 gekozen zijn, altijd exact op 100% uit te komen -- zoals de opgave
+// expliciet vermeldt ("Totaal = 100%").
+const PRIORITEIT_TABELGEWICHT: Record<B2bPrioriteitOptie, number> = {
+  location: 25,
+  price: 20,
+  size: 20,
+  outdoor_space: 15,
+  energy_efficiency: 10,
+  parking_amenities: 10,
+};
+const RESTGEWICHT = 5;
+
+function berekenGewichten(gekozenPrioriteiten: B2bPrioriteitOptie[]): Record<B2bPrioriteitOptie, number> {
+  const alleCategorieen = B2B_PRIORITEITEN.map((o) => o.waarde);
+  const ruw: Partial<Record<B2bPrioriteitOptie, number>> = {};
+  for (const cat of alleCategorieen) {
+    ruw[cat] = gekozenPrioriteiten.includes(cat) ? PRIORITEIT_TABELGEWICHT[cat] : RESTGEWICHT;
+  }
+  const som = alleCategorieen.reduce((s, c) => s + (ruw[c] ?? RESTGEWICHT), 0);
+  const genormaliseerd: Partial<Record<B2bPrioriteitOptie, number>> = {};
+  for (const cat of alleCategorieen) {
+    genormaliseerd[cat] = som > 0 ? ((ruw[cat] ?? RESTGEWICHT) / som) * 100 : 100 / alleCategorieen.length;
+  }
+  return genormaliseerd as Record<B2bPrioriteitOptie, number>;
+}
+
+// --- Locatie ---------------------------------------------------------------
+// Zelfde tiers als v3 (1e/2e/3e gekozen locatie), nu uitgedrukt op een
+// 0-100-schaal i.p.v. punten van 20.
+function scoreLocatieCriterium(verificatie: B2bMatchVerificatie | null, voorkeuren: B2bKoperVoorkeuren): { score: number; toelichting: string } {
+  const { resultaat, exacteIndex } = vergelijkLocatieUitgebreid(voorkeuren.voorkeurLocaties, verificatie?.gebiedRuw ?? null, verificatie?.plaatsnaam ?? null);
+  if (resultaat === "exact" && exacteIndex != null) {
+    if (exacteIndex === 0) return { score: 100, toelichting: "Ligt in de eerst gekozen voorkeurslocatie." };
+    if (exacteIndex === 1) return { score: 75, toelichting: "Ligt in de op één na gekozen voorkeurslocatie." };
+    return { score: 50, toelichting: "Ligt in een gekozen voorkeurslocatie." };
+  }
+  if (resultaat === "geen_match") {
+    // Zou hier niet moeten voorkomen (fase 0 wijst dit al af) -- defensief gehouden.
+    return { score: 0, toelichting: "Ligt buiten de gekozen voorkeurslocaties." };
+  }
+  return { score: 60, toelichting: "Ligging kon niet met zekerheid worden bevestigd." };
+}
+
+// --- Prijs -------------------------------------------------------------------
+// Letterlijk Sjoerds formule: 100 x (1 - prijs/max_budget), goedkoper = hoger,
+// geklemd op 0-100 (een prijs op of net boven het budget scoort dus 0, nooit
+// negatief).
+function scorePrijsCriterium(prijs: number | null, voorkeuren: B2bKoperVoorkeuren): { score: number; toelichting: string } {
+  const max = B2B_BUDGET_OPTIES.find((o) => o.waarde === voorkeuren.maxKoopprijs)?.max ?? null;
+  if (max == null || prijs == null) {
+    return { score: 65, toelichting: "Budget of vraagprijs niet met zekerheid vast te stellen." };
+  }
+  const score = clamp(Math.round((1 - prijs / max) * 100), 0, 100);
+  return { score, toelichting: `${euro(prijs)} t.o.v. het opgegeven budget van max. ${euro(max)}.` };
+}
+
+// --- Woninggrootte (kamers + oppervlak, gemiddeld) ----------------------------
+// "Lineair geschaald" (Sjoerds tabel): bij precies het gevraagde minimum 50
+// punten (net voldoende, fase 0 garandeert dat het nooit lager is), en
+// daarna lineair oplopend tot 100 -- elke kamer boven het minimum +25 punten
+// (dus 2 kamers extra is al de volle 100), elke m² boven het minimum +2
+// punten (dus 25 m² extra is al de volle 100, zelfde ijkpunt als de oude
+// v3-tiers voor oppervlak). "Geen minimum" (Vraag 6) heeft geen zinvol
+// ijkpunt om vanaf te schalen, dus valt terug op vaste, absolute
+// groottetiers.
+function scoreKamersSub(verificatie: B2bMatchVerificatie | null, voorkeuren: B2bKoperVoorkeuren): number {
   const minKamers = B2B_MIN_KAMERS_OPTIES.find((o) => o.waarde === voorkeuren.minKamers)?.minKamers ?? 1;
   const kamers = verificatie?.kamers ?? null;
-  if (kamers == null) return { ...basis, punten: 8, toelichting: "Aantal kamers kon niet worden vastgesteld." };
-  if (kamers >= minKamers + 2) return { ...basis, punten: 12, toelichting: `${kamers} kamers, ruim boven het gewenste minimum (${minKamers}).` };
-  if (kamers === minKamers + 1) return { ...basis, punten: 10, toelichting: `${kamers} kamers, één boven het gewenste minimum.` };
-  return { ...basis, punten: 8, toelichting: `${kamers} kamers, voldoet precies aan het gewenste minimum.` };
+  if (kamers == null) return 65;
+  return clamp(50 + (kamers - minKamers) * 25, 0, 100);
 }
 
-// --- Oppervlakte (10) --------------------------------------------------------------
-function scoreOppervlak(verificatie: B2bMatchVerificatie | null, voorkeuren: B2bKoperVoorkeuren): MatchScoreOnderdeel {
-  const basis = { key: "oppervlak", label: "Oppervlakte", maxPunten: 10 };
+function scoreOppervlakSub(verificatie: B2bMatchVerificatie | null, voorkeuren: B2bKoperVoorkeuren): number {
   const minArea = B2B_MIN_OPPERVLAK_OPTIES.find((o) => o.waarde === voorkeuren.minOppervlak)?.minArea ?? 0;
   const opp = verificatie?.woonoppervlak ?? null;
-  if (opp == null) return { ...basis, punten: 7, toelichting: "Woonoppervlak kon niet worden vastgesteld." };
-  if (opp >= minArea + 25) return { ...basis, punten: 10, toelichting: `${opp} m², ruim boven het gewenste minimum.` };
-  if (opp >= minArea + 10) return { ...basis, punten: 9, toelichting: `${opp} m², boven het gewenste minimum.` };
-  return { ...basis, punten: 7, toelichting: `${opp} m², voldoet aan het gewenste minimum.` };
-}
-
-// --- Buitenruimte (8) --------------------------------------------------------------
-function scoreBuitenruimte(verificatie: B2bMatchVerificatie | null, voorkeuren: B2bKoperVoorkeuren): MatchScoreOnderdeel {
-  const basis = { key: "buitenruimte", label: "Buitenruimte", maxPunten: 8 };
-  if (voorkeuren.buitenruimte === "not_important" || voorkeuren.buitenruimte === "no_preference") {
-    return { ...basis, punten: 8, toelichting: "Buitenruimte was geen vereiste." };
+  if (opp == null) return 65;
+  if (minArea === 0) {
+    if (opp < 50) return 30;
+    if (opp < 80) return 50;
+    if (opp < 120) return 75;
+    return 100;
   }
-  if (!verificatie) return { ...basis, punten: 5, toelichting: "Aanwezigheid van buitenruimte kon niet worden vastgesteld." };
-  if (verificatie.heeftTuin) return { ...basis, punten: 8, toelichting: "Heeft een tuin." };
-  if (verificatie.heeftDakterras) return { ...basis, punten: 7, toelichting: "Heeft een dakterras." };
-  if (verificatie.heeftBalkon) return { ...basis, punten: 6, toelichting: "Heeft een balkon." };
-  return { ...basis, punten: 3, toelichting: "Geen buitenruimte aanwezig." };
+  return clamp(50 + (opp - minArea) * 2, 0, 100);
 }
 
-// --- Energielabel (8) --------------------------------------------------------------
-function scoreEnergielabel(verificatie: B2bMatchVerificatie | null, voorkeuren: B2bKoperVoorkeuren): MatchScoreOnderdeel {
-  const basis = { key: "energielabel", label: "Energielabel", maxPunten: 8 };
-  const minLabel = B2B_MIN_ENERGIELABEL_OPTIES.find((o) => o.waarde === voorkeuren.minEnergielabel)?.minLabel ?? null;
-  if (minLabel == null) return { ...basis, punten: 8, toelichting: "Geen energielabel-voorkeur opgegeven." };
+function scoreWoninggrootteCriterium(
+  verificatie: B2bMatchVerificatie | null,
+  voorkeuren: B2bKoperVoorkeuren
+): { score: number; toelichting: string; detail: MatchScoreDetailRegel[] } {
+  const kamersScore = scoreKamersSub(verificatie, voorkeuren);
+  const oppervlakScore = scoreOppervlakSub(verificatie, voorkeuren);
+  const score = Math.round((kamersScore + oppervlakScore) / 2);
+  const kamers = verificatie?.kamers ?? null;
+  const opp = verificatie?.woonoppervlak ?? null;
+  const detail: MatchScoreDetailRegel[] = [
+    { label: "Kamers", waarde: kamers != null ? `${kamers} kamers (${kamersScore}/100)` : "onbekend", status: kamersScore >= 75 ? "goed" : kamersScore >= 50 ? "matig" : "onbekend" },
+    { label: "Oppervlak", waarde: opp != null ? `${opp} m² (${oppervlakScore}/100)` : "onbekend", status: oppervlakScore >= 75 ? "goed" : oppervlakScore >= 50 ? "matig" : "onbekend" },
+  ];
+  return { score, toelichting: `Gemiddelde van kamers- en oppervlaktescore (${kamersScore}/100 en ${oppervlakScore}/100).`, detail };
+}
+
+// --- Buitenruimte --------------------------------------------------------------
+// Sjoerds tabel: 100 (tuin), 75 (balkon/dakterras), 50 ("geen voorkeur maar
+// wel iets"), 0 (niets). De 50-rij is alleen zinvol te lezen als "niets
+// aanwezig, maar de koper vond dit toch al niet belangrijk" -- anders zou hij
+// nooit bereikt worden (tuin/balkon/dakterras worden al door de eerste twee
+// rijen afgevangen). Bij "niets aanwezig" én de koper had wél een voorkeur
+// (balcony_ok, zonder dat fase 0 dat al garandeert) is 0 de eerlijke score.
+function scoreBuitenruimteCriterium(verificatie: B2bMatchVerificatie | null, voorkeuren: B2bKoperVoorkeuren): { score: number; toelichting: string } {
+  if (!verificatie) return { score: 60, toelichting: "Aanwezigheid van buitenruimte kon niet worden vastgesteld." };
+  if (verificatie.heeftTuin) return { score: 100, toelichting: "Heeft een tuin." };
+  if (verificatie.heeftBalkon || verificatie.heeftDakterras) return { score: 75, toelichting: "Heeft een balkon of dakterras." };
+  if (voorkeuren.buitenruimte === "no_preference" || voorkeuren.buitenruimte === "not_important") {
+    return { score: 50, toelichting: "Geen buitenruimte aanwezig, maar dat was voor deze koper niet belangrijk." };
+  }
+  return { score: 0, toelichting: "Geen buitenruimte aanwezig." };
+}
+
+// --- Energielabel ----------------------------------------------------------------
+// Sjoerds tabel: 100 (A/A+), 85 (B), 70 (C), 50 (D), 25 (E/F) -- "G" staat er
+// niet apart bij, hier bewust in dezelfde onderste tier als E/F gehouden
+// (geen aparte, nog lagere waarde bedacht die niet in de opgave staat).
+function scoreEnergielabelCriterium(verificatie: B2bMatchVerificatie | null): { score: number; toelichting: string } {
   const label = verificatie?.energielabel ?? null;
-  const rang = label ? ENERGIELABEL_VOLGORDE_FUNDA.indexOf(label) : -1;
-  if (rang === -1) return { ...basis, punten: 5, toelichting: "Energielabel kon niet worden vastgesteld." };
-  const rangMin = ENERGIELABEL_VOLGORDE_FUNDA.indexOf(minLabel);
-  if (rang <= rangMin - 2) return { ...basis, punten: 8, toelichting: `Label ${label}, ruim boven het gewenste minimum (${minLabel}).` };
-  if (rang === rangMin - 1) return { ...basis, punten: 6, toelichting: `Label ${label}, boven het gewenste minimum.` };
-  return { ...basis, punten: 5, toelichting: `Label ${label}, voldoet precies aan het gewenste minimum.` };
+  if (!label) return { score: 65, toelichting: "Energielabel kon niet worden vastgesteld." };
+  const rang = ENERGIELABEL_VOLGORDE_FUNDA.indexOf(label);
+  if (rang === -1) return { score: 65, toelichting: "Energielabel kon niet worden vastgesteld." };
+  if (rang <= ENERGIELABEL_VOLGORDE_FUNDA.indexOf("A")) return { score: 100, toelichting: `Label ${label}.` };
+  if (rang === ENERGIELABEL_VOLGORDE_FUNDA.indexOf("B")) return { score: 85, toelichting: `Label ${label}.` };
+  if (rang === ENERGIELABEL_VOLGORDE_FUNDA.indexOf("C")) return { score: 70, toelichting: `Label ${label}.` };
+  if (rang === ENERGIELABEL_VOLGORDE_FUNDA.indexOf("D")) return { score: 50, toelichting: `Label ${label}.` };
+  return { score: 25, toelichting: `Label ${label}.` };
 }
 
-// --- Parkeren (5) -- ongewijzigd, was al zuiver rangschikkend -------------------------
-function scoreParkeren(verificatie: B2bMatchVerificatie | null, voorkeuren: B2bKoperVoorkeuren): MatchScoreOnderdeel {
-  const basis = { key: "parkeren", label: "Parkeren", maxPunten: 5 };
-  if (voorkeuren.parkeren === "no_car") {
-    return { ...basis, punten: 5, toelichting: "Parkeren was niet relevant." };
-  }
+// --- Parkeren & voorzieningen (gemiddeld) ---------------------------------------
+// Twee losse sub-scores, elk al bestaand uit v3 (parkeren-logica ongewijzigd,
+// alleen herschaald van 0-5 naar 0-100; voorzieningen-logica ongewijzigd,
+// herschaald van 0-8 naar 0-100), nu samengevoegd tot één Fase-2-criterium
+// omdat Sjoerds gewichtstabel ze als één categorie behandelt ("Parkeren/
+// voorzieningen").
+function scoreParkerenSub(verificatie: B2bMatchVerificatie | null, voorkeuren: B2bKoperVoorkeuren): number {
+  if (voorkeuren.parkeren === "no_car") return 100;
   const heeftEigen = verificatie?.heeftEigenParkeerplek ?? null;
   const omschrijving = verificatie?.parkeerOmschrijving ?? "";
   const geenParkerenTekst = /geen\s+parkeer/i.test(omschrijving);
   const heeftPubliek = omschrijving.length > 0 && !geenParkerenTekst;
 
   if (voorkeuren.parkeren === "private_required") {
-    if (heeftEigen === true) return { ...basis, punten: 5, toelichting: "Heeft een eigen parkeerplek." };
-    if (heeftEigen == null) return { ...basis, punten: 3, toelichting: "Parkeersituatie kon niet volledig worden vastgesteld." };
-    if (geenParkerenTekst) return { ...basis, punten: 0, toelichting: "Geen parkeermogelijkheid." };
-    return { ...basis, punten: 2, toelichting: "Alleen openbaar/betaald parkeren, geen eigen plek." };
+    if (heeftEigen === true) return 100;
+    if (heeftEigen == null) return 60;
+    if (geenParkerenTekst) return 0;
+    return 40;
   }
   if (voorkeuren.parkeren === "private_preferred") {
-    if (heeftEigen === true) return { ...basis, punten: 5, toelichting: "Heeft een eigen parkeerplek." };
-    if (geenParkerenTekst) return { ...basis, punten: 0, toelichting: "Geen parkeermogelijkheid." };
-    if (heeftPubliek || heeftEigen == null) return { ...basis, punten: 3, toelichting: "Geen eigen parkeerplek, wel andere parkeermogelijkheid." };
-    return { ...basis, punten: 0, toelichting: "Geen parkeermogelijkheid." };
+    if (heeftEigen === true) return 100;
+    if (geenParkerenTekst) return 0;
+    if (heeftPubliek || heeftEigen == null) return 60;
+    return 0;
   }
   // public_ok
-  if (geenParkerenTekst && heeftEigen !== true) return { ...basis, punten: 0, toelichting: "Geen parkeermogelijkheid." };
-  return { ...basis, punten: 5, toelichting: "Parkeren (eigen of openbaar) is aanwezig." };
+  if (geenParkerenTekst && heeftEigen !== true) return 0;
+  return 100;
 }
 
-// --- Voorzieningen (8) -------------------------------------------------------------
-// NIEUW (Cowork-gesprek "waarom staat voorzieningen op 0"): Vraag 9 had
-// voorheen alleen indirect effect, via de generieke prioriteitenbonus, en
-// alleen als de koper "Nabijheid voorzieningen" óók nog los als topprioriteit
-// koos (Vraag 13). Dat maakte dit voor de meeste dossiers een dode vraag.
-// Nu een eigen, altijd meetellend onderdeel:
-//   - Niets gekozen bij Vraag 9 (optioneel, mag): 0 punten -- geen wens, dus
-//     niets om te belonen. BEWUST 0 en niet "neutraal max", zelfde principe
-//     als de bestaande Prioriteiten-bonus (die ook 0 scoort bij een lege
-//     lijst) -- zie het gesprek hierover, "waarom krijgt het dan alsnog 8
-//     punten".
-//   - Wel iets gekozen: per gekozen wens een tier op een 0-10-schaal (<1 km
-//     =10, tot en met VOORZIENING_DICHTBIJ_KM=6, bevestigd verder weg=2,
-//     afstand onbekend bij een WEL gekozen wens=6 -- neutraal, nooit een
-//     straf voor onze eigen meetgrens), gemiddeld over alle gekozen wensen en
-//     herschaald naar het max van 8 punten voor dit ene onderdeel (dus nooit
-//     "aantal wensen keer 10").
-//
-// Defensief gefilterd tegen B2B_VOORZIENING_WENSEN: een dossier dat de
-// inmiddels verwijderde waarde "workplace" nog bevat (zie types/b2b.ts) mag
-// hier nooit meetellen -- zelfde discipline als de dealbreaker-bugfix.
-function scoreVoorzieningen(voorkeuren: B2bKoperVoorkeuren, voorzieningen: VoorzieningenResultaat): MatchScoreOnderdeel {
-  const basis = { key: "voorzieningen", label: "Voorzieningen", maxPunten: 8 };
+function scoreVoorzieningenSub(
+  voorkeuren: B2bKoperVoorkeuren,
+  voorzieningen: VoorzieningenResultaat
+): { score: number; toelichting: string; detail: MatchScoreDetailRegel[] } {
   const gekozen = voorkeuren.belangrijkeVoorzieningen.filter((w) => B2B_VOORZIENING_WENSEN.some((o) => o.waarde === w));
   if (gekozen.length === 0) {
-    return { ...basis, punten: 0, toelichting: "Geen voorzieningen als belangrijk aangegeven." };
+    // BEWUST neutraal (niet 0): dit criterium is sinds v4 een gemiddelde met
+    // Parkeren, en "geen voorzieningenwens opgegeven" mag die combinatie niet
+    // onterecht omlaag trekken voor een koper die daar simpelweg niets over
+    // heeft ingevuld.
+    return { score: 60, toelichting: "Geen voorzieningen als belangrijk aangegeven -- neutraal meegewogen.", detail: [] };
   }
   const tiers = gekozen.map((wens) => {
     const afstand = afstandTotWens(voorzieningen.items, wens);
@@ -402,10 +537,7 @@ function scoreVoorzieningen(voorkeuren: B2bKoperVoorkeuren, voorzieningen: Voorz
     return 2;
   });
   const gemiddelde = tiers.reduce((a, b) => a + b, 0) / tiers.length;
-  const punten = Math.max(0, Math.min(8, Math.round((gemiddelde / 10) * 8)));
-  // Per-item uitsplitsing (zie MatchScoreDetailRegel hierboven) -- zelfde
-  // drempels als de tiers hierboven, alleen nu ook zichtbaar gemaakt i.p.v.
-  // alleen meegewogen in het gemiddelde.
+  const score = clamp(Math.round((gemiddelde / 10) * 100), 0, 100);
   const detail: MatchScoreDetailRegel[] = gekozen.map((wens) => {
     const label = B2B_VOORZIENING_WENSEN.find((o) => o.waarde === wens)?.label ?? wens;
     const afstand = afstandTotWens(voorzieningen.items, wens);
@@ -414,163 +546,45 @@ function scoreVoorzieningen(voorkeuren: B2bKoperVoorkeuren, voorzieningen: Voorz
     if (afstand <= VOORZIENING_DICHTBIJ_KM) return { label, waarde: `${afstand.toFixed(1)} km`, status: "matig" };
     return { label, waarde: `${afstand.toFixed(1)} km`, status: "slecht" };
   });
-  return {
-    ...basis,
-    punten,
-    toelichting: `Scoort gemiddeld ${gemiddelde.toFixed(1)}/10 over de ${gekozen.length} opgegeven voorziening(en).`,
-    detail,
-  };
+  return { score, toelichting: `Scoort gemiddeld ${gemiddelde.toFixed(1)}/10 over de ${gekozen.length} opgegeven voorziening(en).`, detail };
 }
 
-// --- Dealbreakers (-20 bij trigger) ---------------------------------------------------
-// Vier van de oorspronkelijke opties (no_outdoor_space, price_over_budget,
-// too_few_rooms, too_small_area) zijn verwijderd uit B2B_DEALBREAKERS (zie
-// types/b2b.ts) -- die overlapten volledig met een fase-1-harde-eis en kunnen
-// dus nooit meer triggeren voor een kandidaat die hier al staat.
-function isDealbreakerGetriggerd(
-  db: B2bDealbreaker,
+function scoreParkerenVoorzieningenCriterium(
   verificatie: B2bMatchVerificatie | null,
-  voorzieningen: VoorzieningenResultaat,
-  voorkeuren: B2bKoperVoorkeuren
-): boolean {
-  switch (db) {
-    case "no_parking":
-      return verificatie ? !verificatie.heeftEigenParkeerplek && /geen\s+parkeer/i.test(verificatie.parkeerOmschrijving ?? "") : false;
-    case "ground_floor_no_elevator":
-      return verificatie ? verificatie.woonlaag != null && verificatie.woonlaag > 0 && !verificatie.heeftLift : false;
-    case "other":
-      return false; // vrije tekst, alleen door de makelaar handmatig te beoordelen
-    case "poor_energy_label": {
-      // Eigen, vaste grens ("lager dan C") -- los van de harde eis uit Vraag 8,
-      // die de KOPER-gekozen ondergrens gebruikt. Beide kunnen dus tegelijk
-      // bestaan zonder overlap: dit dealbreaker-onderdeel triggert soms ook
-      // als de harde eis van Vraag 8 al ruimer was dan C.
-      const rang = verificatie?.energielabel ? ENERGIELABEL_VOLGORDE_FUNDA.indexOf(verificatie.energielabel) : -1;
-      return rang !== -1 && rang > ENERGIELABEL_VOLGORDE_FUNDA.indexOf("C");
-    }
-    case "no_amenities": {
-      if (!voorzieningen.gevonden) return false;
-      const wensenMetDatabron = voorkeuren.belangrijkeVoorzieningen.filter(heeftDatabron);
-      if (wensenMetDatabron.length === 0) return false;
-      return wensenMetDatabron.every((w) => {
-        const afstand = afstandTotWens(voorzieningen.items, w);
-        return afstand == null || afstand > VOORZIENING_DICHTBIJ_KM;
-      });
-    }
-    default:
-      return false;
-  }
-}
-
-// "other" heeft geen databron (zie isDealbreakerGetriggerd hierboven, geeft
-// daar altijd `false`) -- voor de UI-uitsplitsing is dat een ander signaal
-// dan "gecheckt en niet geraakt", dus apart zichtbaar gemaakt i.p.v.
-// stilzwijgend als "goed" te tonen.
-//
-// BUGFIX/opschoning (Sjoerd: "Te ver van werk staat hier nog steeds in"):
-// "too_far_from_work" en "busy_road_noise" (zelfde databron-probleem, op
-// eigen initiatief meegenomen) zijn verwijderd uit B2bDealbreaker (zie
-// types/b2b.ts) -- geen `!== "other"`-uitsluitingslijst meer nodig, "other"
-// is nu de enige uitzondering.
-function heeftDealbreakerDatabron(db: B2bDealbreaker): boolean {
-  return db !== "other";
-}
-
-// Defensief tegen bestaande dossiers met een inmiddels verwijderde waarde
-// ("too_far_from_work"/"busy_road_noise") nog in `dealbreakers` -- zelfde
-// patroon als eerder bij "workplace"/"park"/"quiet_location": zonder filter
-// zou B2B_DEALBREAKERS.find() hieronder gewoon `undefined` teruggeven (label
-// valt terug op de ruwe waarde, geen crash), maar zo'n stale waarde toch nog
-// laten meetellen in de dealbreakers-lijst van de koper is misleidend -- een
-// optie die niet meer bestaat, kan ook niet meer "niet geraakt" of "geen
-// databron" zijn.
-function evalueerDealbreakers(
-  verificatie: B2bMatchVerificatie | null,
-  voorzieningen: VoorzieningenResultaat,
-  voorkeuren: B2bKoperVoorkeuren
-): { getriggerd: B2bDealbreaker[]; onderdeel: MatchScoreOnderdeel } {
-  const dealbreakers = voorkeuren.dealbreakers.filter((db) => B2B_DEALBREAKERS.some((o) => o.waarde === db));
-  const getriggerd = dealbreakers.filter((db) => isDealbreakerGetriggerd(db, verificatie, voorzieningen, voorkeuren));
-  const detail: MatchScoreDetailRegel[] = dealbreakers.map((db) => {
-    const label = B2B_DEALBREAKERS.find((o) => o.waarde === db)?.label ?? db;
-    if (getriggerd.includes(db)) return { label, waarde: "geraakt", status: "slecht" };
-    if (!heeftDealbreakerDatabron(db)) return { label, waarde: "geen databron", status: "onbekend" };
-    return { label, waarde: "niet geraakt", status: "goed" };
-  });
-  return {
-    getriggerd,
-    onderdeel: {
-      key: "dealbreakers",
-      label: "Dealbreakers",
-      punten: getriggerd.length > 0 ? -20 : 0,
-      maxPunten: 0,
-      toelichting: getriggerd.length > 0 ? `Raakt ${getriggerd.length} opgegeven dealbreaker(s).` : "Geen dealbreakers geraakt.",
-      detail,
-    },
-  };
-}
-
-// --- Prioriteitenbonus (10) -------------------------------------------------------------
-// Gemiddelde, evenredig aan hoe ver elk gekozen prioriteitsonderdeel al
-// scoorde (punten/maxPunten * 10) -- eenvoudiger dan de v2-tiers (10/5/0 o.b.v.
-// max/midden/0-punten), en logischer nu fase-2-scores altijd al "hoeveel
-// beter dan het minimum" uitdrukken i.p.v. "voldoet het".
-function tierVoorComponent(onderdeel: MatchScoreOnderdeel): number {
-  if (onderdeel.maxPunten === 0) return 5;
-  return Math.round((onderdeel.punten / onderdeel.maxPunten) * 10);
-}
-
-function tierConditionYear(verificatie: B2bMatchVerificatie | null): number {
-  const bouwjaar = verificatie?.bouwjaar ?? null;
-  if (bouwjaar == null) return 5;
-  if (bouwjaar >= 2015) return 10;
-  if (bouwjaar < 1970) return 0;
-  return 5;
-}
-
-// --- Afwegingen / "Inleveren" (4) --------------------------------------------------
-// BUGFIX (Cowork-gesprek "waar zou je op willen inleveren -- kom met een
-// voorstel"/"hou het zoals het eerste voorstel... maak koppeling direct"):
-// Vraag 12 was tot nu toe PUUR informatief -- geen enkele scorecomponent
-// gebruikte dit (zie de oude toelichting bij B2bAfweging, types/b2b.ts). Van
-// de oorspronkelijke 8 opties bleek er 1 ("langere reistijd voor betere
-// buurt") geen databron te hebben (geen werkadres uitgevraagd, geen
-// routing-API) en is die geschrapt -- de overige 7 hebben allemaal een
-// bestaande databron, hergebruikt uit de acht onderdelen hierboven.
-//
-// Mechanisme, bewust bescheiden (dit was nooit een hoofdcomponent en moet dat
-// ook niet worden): per GEKOZEN afweging (max 3, zie MAX_AFWEGINGEN in
-// types/b2b.ts) een vaste bonus van 2 punten, maar ALLEEN als de afweging
-// voor DEZE match ook daadwerkelijk relevant is -- de "opgegeven" kant moet
-// echt lager scoren dan het maximum, en waar van toepassing moet de
-// "gewonnen" kant (het onderdeel waar de koper dus wél op wil scoren) goed
-// scoren (ratio >= 0,75, dezelfde "goed"-drempel als elders in dit bestand,
-// zie AlgemeenRegel in MatchesKaart.tsx en de prioriteitenbonus hieronder).
-// Is een afweging niet van toepassing (de woning was toch al perfect op dat
-// punt, of de "gewonnen" kant is ook niet goed), dan levert hij geen bonus
-// op -- geen straf, gewoon neutraal. Totaalplafond van 4 punten (nooit meer
-// dan 2 afwegingen tegelijk belonen): dit blijft een kleine correctie op de
-// bestaande score, geen nieuwe manier om te stapelen.
-//
-// "Ik wil niet inleveren" is een expliciete stop: is die gekozen (eventueel
-// naast andere antwoorden, defensief afgevangen), dan wordt er sowieso geen
-// bonus toegepast.
-function isOnderdeelGoed(onderdeel: MatchScoreOnderdeel | undefined): boolean {
-  if (!onderdeel || onderdeel.maxPunten <= 0) return false;
-  return onderdeel.punten / onderdeel.maxPunten >= 0.75;
-}
-
-function isOnderdeelLager(onderdeel: MatchScoreOnderdeel | undefined): boolean {
-  if (!onderdeel) return false;
-  return onderdeel.punten < onderdeel.maxPunten;
-}
-
-function scoreAfwegingen(
   voorkeuren: B2bKoperVoorkeuren,
-  verificatie: B2bMatchVerificatie | null,
-  onderdelenPerKey: Record<string, MatchScoreOnderdeel>
-): MatchScoreOnderdeel {
-  const basis = { key: "afwegingen", label: "Inleveren", maxPunten: 4 };
+  voorzieningen: VoorzieningenResultaat
+): { score: number; toelichting: string; detail: MatchScoreDetailRegel[] } {
+  const parkerenScore = scoreParkerenSub(verificatie, voorkeuren);
+  const voorz = scoreVoorzieningenSub(voorkeuren, voorzieningen);
+  const score = Math.round((parkerenScore + voorz.score) / 2);
+  const detail: MatchScoreDetailRegel[] = [
+    { label: "Parkeren", waarde: `${parkerenScore}/100`, status: parkerenScore >= 75 ? "goed" : parkerenScore >= 40 ? "matig" : "slecht" },
+    ...voorz.detail,
+  ];
+  return { score, toelichting: `Gemiddelde van parkeren- en voorzieningenscore (${parkerenScore}/100 en ${voorz.score}/100). ${voorz.toelichting}`, detail };
+}
+
+// =============================================================================
+// FASE 3 -- trade-off bonus (max +10). Elke conditie gebruikt de RUWE
+// (ongewogen) Fase-2-criteriumscores van dezelfde woning -- niet de
+// gewichten, die spelen hier geen rol.
+// =============================================================================
+
+function isOudeWoning(verificatie: B2bMatchVerificatie | null): boolean {
+  const bouwjaar = verificatie?.bouwjaar ?? null;
+  return bouwjaar != null && bouwjaar < 1970;
+}
+
+interface Fase2RuweScores {
+  locatie: number;
+  prijs: number;
+  woninggrootte: number;
+  buitenruimte: number;
+  energielabel: number;
+}
+
+function scoreAfwegingen(voorkeuren: B2bKoperVoorkeuren, verificatie: B2bMatchVerificatie | null, scores: Fase2RuweScores): MatchScoreOnderdeel {
+  const basis = { key: "afwegingen", label: "Inleveren", maxPunten: 10 };
   const gekozen = voorkeuren.afwegingen.filter((a) => B2B_AFWEGINGEN.some((o) => o.waarde === a));
   if (gekozen.length === 0) {
     return { ...basis, punten: 0, toelichting: "Geen afwegingen opgegeven." };
@@ -584,19 +598,11 @@ function scoreAfwegingen(
     };
   }
 
-  // Elke check combineert "de opgegeven kant is echt lager dan ideaal" met
-  // (waar zinvol) "de gewonnen kant is echt goed" -- bv. een kleinere woning
-  // is alleen een bewuste afweging als de locatie er ook echt beter van
-  // wordt. "less_parking"/"fewer_rooms" hebben geen aparte "gewonnen kant" in
-  // het antwoord zelf (puur "ik vind dit minder belangrijk"), dus die kijken
-  // alleen naar de opgegeven kant.
   const check: Record<Exclude<B2bAfweging, "no_tradeoffs">, () => boolean> = {
-    smaller_for_location: () => isOnderdeelLager(onderdelenPerKey.oppervlak) && isOnderdeelGoed(onderdelenPerKey.locatie),
-    older_for_space: () => tierConditionYear(verificatie) <= 5 && isOnderdeelGoed(onderdelenPerKey.oppervlak),
-    less_outdoor_for_price: () => isOnderdeelLager(onderdelenPerKey.buitenruimte) && isOnderdeelGoed(onderdelenPerKey.budget),
-    worse_energy_for_price: () => isOnderdeelLager(onderdelenPerKey.energielabel) && isOnderdeelGoed(onderdelenPerKey.budget),
-    less_parking: () => isOnderdeelLager(onderdelenPerKey.parkeren),
-    fewer_rooms: () => isOnderdeelLager(onderdelenPerKey.kamers),
+    smaller_for_location: () => scores.locatie >= 75 && scores.woninggrootte <= 50,
+    older_for_space: () => isOudeWoning(verificatie) && scores.woninggrootte >= 75,
+    less_outdoor_for_price: () => scores.prijs >= 80 && scores.buitenruimte <= 50,
+    worse_energy_for_price: () => scores.prijs >= 80 && scores.energielabel <= 60,
   };
 
   let aantalGeraakt = 0;
@@ -606,92 +612,42 @@ function scoreAfwegingen(
     const geraakt = test?.() ?? false;
     if (geraakt) {
       aantalGeraakt++;
-      return { label, waarde: "van toepassing", status: "goed" };
+      return { label, waarde: "van toepassing (+5)", status: "goed" };
     }
     return { label, waarde: "niet van toepassing bij deze woning", status: "onbekend" };
   });
 
-  const punten = Math.min(4, aantalGeraakt * 2);
+  const punten = Math.min(10, aantalGeraakt * 5);
   return {
     ...basis,
     punten,
     toelichting:
       aantalGeraakt > 0
-        ? `${aantalGeraakt} opgegeven afweging(en) van toepassing bij deze woning -- kleine bonus toegepast.`
+        ? `${aantalGeraakt} opgegeven afweging(en) van toepassing bij deze woning (+${punten} punten).`
         : "Geen van de opgegeven afwegingen is bij deze woning van toepassing.",
     detail,
   };
 }
 
-function scorePrioriteitenBonus(
-  voorkeuren: B2bKoperVoorkeuren,
-  verificatie: B2bMatchVerificatie | null,
-  onderdelenPerKey: Record<string, MatchScoreOnderdeel>
-): MatchScoreOnderdeel {
-  const basis = { key: "prioriteiten", label: "Prioriteiten", maxPunten: 10 };
-  // BUGFIX/opschoning (Cowork-gesprek "Rust/ligging eruit halen"):
-  // "quiet_location" bestaat niet meer in B2bPrioriteitOptie (types/b2b.ts)
-  // -- geen bruikbare geluids-/rustdata per adres, scoorde dus altijd exact
-  // hetzelfde neutrale tier voor elke woning. Defensief gefilterd, zelfde
-  // patroon als bij de eerdere "workplace"/"park"-opschoningen: een bestaand
-  // dossier met "quiet_location" nog in prioriteiten mag hier nooit een
-  // crash geven (koppeling[p] zou anders `undefined` zijn).
-  const gekozen = voorkeuren.prioriteiten.filter((p) => B2B_PRIORITEITEN.some((o) => o.waarde === p));
-  if (gekozen.length === 0) {
-    return { ...basis, punten: 0, toelichting: "Geen prioriteiten opgegeven." };
-  }
-  // "amenities_nearby" hergebruikt sinds de nieuwe Voorzieningen-component
-  // (zie scoreVoorzieningen hierboven) gewoon tierVoorComponent, net als elk
-  // ander onderdeel -- de eerdere aparte tierAmenitiesNearby-functie is
-  // vervallen, dat was dubbele logica voor hetzelfde signaal.
-  const koppeling: Record<B2bPrioriteitOptie, () => number> = {
-    location: () => tierVoorComponent(onderdelenPerKey.locatie),
-    price: () => tierVoorComponent(onderdelenPerKey.budget),
-    size: () => tierVoorComponent(onderdelenPerKey.oppervlak),
-    rooms: () => tierVoorComponent(onderdelenPerKey.kamers),
-    outdoor_space: () => tierVoorComponent(onderdelenPerKey.buitenruimte),
-    energy_efficiency: () => tierVoorComponent(onderdelenPerKey.energielabel),
-    parking: () => tierVoorComponent(onderdelenPerKey.parkeren),
-    amenities_nearby: () => tierVoorComponent(onderdelenPerKey.voorzieningen),
-    condition_year: () => tierConditionYear(verificatie),
-  };
-  const tiers = gekozen.map((p) => koppeling[p]());
-  const gemiddelde = Math.round(tiers.reduce((a, b) => a + b, 0) / tiers.length);
-  // Per-item uitsplitsing: waar mogelijk de ECHTE punten/maxPunten van het
-  // onderliggende onderdeel tonen (bv. "scoort 18/20") i.p.v. de abstracte
-  // 0-10-tier -- dat zegt de gebruiker (de makelaar) meer. "condition_year"
-  // heeft geen los scoreonderdeel (alleen een bouwjaar-tier), die krijgt dus
-  // een eigen, eerlijke weergave i.p.v. een niet-bestaande "X/Y".
-  const directOnderdeelPerPrioriteit: Partial<Record<B2bPrioriteitOptie, string>> = {
-    location: "locatie",
-    price: "budget",
-    size: "oppervlak",
-    rooms: "kamers",
-    outdoor_space: "buitenruimte",
-    energy_efficiency: "energielabel",
-    parking: "parkeren",
-    amenities_nearby: "voorzieningen",
-  };
-  const detail: MatchScoreDetailRegel[] = gekozen.map((p) => {
-    const label = B2B_PRIORITEITEN.find((o) => o.waarde === p)?.label ?? p;
-    const onderdeelKey = directOnderdeelPerPrioriteit[p];
-    if (onderdeelKey) {
-      const onderdeel = onderdelenPerKey[onderdeelKey];
-      const ratio = onderdeel.maxPunten > 0 ? onderdeel.punten / onderdeel.maxPunten : 0.5;
-      const status = ratio >= 0.75 ? "goed" : ratio >= 0.5 ? "matig" : "slecht";
-      return { label, waarde: `scoort ${onderdeel.punten}/${onderdeel.maxPunten}`, status };
-    }
-    // condition_year -- enige overgebleven optie zonder los scoreonderdeel.
-    const bouwjaar = verificatie?.bouwjaar ?? null;
-    if (bouwjaar == null) return { label, waarde: "onbekend", status: "onbekend" };
-    const tier = tierConditionYear(verificatie);
-    const status = tier >= 8 ? "goed" : tier >= 5 ? "matig" : "slecht";
-    return { label, waarde: `bouwjaar ${bouwjaar}`, status };
+// Puur informatieve samenvatting van de weging (Fase 2) -- telt zelf niet mee
+// in ruwTotaal/totaal (die worden hierboven al expliciet berekend uit de 6
+// criteriumscores), maar maakt in de UI zichtbaar hoe de gekozen prioriteiten
+// zich vertalen naar het daadwerkelijke gewicht per categorie.
+function bouwWegingOnderdeel(gekozenPrioriteiten: B2bPrioriteitOptie[], gewichten: Record<B2bPrioriteitOptie, number>): MatchScoreOnderdeel {
+  const detail: MatchScoreDetailRegel[] = B2B_PRIORITEITEN.map((o) => {
+    const gekozen = gekozenPrioriteiten.includes(o.waarde);
+    const gewicht = gewichten[o.waarde] ?? 0;
+    return { label: o.label, waarde: `${gewicht.toFixed(0)}% weging`, status: gekozen ? "goed" : "onbekend" };
   });
   return {
-    ...basis,
-    punten: gemiddelde,
-    toelichting: `Scoort gemiddeld ${gemiddelde}/10 op de ${voorkeuren.prioriteiten.length} opgegeven prioriteit(en).`,
+    key: "weging",
+    label: "Weging",
+    punten: gekozenPrioriteiten.length,
+    maxPunten: 3,
+    toelichting:
+      gekozenPrioriteiten.length > 0
+        ? `${gekozenPrioriteiten.length} prioriteit(en) gekozen -- die wegen zwaarder mee in de eindscore, de rest krijgt een vast restgewicht van ${RESTGEWICHT}%.`
+        : "Geen prioriteiten opgegeven -- alle onderdelen wegen even zwaar mee.",
     detail,
   };
 }
@@ -707,63 +663,64 @@ export async function berekenMatchScore(match: B2bWoningMatch, voorkeuren: B2bKo
 
   const verificatie = match.verificatie;
 
-  // Voorzieningen (Vraag 9 -> scoreVoorzieningen / dealbreaker "no_amenities"
-  // / prioriteit "amenities_nearby", die laatste twee hergebruiken nu ook
-  // gewoon scoreVoorzieningen) -- alleen ophalen als er ook daadwerkelijk
-  // iets mee gedaan wordt, en alleen voor kandidaten die fase 1 al gehaald
-  // hebben (zie de aanroepers) -- dat is precies waar de kostenbesparing zit.
-  // Heeft geen enkele gekozen wens een databron, dan scoort scoreVoorzieningen
-  // toch al overal neutraal (tier 6) -- de CBS-opzoeking overslaan verandert
-  // dus niets aan de uitkomst, alleen aan de kosten.
-  const heeftVoorzieningenBehoefte =
-    voorkeuren.belangrijkeVoorzieningen.some(heeftDatabron) ||
-    voorkeuren.dealbreakers.includes("no_amenities") ||
-    voorkeuren.prioriteiten.includes("amenities_nearby");
+  // Voorzieningen -- alleen ophalen als er ook daadwerkelijk iets mee gedaan
+  // wordt (Vraag 9 heeft een wens met databron), en alleen voor kandidaten
+  // die fase 0 al gehaald hebben (zie de aanroepers). Dat is precies waar de
+  // kostenbesparing zit -- ongewijzigd t.o.v. v3.
+  const heeftVoorzieningenBehoefte = voorkeuren.belangrijkeVoorzieningen.some(heeftDatabron);
   const voorzieningen: VoorzieningenResultaat = heeftVoorzieningenBehoefte
     ? await haalVoorzieningenVoorAdres(match.titel)
     : { gevonden: false, items: [] };
 
-  const budget = scoreBudget(match.prijs, voorkeuren);
-  const locatie = scoreLocatie(verificatie, voorkeuren);
-  const type = scoreType(verificatie, voorkeuren);
-  const kamers = scoreKamers(verificatie, voorkeuren);
-  const oppervlak = scoreOppervlak(verificatie, voorkeuren);
-  const buitenruimte = scoreBuitenruimte(verificatie, voorkeuren);
-  const energielabel = scoreEnergielabel(verificatie, voorkeuren);
-  const parkeren = scoreParkeren(verificatie, voorkeuren);
-  const voorzieningenScore = scoreVoorzieningen(voorkeuren, voorzieningen);
+  const gekozenPrioriteiten = voorkeuren.prioriteiten.filter((p) => B2B_PRIORITEITEN.some((o) => o.waarde === p));
+  const gewichten = berekenGewichten(gekozenPrioriteiten);
+
+  const locatieRuw = scoreLocatieCriterium(verificatie, voorkeuren);
+  const prijsRuw = scorePrijsCriterium(match.prijs, voorkeuren);
+  const woninggrootteRuw = scoreWoninggrootteCriterium(verificatie, voorkeuren);
+  const buitenruimteRuw = scoreBuitenruimteCriterium(verificatie, voorkeuren);
+  const energielabelRuw = scoreEnergielabelCriterium(verificatie);
+  const parkerenVoorzieningenRuw = scoreParkerenVoorzieningenCriterium(verificatie, voorkeuren, voorzieningen);
+
+  function fase2Onderdeel(key: string, label: string, ruw: { score: number; toelichting: string; detail?: MatchScoreDetailRegel[] }, gewichtKey: B2bPrioriteitOptie): MatchScoreOnderdeel {
+    return {
+      key,
+      label,
+      punten: ruw.score,
+      maxPunten: 100,
+      gewicht: Math.round(gewichten[gewichtKey] * 10) / 10,
+      toelichting: ruw.toelichting,
+      detail: ruw.detail,
+    };
+  }
+
+  const locatie = fase2Onderdeel("locatie", "Locatie", locatieRuw, "location");
+  const prijs = fase2Onderdeel("prijs", "Prijs", prijsRuw, "price");
+  const woninggrootte = fase2Onderdeel("woninggrootte", "Woninggrootte", woninggrootteRuw, "size");
+  const buitenruimte = fase2Onderdeel("buitenruimte", "Buitenruimte", buitenruimteRuw, "outdoor_space");
+  const energielabel = fase2Onderdeel("energielabel", "Energielabel", energielabelRuw, "energy_efficiency");
+  const parkerenVoorzieningen = fase2Onderdeel("parkeren_voorzieningen", "Parkeren & voorzieningen", parkerenVoorzieningenRuw, "parking_amenities");
+
+  const fase2Criteria = [locatie, prijs, woninggrootte, buitenruimte, energielabel, parkerenVoorzieningen];
+  const fase2Score = fase2Criteria.reduce((som, o) => som + (o.punten * (o.gewicht ?? 0)) / 100, 0);
+
   const { getriggerd, onderdeel: dealbreakerOnderdeel } = evalueerDealbreakers(verificatie, voorzieningen, voorkeuren);
+  const dealbreakerStraf = dealbreakerOnderdeel.punten < 0 ? Math.abs(dealbreakerOnderdeel.punten) : 0;
 
-  const onderdelenPerKey: Record<string, MatchScoreOnderdeel> = {
-    budget,
-    locatie,
-    type,
-    kamers,
-    oppervlak,
-    buitenruimte,
-    energielabel,
-    parkeren,
-    voorzieningen: voorzieningenScore,
-  };
-  const afwegingen = scoreAfwegingen(voorkeuren, verificatie, onderdelenPerKey);
-  const prioriteiten = scorePrioriteitenBonus(voorkeuren, verificatie, onderdelenPerKey);
+  const afwegingen = scoreAfwegingen(voorkeuren, verificatie, {
+    locatie: locatieRuw.score,
+    prijs: prijsRuw.score,
+    woninggrootte: woninggrootteRuw.score,
+    buitenruimte: buitenruimteRuw.score,
+    energielabel: energielabelRuw.score,
+  });
 
-  const onderdelen = [
-    budget,
-    locatie,
-    type,
-    kamers,
-    oppervlak,
-    buitenruimte,
-    energielabel,
-    parkeren,
-    voorzieningenScore,
-    dealbreakerOnderdeel,
-    afwegingen,
-    prioriteiten,
-  ];
-  const ruwTotaal = onderdelen.reduce((som, o) => som + o.punten, 0);
-  const totaal = Math.max(0, Math.min(100, ruwTotaal));
+  const weging = bouwWegingOnderdeel(gekozenPrioriteiten, gewichten);
 
-  return { totaal, ruwTotaal, onderdelen, dealbreakersGetriggerd: getriggerd };
+  const ruwTotaal = fase2Score - dealbreakerStraf + afwegingen.punten;
+  const totaal = clamp(Math.round(ruwTotaal), 0, 100);
+
+  const onderdelen = [locatie, prijs, woninggrootte, buitenruimte, energielabel, parkerenVoorzieningen, dealbreakerOnderdeel, afwegingen, weging];
+
+  return { totaal, ruwTotaal: Math.round(ruwTotaal * 10) / 10, onderdelen, dealbreakersGetriggerd: getriggerd };
 }

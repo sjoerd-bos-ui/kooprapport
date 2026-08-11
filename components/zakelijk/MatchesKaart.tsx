@@ -152,21 +152,28 @@ function ScoreRing({ score, groot }: { score: number; groot?: boolean }) {
 
 // Getabde scoretoelichting (Cowork-gesprek "visualize deze schermen dat je
 // bovenaan kan klikken", eerst als mockup goedgekeurd) -- verving de vorige
-// platte lijst van alle 11 onderdelen onder elkaar. Vier tabs, elk met een
-// eigen invalshoek op dezelfde `score.onderdelen`:
-//   - Algemeen: de 8 rangschikkende/harde-eis-onderdelen (budget t/m parkeren)
-//     als rustige label+balkje+cijfer-rijen, BEWUST zonder iconen of badges
-//     (Sjoerd: "mooier maken maar niet te druk") -- alleen de balkkleur
-//     verschuift van groen naar amber/rood bij een lager percentage.
-//   - Voorzieningen/Belangrijkst: elk één onderdeel met een `detail`-array
-//     (per-voorziening afstand resp. per-prioriteit deelscore) -- die
-//     detailregels renderen als kleine kleurgecodeerde pilletjes
-//     (DetailRegel hieronder), gedeeld tussen alle tabs.
-//   - Inleveren: TWEE onderdelen onder elkaar, dealbreakers (vraag 11) en
-//     afwegingen (vraag 12, zie scoreAfwegingen in matchScore.ts) -- inhoudelijk
-//     verwant (allebei "wat kan deze koper hebben"), dus bewust samen op één
-//     tab i.p.v. een aparte vijfde tab erbij.
-const ALGEMEEN_KEYS = ["budget", "locatie", "type", "kamers", "oppervlak", "buitenruimte", "energielabel", "parkeren"];
+// platte lijst van alle onderdelen onder elkaar. Vier tabs, elk met een eigen
+// invalshoek op dezelfde `score.onderdelen`.
+//
+// NIEUW SCOREPROCES (matchingmodel v4, Sjoerds specificatie "Nieuw
+// Scoreproces -- Overzicht"): de 8 losse v3-onderdelen (budget/locatie/type/
+// kamers/oppervlak/buitenruimte/energielabel/parkeren) zijn vervangen door 6
+// gewogen Fase-2-criteria (locatie/prijs/woninggrootte/buitenruimte/
+// energielabel/parkeren & voorzieningen, zie matchScore.ts) -- "woningtype"
+// bestaat sinds v4 alleen nog als harde eis (fase 0), niet meer als los
+// scoreonderdeel; "kamers"/"oppervlak" zijn samengevoegd tot "woninggrootte";
+// "parkeren"/"voorzieningen" tot "parkeren & voorzieningen".
+//   - Algemeen: de 6 gewogen criteria als rustige label+balkje+cijfer-rijen,
+//     nu ook met het genormaliseerde gewicht (%) per criterium erbij.
+//   - Voorzieningen: het criterium "Parkeren & voorzieningen" met zijn
+//     `detail`-array (parkeren-score + per-voorziening afstand).
+//   - Inleveren: TWEE onderdelen onder elkaar, dealbreakers (fase 1, "Geen
+//     parkeermogelijkheid"/"Geen voorzieningen" zijn sinds v4 automatisch,
+//     de rest opt-in via vraag 11) en de trade-off-bonus (fase 3, vraag 12).
+//   - Belangrijkst: niet langer een losse scorebonus (die bestaat niet meer
+//     sinds v4), maar de "Weging"-samenvatting: welke 3 prioriteiten (vraag
+//     13) gekozen zijn en welk gewicht dat elke Fase-2-categorie oplevert.
+const ALGEMEEN_KEYS = ["locatie", "prijs", "woninggrootte", "buitenruimte", "energielabel", "parkeren_voorzieningen"];
 
 type ScoreTabKey = "algemeen" | "voorzieningen" | "inleveren" | "belangrijkst";
 
@@ -199,7 +206,11 @@ function AlgemeenRegel({ onderdeel }: { onderdeel: MatchScoreOnderdeel }) {
   const kleur = ratio >= 0.75 ? "#3B6D11" : ratio >= 0.5 ? "#D97706" : "#B7302B";
   return (
     <div className="flex items-center gap-2.5 py-1.5">
-      <span className="flex-1 text-[11.5px] text-ink/70">{onderdeel.label}</span>
+      <span className="flex-1 text-[11.5px] text-ink/70">
+        {onderdeel.label}
+        {/* NIEUW SCOREPROCES (v4): genormaliseerd gewicht per Fase-2-criterium, zie berekenGewichten() in matchScore.ts. */}
+        {onderdeel.gewicht != null && <span className="ml-1 text-[9.5px] font-medium text-ink/35">{Math.round(onderdeel.gewicht)}% weging</span>}
+      </span>
       <div className="h-1 w-12 shrink-0 overflow-hidden rounded-full bg-mist">
         <div className="h-full rounded-full" style={{ width: `${ratio * 100}%`, background: kleur }} />
       </div>
@@ -226,10 +237,16 @@ function ScoreTabs({ score }: { score: MatchScore }) {
   const [tab, setTab] = useState<ScoreTabKey>("algemeen");
   const perKey = Object.fromEntries(score.onderdelen.map((o) => [o.key, o])) as Record<string, MatchScoreOnderdeel>;
   const algemeenOnderdelen = ALGEMEEN_KEYS.map((k) => perKey[k]).filter((o): o is MatchScoreOnderdeel => o != null);
-  const voorzieningen = perKey.voorzieningen;
+  // "Voorzieningen"-tab toont sinds v4 het gecombineerde criterium "Parkeren
+  // & voorzieningen" (zie matchScore.ts) -- de detailregels bevatten zowel de
+  // parkeerscore als de per-voorziening afstanden.
+  const voorzieningen = perKey.parkeren_voorzieningen;
   const dealbreakers = perKey.dealbreakers;
   const afwegingen = perKey.afwegingen;
-  const prioriteiten = perKey.prioriteiten;
+  // "Belangrijkst"-tab toont sinds v4 geen losse scorebonus meer (die bestaat
+  // niet meer), maar de weging-samenvatting (zie bouwWegingOnderdeel in
+  // matchScore.ts).
+  const prioriteiten = perKey.weging;
 
   return (
     <div>

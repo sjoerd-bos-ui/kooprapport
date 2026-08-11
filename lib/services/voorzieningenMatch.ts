@@ -75,8 +75,9 @@ const WENS_NAAR_CBS_KEYS: Record<B2bVoorzieningWens, string[]> = {
 
 // "Dichtbij genoeg" -- eigen, praktische drempel (geen officiële CBS-norm):
 // 2 km is in de regio Rotterdam/Rijnmond een redelijke fiets-/loopafstand.
-// Gebruikt zowel voor de voorzieningen-score (Component 10, "amenities_
-// nearby"-prioriteit) als voor de "no_amenities"-dealbreaker.
+// Gebruikt zowel voor de voorzieningen-subscore binnen het Fase-2-criterium
+// "Parkeren & voorzieningen" als voor de automatische "Geen voorzieningen in
+// buurt"-dealbreaker (Fase 1, zie evalueerDealbreakers in matchScore.ts).
 export const VOORZIENING_DICHTBIJ_KM = 2;
 
 export interface VoorzieningenResultaat {
