@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactElement } from "react";
 import type {
   B2bKoperVoorkeuren,
   B2bLocatie,
@@ -257,7 +257,7 @@ function SegmentSelect<T extends string>({
   );
 }
 
-type IconComponent = (props: { className?: string }) => JSX.Element;
+type IconComponent = (props: { className?: string }) => ReactElement;
 
 // Eén icoon-kaart -- gedeelde presentatie-primitive voor zowel de
 // multi-keuze (woningtype) als de single-keuze (buitenruimte) variant
