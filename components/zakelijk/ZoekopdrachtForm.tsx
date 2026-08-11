@@ -3,12 +3,23 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { B2bZoekopdracht, B2bKoperVoorkeuren } from "@/types/b2b";
-import { B2B_BUDGET_OPTIES, B2B_WONINGTYPE_VOORKEUREN } from "@/types/b2b";
+import { B2B_WONINGTYPE_VOORKEUREN } from "@/types/b2b";
 import VoorkeurenVragenlijst from "@/components/zakelijk/VoorkeurenVragenlijst";
 import { MapPinIcon, CheckIcon, BoltIcon } from "@/components/report/icons";
 
 function labelVoor<T extends string>(opties: { waarde: T; label: string }[], waarde: T): string {
   return opties.find((o) => o.waarde === waarde)?.label ?? waarde;
+}
+
+// NIEUW (continu budget i.p.v. buckets, zie types/b2b.ts): geen labellijst
+// meer om in op te zoeken -- gewoon een bedrag formatteren, of "Nog geen vast
+// maximum" bij `null`. Defensief tegen oudere dossiers die hier nog een
+// bucket-string (bv. "350k_450k") hebben staan (typeof !== "number") --
+// zelfde behandeling als "onbekend", nooit een crash op een verouderde
+// waarde.
+function budgetLabel(maxKoopprijs: B2bKoperVoorkeuren["maxKoopprijs"]): string {
+  if (typeof maxKoopprijs !== "number") return "Nog geen vast maximum";
+  return `Tot ${new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(maxKoopprijs)}`;
 }
 
 // -----------------------------------------------------------------------------
@@ -159,9 +170,7 @@ export default function ZoekopdrachtForm({ dossierId, huidig }: { dossierId: str
                 {label}
               </span>
             ))}
-            <span className="rounded-full bg-mist px-2.5 py-1 text-[11px] font-semibold text-ink">
-              Tot {labelVoor(B2B_BUDGET_OPTIES, koperVoorkeuren.maxKoopprijs)}
-            </span>
+            <span className="rounded-full bg-mist px-2.5 py-1 text-[11px] font-semibold text-ink">{budgetLabel(koperVoorkeuren.maxKoopprijs)}</span>
             {woningtypeChips.map((label) => (
               <span key={label} className="rounded-full bg-[#EEF0FF] px-2.5 py-1 text-[11px] font-semibold text-accent">
                 {label}

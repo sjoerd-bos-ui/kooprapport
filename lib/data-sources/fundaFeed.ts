@@ -1,6 +1,6 @@
 import { FUNDA_FEED_MODE, FUNDA_SEARCH_TIMEOUT_MS, FUNDA_DETAIL_TIMEOUT_MS } from "@/lib/config/fundaFeed";
 import type { B2bKoperVoorkeuren, B2bMatchVerificatie, B2bWoningtypeVoorkeur } from "@/types/b2b";
-import { B2B_BUDGET_OPTIES, B2B_MIN_OPPERVLAK_OPTIES, B2B_MIN_ENERGIELABEL_OPTIES } from "@/types/b2b";
+import { B2B_MIN_OPPERVLAK_OPTIES, B2B_MIN_ENERGIELABEL_OPTIES } from "@/types/b2b";
 
 // -----------------------------------------------------------------------------
 // Directe adapter voor de publieke funda.nl-pagina's (zie de uitleg in
@@ -731,10 +731,13 @@ export interface FundaZoekResultaat {
 // kandidaten die het scoremodel meteen weer afwijst als "nooit gezien").
 export const BUDGET_ZOEK_MARGE = 0.1;
 
+// NIEUW (continu budget i.p.v. buckets, zie types/b2b.ts): `maxKoopprijs` is
+// nu een getal of `null`. Defensief tegen oudere dossiers met nog een
+// bucket-string (bv. "350k_450k") -- `typeof === "number"` behandelt die
+// hetzelfde als `null` (geen grens), zelfde patroon als in matchScore.ts.
 function afgeleidBudgetMax(voorkeuren: B2bKoperVoorkeuren): number | null {
-  const optie = B2B_BUDGET_OPTIES.find((o) => o.waarde === voorkeuren.maxKoopprijs);
-  if (!optie?.max) return null;
-  return Math.round(optie.max * (1 + BUDGET_ZOEK_MARGE));
+  if (typeof voorkeuren.maxKoopprijs !== "number" || voorkeuren.maxKoopprijs <= 0) return null;
+  return Math.round(voorkeuren.maxKoopprijs * (1 + BUDGET_ZOEK_MARGE));
 }
 
 // Matchingmodel v2, Component 2 (locatiescore) -- vertaalt de tot 3 gekozen,

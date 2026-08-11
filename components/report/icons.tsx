@@ -428,3 +428,15 @@ export function SunIcon({ className }: { className?: string }) {
     </svg>
   );
 }
+
+// Herontworpen zoekfilterproces (Sjoerd, "mooier design, duidelijkere
+// keuzes"): budget-schuifregelaar in VoorkeurenVragenlijst.tsx had nog geen
+// eigen icoon in deze gedeelde set.
+export function EuroIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} className={className}>
+      <path d="M17 5.5A7 7 0 1 0 17 18.5" strokeLinecap="round" />
+      <path d="M4 10h9M4 14h7" strokeLinecap="round" />
+    </svg>
+  );
+}

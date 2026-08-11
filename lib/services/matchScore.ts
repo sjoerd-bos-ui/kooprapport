@@ -1,6 +1,5 @@
 import type { B2bWoningMatch, B2bKoperVoorkeuren, B2bMatchVerificatie, B2bDealbreaker, B2bPrioriteitOptie, B2bWoningtypeVoorkeur, B2bAfweging } from "@/types/b2b";
 import {
-  B2B_BUDGET_OPTIES,
   B2B_MIN_KAMERS_OPTIES,
   B2B_MIN_OPPERVLAK_OPTIES,
   B2B_MIN_ENERGIELABEL_OPTIES,
@@ -126,8 +125,17 @@ function clamp(waarde: number, min: number, max: number): number {
 // blijft staan, ook al noemt Sjoerds nieuwe tabel alleen de eerste 7.
 // =============================================================================
 
+// NIEUW (continu budget i.p.v. buckets, zie types/b2b.ts): `maxKoopprijs` is
+// nu een getal of `null` ("nog geen vast maximum"). Defensief tegen oudere
+// dossiers die hier nog een bucket-string (bv. "350k_450k") hebben staan --
+// `typeof === "number"` filtert die er stilzwijgend uit, zelfde behandeling
+// als `null` (geen grens toegepast), i.p.v. een crash of NaN-vergelijking.
+function geldigMaxKoopprijs(voorkeuren: B2bKoperVoorkeuren): number | null {
+  return typeof voorkeuren.maxKoopprijs === "number" ? voorkeuren.maxKoopprijs : null;
+}
+
 function faaltBudget(prijs: number | null, voorkeuren: B2bKoperVoorkeuren): boolean {
-  const max = B2B_BUDGET_OPTIES.find((o) => o.waarde === voorkeuren.maxKoopprijs)?.max ?? null;
+  const max = geldigMaxKoopprijs(voorkeuren);
   if (max == null || prijs == null) return false; // "onzeker" budget of vraagprijs onbekend -- geen grens toe te passen
   // 10%-marge: dezelfde BUDGET_ZOEK_MARGE waarmee de Funda-zoekopdracht zelf
   // al scant (zie fundaFeed.ts) -- in Nederland wordt vaak boven de
@@ -422,7 +430,7 @@ function scoreLocatieCriterium(verificatie: B2bMatchVerificatie | null, voorkeur
 // geklemd op 0-100 (een prijs op of net boven het budget scoort dus 0, nooit
 // negatief).
 function scorePrijsCriterium(prijs: number | null, voorkeuren: B2bKoperVoorkeuren): { score: number; toelichting: string } {
-  const max = B2B_BUDGET_OPTIES.find((o) => o.waarde === voorkeuren.maxKoopprijs)?.max ?? null;
+  const max = geldigMaxKoopprijs(voorkeuren);
   if (max == null || prijs == null) {
     return { score: 65, toelichting: "Budget of vraagprijs niet met zekerheid vast te stellen." };
   }

@@ -270,23 +270,27 @@ export interface B2bMatchVerificatie {
 // -----------------------------------------------------------------------------
 
 // --- Stap 1: budget -----------------------------------------------------------
-export type B2bBudgetOptie = "150k_250k" | "250k_350k" | "350k_450k" | "450k_550k" | "550k_plus" | "uncertain";
-
-// `max` is het enige getal dat het scoremodel gebruikt (zie Component 1,
-// matchScore.ts) -- de opgegeven `min` per keuze is bewust puur weergave-
-// informatie (het bepaalt geen enkel filter of scorecomponent in de opgave),
-// dus een huis van bv. € 220.000 bij een gekozen bereik "250k_350k" wordt
-// niet afgewezen, alleen een huis BOVEN de € 350.000. "uncertain" heeft geen
-// bruikbaar maximum -- Component 1 kent dan geen budgetgrens toe (altijd
-// volledige punten, er is simpelweg niets om tegen af te wijzen).
-export const B2B_BUDGET_OPTIES: { waarde: B2bBudgetOptie; label: string; min: number | null; max: number | null }[] = [
-  { waarde: "150k_250k", label: "€ 150.000 - € 250.000", min: 150000, max: 250000 },
-  { waarde: "250k_350k", label: "€ 250.000 - € 350.000", min: 250000, max: 350000 },
-  { waarde: "350k_450k", label: "€ 350.000 - € 450.000", min: 350000, max: 450000 },
-  { waarde: "450k_550k", label: "€ 450.000 - € 550.000", min: 450000, max: 550000 },
-  { waarde: "550k_plus", label: "€ 550.000+", min: 550000, max: null },
-  { waarde: "uncertain", label: "Nog onzeker / ik wil eerst advies", min: null, max: null },
-];
+// NIEUW (Sjoerd, visuele herontwerp-sessie van het zoekfilterproces): budget
+// was een vaste keuze uit 6 buckets (tot 550k, daarboven alleen "550k_plus"
+// zonder eigen maximum) -- te grof voor de Rotterdamse markt, waar ook
+// woningen ruim boven de € 700.000 voorkomen. Vervangen door een doorlopend
+// getal (een schuifregelaar in de UI, zie VoorkeurenVragenlijst.tsx) met een
+// eigen, expliciete "nog geen vast maximum"-keuze i.p.v. een bucket-waarde
+// ervoor ("uncertain"). `maxKoopprijs: number | null` op B2bKoperVoorkeuren
+// zelf (zie onderaan dit bestand) -- `null` betekent nu precies hetzelfde als
+// voorheen de "uncertain"-bucket: geen budgetgrens toegepast, altijd volledige
+// punten op dit onderdeel (zie scorePrijsCriterium/faaltBudget in
+// matchScore.ts).
+//
+// BUGFIX/migratie: bestaande dossiers hebben hier nog een oude bucket-string
+// (bv. "350k_450k") staan i.p.v. een getal -- overal waar dit veld gelezen
+// wordt (matchScore.ts, fundaFeed.ts, ZoekopdrachtForm.tsx,
+// VoorkeurenVragenlijst.tsx) is dat defensief met `typeof === "number"`
+// afgevangen, zelfde discipline als bij de eerdere opschoningen van
+// verwijderde keuze-opties dit traject.
+export const BUDGET_MIN = 100000;
+export const BUDGET_MAX = 1500000;
+export const BUDGET_STAP = 5000;
 
 export type B2bKostenKoperOptie = "yes_included" | "no_separate" | "unknown";
 
@@ -510,7 +514,7 @@ export const MAX_PRIORITEITEN = 3;
 
 // --- Het geheel ------------------------------------------------------------------
 export interface B2bKoperVoorkeuren {
-  maxKoopprijs: B2bBudgetOptie;
+  maxKoopprijs: number | null; // null = nog geen vast maximum, zie de toelichting bij BUDGET_MIN hierboven
   kostenKoper: B2bKostenKoperOptie;
   // Landelijk, via PDOK-autocomplete gekozen plaatsen/wijken -- max
   // MAX_VOORKEUR_LOCATIES, minimaal 1. Zie de toelichting bij

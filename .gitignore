@@ -12,3 +12,4 @@ tsconfig.tsbuildinfo
 # handmatig aanpassen en niet in git, want dit hoort bij de lokale
 # node_modules/pdfjs-dist-versie.
 public/pdfjs/
+.trash/

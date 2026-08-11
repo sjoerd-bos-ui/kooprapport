@@ -1,5 +1,4 @@
 import {
-  B2B_BUDGET_OPTIES,
   B2B_KOSTEN_KOPER_OPTIES,
   B2B_WONINGTYPE_VOORKEUREN,
   B2B_MIN_KAMERS_OPTIES,
@@ -60,11 +59,26 @@ function tekst(input: unknown, maxLengte: number): string | null {
   return t ? t.slice(0, maxLengte) : null;
 }
 
+// NIEUW (continu budget i.p.v. buckets, zie types/b2b.ts): geldig is `null`
+// ("nog geen vast maximum") of een eindig, positief getal. Bewust een ruimere
+// bovengrens (10 miljoen) dan de UI-schuifregelaar zelf (BUDGET_MAX) toestaat
+// -- deze validatie is de laatste server-side poort, geen kopie van de
+// UI-grenzen; die mogen later nog wijzigen zonder dat deze check ze allebei
+// hoeft te kennen.
+function valideerMaxKoopprijs(input: unknown): { ok: true; waarde: number | null } | { ok: false } {
+  if (input === null) return { ok: true, waarde: null };
+  if (typeof input === "number" && Number.isFinite(input) && input > 0 && input <= 10000000) {
+    return { ok: true, waarde: Math.round(input) };
+  }
+  return { ok: false };
+}
+
 export function valideerKoperVoorkeuren(input: unknown): { ok: true; waarde: B2bKoperVoorkeuren } | { ok: false; error: string } {
   if (!input || typeof input !== "object") return { ok: false, error: "Ongeldige koper-voorkeuren." };
   const v = input as Record<string, unknown>;
 
-  if (!isGeldigeWaarde(v.maxKoopprijs, B2B_BUDGET_OPTIES)) return { ok: false, error: "Kies een geldig budget (vraag 1)." };
+  const maxKoopprijs = valideerMaxKoopprijs(v.maxKoopprijs);
+  if (!maxKoopprijs.ok) return { ok: false, error: "Kies een geldig budget (vraag 1)." };
   if (!isGeldigeWaarde(v.kostenKoper, B2B_KOSTEN_KOPER_OPTIES)) return { ok: false, error: "Beantwoord vraag 2 (kosten koper)." };
 
   if (!Array.isArray(v.voorkeurLocaties) || v.voorkeurLocaties.length === 0 || v.voorkeurLocaties.length > MAX_VOORKEUR_LOCATIES) {
@@ -112,7 +126,7 @@ export function valideerKoperVoorkeuren(input: unknown): { ok: true; waarde: B2b
   return {
     ok: true,
     waarde: {
-      maxKoopprijs: v.maxKoopprijs as B2bKoperVoorkeuren["maxKoopprijs"],
+      maxKoopprijs: maxKoopprijs.waarde,
       kostenKoper: v.kostenKoper as B2bKoperVoorkeuren["kostenKoper"],
       voorkeurLocaties,
       woningtypes,

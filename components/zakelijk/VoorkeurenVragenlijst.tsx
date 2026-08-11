@@ -4,7 +4,6 @@ import { useState } from "react";
 import type {
   B2bKoperVoorkeuren,
   B2bLocatie,
-  B2bBudgetOptie,
   B2bKostenKoperOptie,
   B2bWoningtypeVoorkeur,
   B2bMinKamersOptie,
@@ -18,7 +17,9 @@ import type {
   B2bPrioriteitOptie,
 } from "@/types/b2b";
 import {
-  B2B_BUDGET_OPTIES,
+  BUDGET_MIN,
+  BUDGET_MAX,
+  BUDGET_STAP,
   B2B_KOSTEN_KOPER_OPTIES,
   B2B_WONINGTYPE_VOORKEUREN,
   B2B_MIN_KAMERS_OPTIES,
@@ -36,11 +37,26 @@ import {
   MAX_PRIORITEITEN,
 } from "@/types/b2b";
 import LocatieAutocomplete from "@/components/zakelijk/LocatieAutocomplete";
-import { CheckIcon, ArrowRightIcon } from "@/components/report/icons";
+import {
+  CheckIcon,
+  ArrowRightIcon,
+  EuroIcon,
+  MapPinIcon,
+  BuildingIcon,
+  BoxIcon,
+  HomeIcon,
+  DoorIcon,
+  RulerIcon,
+  LeafIcon,
+  SunIcon,
+  CompassIcon,
+  ScaleIcon,
+  BoltIcon,
+} from "@/components/report/icons";
 
 // -----------------------------------------------------------------------------
-// Matchingmodel v2 -- de volledige 13-vragen/7-stappen-vragenlijst (zie het
-// Cowork-gesprek hierover, "matchingsproces onder de loep"). Dit ÉNE, gedeelde
+// Matchingmodel v2 -- de volledige 13-vragen-vragenlijst (zie het Cowork-
+// gesprek hierover, "matchingsproces onder de loep"). Dit ÉNE, gedeelde
 // component wordt hergebruikt door zowel de makelaar (in het dashboard, zie
 // ZoekopdrachtForm.tsx) als de koper (publieke link, zie KoperVoorkeurenForm.tsx)
 // -- beide invulkanalen blijven bestaan (zie het gesprek hierover), alleen de
@@ -52,10 +68,30 @@ import { CheckIcon, ArrowRightIcon } from "@/components/report/icons";
 // tussentijds opgeslagen (elke vraag is "Required: true" in de opgave, op
 // Vraag 9 na). De wizard bewaart de voortgang alleen lokaal in React-state
 // zolang de gebruiker aan het invullen is.
+//
+// HERONTWERP ZOEKFILTERPROCES (Sjoerd, visuele redesign-sessie: "Mooier
+// design / Duidelijkere keuzes / Alleen de harde eisen", uitgevoerd zonder
+// live backend-aanroep): de oude Stap 0 (budget/kosten koper), Stap 1
+// (locatie) en Stap 2 (woningtype/kamers/oppervlak/buitenruimte/energielabel)
+// zijn hier samengevoegd tot ÉÉN "Harde eisen"-stap -- dat zijn precies de 8
+// harde eisen uit Fase 0 van het scoreproces (zie voldoetAanHardeEisen in
+// matchScore.ts), die inhoudelijk bij elkaar horen en nu ook zo gepresenteerd
+// worden i.p.v. als drie losse, willekeurig aanvoelende stappen. Budget is
+// vervangen door een doorlopende schuifregelaar (zie BudgetSlider hieronder
+// en de toelichting bij BUDGET_MIN in types/b2b.ts) i.p.v. 6 vaste buckets --
+// BEWUST GEEN live aantal-passende-woningen-teller hierboven (zou een
+// backend-aanroep per klik vereisen, zie het gesprek hierover), de golfvorm
+// achter de schuifregelaar is puur decoratief.
 // -----------------------------------------------------------------------------
 
 interface Draft {
-  maxKoopprijs: B2bBudgetOptie | null;
+  maxKoopprijs: number | null;
+  // Los van `maxKoopprijs` zelf bijgehouden: `null` is zowel de starttoestand
+  // (nog niets gekozen, stap ongeldig) als een geldige eindkeuze ("nog geen
+  // vast maximum", stap juist wél geldig) -- zonder deze vlag zou er geen
+  // onderscheid te maken zijn tussen die twee, en zou de stap dus nooit
+  // geldig kunnen worden als de koper bewust "geen vast maximum" kiest.
+  budgetAangeraakt: boolean;
   kostenKoper: B2bKostenKoperOptie | null;
   voorkeurLocaties: B2bLocatie[];
   woningtypes: B2bWoningtypeVoorkeur[];
@@ -74,7 +110,17 @@ interface Draft {
 
 function leegDraft(bestaand: B2bKoperVoorkeuren | null): Draft {
   return {
-    maxKoopprijs: bestaand?.maxKoopprijs ?? null,
+    // BUGFIX/migratie (continu budget i.p.v. buckets, zie de toelichting bij
+    // BUDGET_MIN in types/b2b.ts): een bestaand dossier kan hier nog een oude
+    // bucket-string (bv. "350k_450k") bevatten i.p.v. een getal -- die
+    // behandelen we hier hetzelfde als "nog geen vast maximum" (null), nooit
+    // een crash of NaN op verouderde data.
+    maxKoopprijs: typeof bestaand?.maxKoopprijs === "number" ? bestaand.maxKoopprijs : null,
+    // Bij een bestaand dossier is deze stap al eerder (al dan niet expliciet
+    // op "geen vast maximum") ingevuld, dus meteen als aangeraakt markeren --
+    // anders zou een koper die eerder bewust "geen vast maximum" koos hier
+    // opnieuw als "nog niets gekozen" verschijnen.
+    budgetAangeraakt: bestaand != null,
     kostenKoper: bestaand?.kostenKoper ?? null,
     voorkeurLocaties: bestaand?.voorkeurLocaties ?? [],
     woningtypes: bestaand?.woningtypes ?? [],
@@ -90,14 +136,14 @@ function leegDraft(bestaand: B2bKoperVoorkeuren | null): Draft {
     // afwijzen bij opslaan.
     belangrijkeVoorzieningen: (bestaand?.belangrijkeVoorzieningen ?? []).filter((w) => B2B_VOORZIENING_WENSEN.some((o) => o.waarde === w)),
     parkeren: bestaand?.parkeren ?? null,
-    // BUGFIX (matchingmodel v3, B2B_DEALBREAKERS is van 11 naar 7 opties
-    // getrimd): een bestaand dossier kan nog een inmiddels verwijderde
-    // waarde bevatten (bv. "no_outdoor_space"). MultiSelect toont zo'n
-    // waarde niet als chip (zit niet meer in `opties`), maar de array bleef
-    // wel gevuld -- de stap leek dus al "klaar" (length > 0) terwijl de
-    // server 'm bij opslaan alsnog afwijst omdat de waarde niet meer geldig
-    // is. Daarom hier al filteren tegen de actuele lijst, zodat het
-    // formulier meteen laat zien wat er nog écht gekozen moet worden.
+    // BUGFIX (matchingmodel v3, B2B_DEALBREAKERS is van 11 naar 7 naar 3
+    // opties getrimd): een bestaand dossier kan nog een inmiddels verwijderde
+    // waarde bevatten (bv. "no_outdoor_space", "no_parking"). MultiSelect
+    // toont zo'n waarde niet als chip (zit niet meer in `opties`), maar de
+    // array bleef wel gevuld -- de stap leek dus al "klaar" (length > 0)
+    // terwijl de server 'm bij opslaan alsnog afwijst omdat de waarde niet
+    // meer geldig is. Daarom hier al filteren tegen de actuele lijst, zodat
+    // het formulier meteen laat zien wat er nog écht gekozen moet worden.
     dealbreakers: (bestaand?.dealbreakers ?? []).filter((d) => B2B_DEALBREAKERS.some((o) => o.waarde === d)),
     dealbreakerAnders: bestaand?.dealbreakerAnders ?? "",
     // NIEUW SCOREPROCES (v4): dezelfde bescherming als bij dealbreakers/
@@ -180,6 +226,247 @@ function MultiSelect<T extends string>({
   );
 }
 
+// Herontwerp: een rijtje aaneengesloten segmenten (i.p.v. losse pillen) voor
+// keuzes met een natuurlijke oplopende volgorde -- kamers en oppervlak
+// hieronder. Voelt aan als "kies een punt op een schaal" i.p.v. "kies een
+// los label uit een lijst", en is compacter dan de vorige pil-rij.
+function SegmentSelect<T extends string>({
+  opties,
+  waarde,
+  onKiezen,
+}: {
+  opties: { waarde: T; label: string }[];
+  waarde: T | null;
+  onKiezen: (w: T) => void;
+}) {
+  return (
+    <div className="mt-2 flex overflow-hidden rounded-xl border border-ink/10">
+      {opties.map((o, i) => (
+        <button
+          key={o.waarde}
+          type="button"
+          onClick={() => onKiezen(o.waarde)}
+          className={`flex-1 px-2 py-2.5 text-center text-[11.5px] font-semibold leading-tight transition-colors ${
+            i > 0 ? "border-l border-ink/10" : ""
+          } ${waarde === o.waarde ? "bg-accent text-white" : "bg-white text-ink/55 hover:bg-mist/70"}`}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+type IconComponent = (props: { className?: string }) => JSX.Element;
+
+// Eén icoon-kaart -- gedeelde presentatie-primitive voor zowel de
+// multi-keuze (woningtype) als de single-keuze (buitenruimte) variant
+// hieronder. Duidelijker en herkenbaarder dan een tekstpil, precies wat
+// Sjoerd vroeg met "Duidelijkere keuzes".
+function IconKaart({
+  actief,
+  icon: Icon,
+  label,
+  onClick,
+}: {
+  actief: boolean;
+  icon: IconComponent;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex flex-col items-center gap-1.5 rounded-xl border px-2 py-3 text-center transition-colors ${
+        actief ? "border-accent bg-[#EEF0FF] text-accent" : "border-ink/10 bg-white text-ink/60 hover:bg-mist/70"
+      }`}
+    >
+      <Icon className="h-5 w-5" />
+      <span className="text-[11px] font-semibold leading-tight">{label}</span>
+    </button>
+  );
+}
+
+function IconKaartMultiSelect<T extends string>({
+  opties,
+  iconen,
+  waarden,
+  onWijzigen,
+}: {
+  opties: { waarde: T; label: string }[];
+  iconen: Record<T, IconComponent>;
+  waarden: T[];
+  onWijzigen: (w: T[]) => void;
+}) {
+  function toggle(w: T) {
+    onWijzigen(waarden.includes(w) ? waarden.filter((x) => x !== w) : [...waarden, w]);
+  }
+  return (
+    <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-4">
+      {opties.map((o) => (
+        <IconKaart key={o.waarde} actief={waarden.includes(o.waarde)} icon={iconen[o.waarde]} label={o.label} onClick={() => toggle(o.waarde)} />
+      ))}
+    </div>
+  );
+}
+
+function IconKaartSingleSelect<T extends string>({
+  opties,
+  iconen,
+  waarde,
+  onKiezen,
+}: {
+  opties: { waarde: T; label: string }[];
+  iconen: Record<T, IconComponent>;
+  waarde: T | null;
+  onKiezen: (w: T) => void;
+}) {
+  return (
+    <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+      {opties.map((o) => (
+        <IconKaart key={o.waarde} actief={waarde === o.waarde} icon={iconen[o.waarde]} label={o.label} onClick={() => onKiezen(o.waarde)} />
+      ))}
+    </div>
+  );
+}
+
+const WONINGTYPE_ICONEN: Record<B2bWoningtypeVoorkeur, IconComponent> = {
+  apartment: BuildingIcon,
+  studio: BoxIcon,
+  terraced: HomeIcon,
+  corner: HomeIcon,
+  semi_detached: HomeIcon,
+  detached: HomeIcon,
+  other: BoxIcon,
+};
+
+const BUITENRUIMTE_ICONEN: Record<B2bBuitenruimteVoorkeur, IconComponent> = {
+  garden_required: LeafIcon,
+  balcony_ok: SunIcon,
+  no_preference: CompassIcon,
+  not_important: ScaleIcon,
+};
+
+// EU-energielabel-achtige chevron-rij -- herkenbare vorm (iedereen kent het
+// gekleurde energielabel-blokje van Funda/de meterkast), maar met een eigen
+// kleurverloop van groen (A) naar geel (D) en een neutrale, grijze laatste
+// chevron voor "geen voorkeur" (bewust géén EU-kleur: dat is geen label,
+// maar "maakt niet uit").
+const ENERGIELABEL_KLEUREN: Record<B2bMinEnergielabelOptie, string> = {
+  A_plus: "#1A9850",
+  B_plus: "#66BD63",
+  C_plus: "#A6D96A",
+  D_plus: "#FEE08B",
+  no_preference: "#E4E2F5",
+};
+
+function energielabelKorteLabel(optie: B2bMinEnergielabelOptie, label: string): string {
+  if (optie === "no_preference") return "—";
+  return label.replace("Label ", "").replace(" of beter", "+");
+}
+
+function EnergielabelSelect({ waarde, onKiezen }: { waarde: B2bMinEnergielabelOptie | null; onKiezen: (w: B2bMinEnergielabelOptie) => void }) {
+  return (
+    <div className="mt-2 flex">
+      {B2B_MIN_ENERGIELABEL_OPTIES.map((o, i) => {
+        const actief = waarde === o.waarde;
+        return (
+          <button
+            key={o.waarde}
+            type="button"
+            onClick={() => onKiezen(o.waarde)}
+            style={{
+              backgroundColor: ENERGIELABEL_KLEUREN[o.waarde],
+              clipPath: "polygon(0 0, 85% 0, 100% 50%, 85% 100%, 0 100%, 12% 50%)",
+              marginLeft: i === 0 ? 0 : "-10px",
+              zIndex: actief ? 10 : i,
+            }}
+            className={`relative flex h-11 flex-1 items-center justify-center pl-3 pr-1 text-[12px] font-bold text-ink/70 transition-opacity ${
+              actief ? "opacity-100 outline outline-2 outline-offset-1 outline-accent" : "opacity-75 hover:opacity-100"
+            }`}
+          >
+            {energielabelKorteLabel(o.waarde, o.label)}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// Budget-schuifregelaar (vervangt de oude 6-buckets SingleSelect, zie de
+// toelichting bij BUDGET_MIN in types/b2b.ts). De golfvorm achter de
+// schuifregelaar is BEWUST een statische, decoratieve skyline -- geen live
+// verdeling van daadwerkelijk beschikbare woningen (dat zou een
+// backend-aanroep per klik vereisen, zie het gesprek hierover: "live
+// aanroep niet nodig"). De gevulde kleur loopt gewoon mee met de
+// schuifpositie, als puur visueel "hoever ben ik" -- geen enkele claim over
+// aantallen woningen.
+// -----------------------------------------------------------------------------
+const BUDGET_DEFAULT = 450000;
+const BUDGET_GOLF_PAD =
+  "M0,50 C28,18 52,44 88,26 C124,10 148,42 188,24 C228,8 252,36 292,20 C328,6 352,28 400,10 L400,56 L0,56 Z";
+
+function BudgetSlider({
+  waarde,
+  aangeraakt,
+  onWijzigen,
+  onGeenMaximum,
+}: {
+  waarde: number | null;
+  aangeraakt: boolean;
+  onWijzigen: (w: number) => void;
+  onGeenMaximum: () => void;
+}) {
+  const sliderWaarde = waarde ?? BUDGET_DEFAULT;
+  const fractie = Math.min(1, Math.max(0, (sliderWaarde - BUDGET_MIN) / (BUDGET_MAX - BUDGET_MIN)));
+  const geenMaximum = aangeraakt && waarde === null;
+
+  return (
+    <div>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <p className="text-[21px] font-bold text-ink">
+          {geenMaximum ? "Geen vast maximum" : `Tot € ${sliderWaarde.toLocaleString("nl-NL")}`}
+        </p>
+        <button
+          type="button"
+          onClick={onGeenMaximum}
+          className={`text-[11px] font-semibold hover:underline ${geenMaximum ? "text-accent" : "text-ink/40"}`}
+        >
+          Nog geen vast maximum
+        </button>
+      </div>
+
+      <div className="relative mt-3 h-14 w-full">
+        <svg viewBox="0 0 400 56" preserveAspectRatio="none" className="absolute inset-0 h-full w-full">
+          <defs>
+            <clipPath id="budgetGolfClip">
+              <rect x="0" y="0" width={fractie * 400} height="56" />
+            </clipPath>
+          </defs>
+          <path d={BUDGET_GOLF_PAD} className="fill-ink/[0.07]" />
+          <path d={BUDGET_GOLF_PAD} className={geenMaximum ? "fill-ink/[0.14]" : "fill-accent/30"} clipPath="url(#budgetGolfClip)" />
+        </svg>
+        <input
+          type="range"
+          min={BUDGET_MIN}
+          max={BUDGET_MAX}
+          step={BUDGET_STAP}
+          value={sliderWaarde}
+          onChange={(e) => onWijzigen(Number(e.target.value))}
+          aria-label="Maximale koopprijs"
+          className="absolute inset-x-0 bottom-0 h-7 w-full cursor-pointer appearance-none bg-transparent accent-accent"
+        />
+      </div>
+      <div className="mt-1 flex justify-between text-[10px] font-medium text-ink/35">
+        <span>€ {BUDGET_MIN.toLocaleString("nl-NL")}</span>
+        <span>€ {BUDGET_MAX.toLocaleString("nl-NL")}+</span>
+      </div>
+    </div>
+  );
+}
+
 // Landelijke multi-locatiekeuze (Vraag 3, max MAX_VOORKEUR_LOCATIES) --
 // hergebruikt dezelfde live PDOK-autocomplete als de oude zoekopdracht
 // (LocatieAutocomplete.tsx is van zichzelf een single-value component). Elke
@@ -239,7 +526,9 @@ function Stappenbalk({ stap, totaal }: { stap: number; totaal: number }) {
   );
 }
 
-const STAP_LABELS = ["Budget", "Locatie", "Woning", "Voorzieningen", "Dealbreakers", "Afwegingen", "Prioriteiten"];
+// HERONTWERP: de oude Budget/Locatie/Woning-stappen (3 losse stappen) zijn nu
+// samen ÉÉN "Harde eisen"-stap -- zie de toelichting bovenaan dit bestand.
+const STAP_LABELS = ["Harde eisen", "Voorzieningen", "Dealbreakers", "Afwegingen", "Prioriteiten"];
 const TOTAAL_STAPPEN = STAP_LABELS.length;
 
 export default function VoorkeurenVragenlijst({
@@ -261,10 +550,13 @@ export default function VoorkeurenVragenlijst({
   }
 
   const stapGeldig: boolean[] = [
-    Boolean(draft.maxKoopprijs && draft.kostenKoper),
-    draft.voorkeurLocaties.length > 0,
+    // Harde eisen -- combinatie van de oude drie stappen (budget/kosten
+    // koper, locatie, woning) in één geldigheidscheck.
     Boolean(
-      draft.woningtypes.length > 0 &&
+      draft.budgetAangeraakt &&
+        draft.kostenKoper &&
+        draft.voorkeurLocaties.length > 0 &&
+        draft.woningtypes.length > 0 &&
         (!draft.woningtypes.includes("other") || draft.woningtypeAnders.trim()) &&
         draft.minKamers &&
         draft.minOppervlak &&
@@ -290,7 +582,11 @@ export default function VoorkeurenVragenlijst({
   function versturen() {
     if (!alleStappenGeldig) return;
     onOpslaan({
-      maxKoopprijs: draft.maxKoopprijs!,
+      // Geen non-null-assertion meer: `null` ("nog geen vast maximum") is nu
+      // een legitieme, geldige waarde -- zie de toelichting bij BUDGET_MIN in
+      // types/b2b.ts. De geldigheid van deze stap wordt bewaakt door
+      // `budgetAangeraakt` in stapGeldig hierboven, niet door de waarde zelf.
+      maxKoopprijs: draft.maxKoopprijs,
       kostenKoper: draft.kostenKoper!,
       voorkeurLocaties: draft.voorkeurLocaties,
       woningtypes: draft.woningtypes,
@@ -324,29 +620,40 @@ export default function VoorkeurenVragenlijst({
         {stap === 0 && (
           <>
             <div>
-              <p className="text-[12.5px] font-semibold text-ink">Wat is je maximale koopprijs?</p>
-              <SingleSelect opties={B2B_BUDGET_OPTIES} waarde={draft.maxKoopprijs} onKiezen={(w) => zet("maxKoopprijs", w)} />
-            </div>
-            <div>
-              <p className="text-[12.5px] font-semibold text-ink">Is kosten koper in dat bedrag meegenomen?</p>
+              <div className="flex items-center gap-1.5">
+                <EuroIcon className="h-4 w-4 text-ink/40" />
+                <p className="text-[12.5px] font-semibold text-ink">Maximale koopprijs</p>
+              </div>
+              <BudgetSlider
+                waarde={draft.maxKoopprijs}
+                aangeraakt={draft.budgetAangeraakt}
+                onWijzigen={(w) => setDraft((d) => ({ ...d, maxKoopprijs: w, budgetAangeraakt: true }))}
+                onGeenMaximum={() => setDraft((d) => ({ ...d, maxKoopprijs: null, budgetAangeraakt: true }))}
+              />
+              <p className="mt-3.5 text-[12.5px] font-semibold text-ink">Is kosten koper hierin meegenomen?</p>
               <SingleSelect opties={B2B_KOSTEN_KOPER_OPTIES} waarde={draft.kostenKoper} onKiezen={(w) => zet("kostenKoper", w)} />
             </div>
-          </>
-        )}
 
-        {stap === 1 && (
-          <div>
-            <p className="text-[12.5px] font-semibold text-ink">Waar wil je wonen?</p>
-            <p className="mt-0.5 text-[11.5px] text-ink/45">Zoek een plaats of wijk -- kies maximaal {MAX_VOORKEUR_LOCATIES}.</p>
-            <LocatiePicker waarden={draft.voorkeurLocaties} max={MAX_VOORKEUR_LOCATIES} onWijzigen={(w) => zet("voorkeurLocaties", w)} />
-          </div>
-        )}
-
-        {stap === 2 && (
-          <>
             <div>
-              <p className="text-[12.5px] font-semibold text-ink">Wat voor type woning zoek je?</p>
-              <MultiSelect opties={B2B_WONINGTYPE_VOORKEUREN} waarden={draft.woningtypes} onWijzigen={(w) => zet("woningtypes", w)} />
+              <div className="flex items-center gap-1.5">
+                <MapPinIcon className="h-4 w-4 text-ink/40" />
+                <p className="text-[12.5px] font-semibold text-ink">Waar wil je wonen?</p>
+              </div>
+              <p className="mt-0.5 text-[11.5px] text-ink/45">Zoek een plaats of wijk -- kies maximaal {MAX_VOORKEUR_LOCATIES}.</p>
+              <LocatiePicker waarden={draft.voorkeurLocaties} max={MAX_VOORKEUR_LOCATIES} onWijzigen={(w) => zet("voorkeurLocaties", w)} />
+            </div>
+
+            <div>
+              <div className="flex items-center gap-1.5">
+                <BuildingIcon className="h-4 w-4 text-ink/40" />
+                <p className="text-[12.5px] font-semibold text-ink">Wat voor type woning zoek je?</p>
+              </div>
+              <IconKaartMultiSelect
+                opties={B2B_WONINGTYPE_VOORKEUREN}
+                iconen={WONINGTYPE_ICONEN}
+                waarden={draft.woningtypes}
+                onWijzigen={(w) => zet("woningtypes", w)}
+              />
               {draft.woningtypes.includes("other") && (
                 <input
                   value={draft.woningtypeAnders}
@@ -356,26 +663,47 @@ export default function VoorkeurenVragenlijst({
                 />
               )}
             </div>
+
             <div>
-              <p className="text-[12.5px] font-semibold text-ink">Hoeveel kamers wil je minimaal?</p>
-              <SingleSelect opties={B2B_MIN_KAMERS_OPTIES} waarde={draft.minKamers} onKiezen={(w) => zet("minKamers", w)} />
+              <div className="flex items-center gap-1.5">
+                <DoorIcon className="h-4 w-4 text-ink/40" />
+                <p className="text-[12.5px] font-semibold text-ink">Hoeveel kamers wil je minimaal?</p>
+              </div>
+              <SegmentSelect opties={B2B_MIN_KAMERS_OPTIES} waarde={draft.minKamers} onKiezen={(w) => zet("minKamers", w)} />
             </div>
+
             <div>
-              <p className="text-[12.5px] font-semibold text-ink">Minimale woonoppervlakte?</p>
-              <SingleSelect opties={B2B_MIN_OPPERVLAK_OPTIES} waarde={draft.minOppervlak} onKiezen={(w) => zet("minOppervlak", w)} />
+              <div className="flex items-center gap-1.5">
+                <RulerIcon className="h-4 w-4 text-ink/40" />
+                <p className="text-[12.5px] font-semibold text-ink">Minimale woonoppervlakte?</p>
+              </div>
+              <SegmentSelect opties={B2B_MIN_OPPERVLAK_OPTIES} waarde={draft.minOppervlak} onKiezen={(w) => zet("minOppervlak", w)} />
             </div>
+
             <div>
-              <p className="text-[12.5px] font-semibold text-ink">Buitenruimte?</p>
-              <SingleSelect opties={B2B_BUITENRUIMTE_OPTIES} waarde={draft.buitenruimte} onKiezen={(w) => zet("buitenruimte", w)} />
+              <div className="flex items-center gap-1.5">
+                <LeafIcon className="h-4 w-4 text-ink/40" />
+                <p className="text-[12.5px] font-semibold text-ink">Buitenruimte?</p>
+              </div>
+              <IconKaartSingleSelect
+                opties={B2B_BUITENRUIMTE_OPTIES}
+                iconen={BUITENRUIMTE_ICONEN}
+                waarde={draft.buitenruimte}
+                onKiezen={(w) => zet("buitenruimte", w)}
+              />
             </div>
+
             <div>
-              <p className="text-[12.5px] font-semibold text-ink">Minimaal energielabel?</p>
-              <SingleSelect opties={B2B_MIN_ENERGIELABEL_OPTIES} waarde={draft.minEnergielabel} onKiezen={(w) => zet("minEnergielabel", w)} />
+              <div className="flex items-center gap-1.5">
+                <BoltIcon className="h-4 w-4 text-ink/40" />
+                <p className="text-[12.5px] font-semibold text-ink">Minimaal energielabel?</p>
+              </div>
+              <EnergielabelSelect waarde={draft.minEnergielabel} onKiezen={(w) => zet("minEnergielabel", w)} />
             </div>
           </>
         )}
 
-        {stap === 3 && (
+        {stap === 1 && (
           <>
             <div>
               <p className="text-[12.5px] font-semibold text-ink">Welke voorzieningen zijn belangrijk?</p>
@@ -393,7 +721,7 @@ export default function VoorkeurenVragenlijst({
           </>
         )}
 
-        {stap === 4 && (
+        {stap === 2 && (
           <div>
             <p className="text-[12.5px] font-semibold text-ink">Wat zijn je absolute dealbreakers?</p>
             <p className="mt-0.5 text-[11.5px] text-ink/45">Kies maximaal {MAX_DEALBREAKERS}.</p>
@@ -409,7 +737,7 @@ export default function VoorkeurenVragenlijst({
           </div>
         )}
 
-        {stap === 5 && (
+        {stap === 3 && (
           <div>
             <p className="text-[12.5px] font-semibold text-ink">Waar zou je op willen inleveren?</p>
             <p className="mt-0.5 text-[11.5px] text-ink/45">Kies maximaal {MAX_AFWEGINGEN}.</p>
@@ -417,7 +745,7 @@ export default function VoorkeurenVragenlijst({
           </div>
         )}
 
-        {stap === 6 && (
+        {stap === 4 && (
           <div>
             <p className="text-[12.5px] font-semibold text-ink">Wat is het allerbelangrijkste?</p>
             <p className="mt-0.5 text-[11.5px] text-ink/45">Kies maximaal {MAX_PRIORITEITEN}.</p>
