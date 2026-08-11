@@ -5,31 +5,29 @@ import {
   B2B_MIN_OPPERVLAK_OPTIES,
   B2B_BUITENRUIMTE_OPTIES,
   B2B_MIN_ENERGIELABEL_OPTIES,
-  B2B_VOORZIENING_WENSEN,
-  B2B_PARKEREN_OPTIES,
-  B2B_DEALBREAKERS,
-  B2B_AFWEGINGEN,
-  B2B_PRIORITEITEN,
   MAX_VOORKEUR_LOCATIES,
-  MAX_DEALBREAKERS,
-  MAX_AFWEGINGEN,
-  MAX_PRIORITEITEN,
 } from "@/types/b2b";
 import type { B2bKoperVoorkeuren, B2bLocatie } from "@/types/b2b";
 
 // -----------------------------------------------------------------------------
-// Gedeelde validatie voor de 13-vragen koper-voorkeurenlijst (matchingmodel
-// v2) -- gebruikt door zowel de makelaar-route
-// (app/api/zakelijk/klanten/[id]/route.ts) als de publieke koper-link
-// (app/api/koper-voorkeuren/[token]/route.ts), zodat beide invulkanalen
-// EXACT dezelfde regels toepassen (zie het gesprek hierover: "moet op deze
-// manier ingevuld kunnen worden via de link, maar ook via de app zelf").
+// Gedeelde validatie voor de koper-voorkeurenlijst -- gebruikt door zowel de
+// makelaar-route (app/api/zakelijk/klanten/[id]/route.ts) als de publieke
+// koper-link (app/api/koper-voorkeuren/[token]/route.ts), zodat beide
+// invulkanalen EXACT dezelfde regels toepassen (zie het gesprek hierover:
+// "moet op deze manier ingevuld kunnen worden via de link, maar ook via de
+// app zelf").
 //
-// BEWUST alles-of-niets: elke vraag in de opgave is "Required: true" (behalve
-// Vraag 9, voorzieningen) -- een halve invoer wordt hier afgewezen i.p.v.
-// stilzwijgend aangevuld met een default, want een verzonnen antwoord (bv.
-// "budget onbekend" invullen omdat het veld leeg was) zou het scoremodel een
-// vals gevoel van zekerheid geven.
+// VEREENVOUDIGING (Sjoerd, "vragenlijst echt inkorten tot alleen harde
+// eisen"): de vragen over voorzieningen, parkeren, dealbreakers, afwegingen
+// en prioriteiten (die alleen het inmiddels verwijderde matchingscore-model
+// voedden, zie matchScore.ts) zijn hier verwijderd -- alleen de 7
+// harde-eisen-vragen resteren.
+//
+// BEWUST alles-of-niets: elke resterende vraag is "Required: true" -- een
+// halve invoer wordt hier afgewezen i.p.v. stilzwijgend aangevuld met een
+// default, want een verzonnen antwoord (bv. "budget onbekend" invullen omdat
+// het veld leeg was) zou de harde-eisen-toetsing een vals gevoel van
+// zekerheid geven.
 // -----------------------------------------------------------------------------
 
 function isGeldigeWaarde<T extends string>(waarde: unknown, opties: { waarde: T }[]): waarde is T {
@@ -101,28 +99,6 @@ export function valideerKoperVoorkeuren(input: unknown): { ok: true; waarde: B2b
   if (!isGeldigeWaarde(v.buitenruimte, B2B_BUITENRUIMTE_OPTIES)) return { ok: false, error: "Beantwoord vraag 7 (buitenruimte)." };
   if (!isGeldigeWaarde(v.minEnergielabel, B2B_MIN_ENERGIELABEL_OPTIES)) return { ok: false, error: "Beantwoord vraag 8 (energielabel)." };
 
-  // Vraag 9 is NIET verplicht (Required: false in de opgave) -- lege array
-  // is een geldig antwoord.
-  const belangrijkeVoorzieningen = isGeldigeArray(v.belangrijkeVoorzieningen, B2B_VOORZIENING_WENSEN)
-    ? (v.belangrijkeVoorzieningen as B2bKoperVoorkeuren["belangrijkeVoorzieningen"])
-    : [];
-
-  if (!isGeldigeWaarde(v.parkeren, B2B_PARKEREN_OPTIES)) return { ok: false, error: "Beantwoord vraag 10 (parkeren)." };
-
-  if (!isGeldigeArray(v.dealbreakers, B2B_DEALBREAKERS, MAX_DEALBREAKERS) || (v.dealbreakers as unknown[]).length === 0) {
-    return { ok: false, error: `Kies minimaal 1 en maximaal ${MAX_DEALBREAKERS} dealbreakers (vraag 11).` };
-  }
-  const dealbreakers = v.dealbreakers as B2bKoperVoorkeuren["dealbreakers"];
-  const dealbreakerAnders = dealbreakers.includes("other") ? tekst(v.dealbreakerAnders, 200) : null;
-
-  if (!isGeldigeArray(v.afwegingen, B2B_AFWEGINGEN, MAX_AFWEGINGEN) || (v.afwegingen as unknown[]).length === 0) {
-    return { ok: false, error: `Kies minimaal 1 en maximaal ${MAX_AFWEGINGEN} afwegingen (vraag 12).` };
-  }
-
-  if (!isGeldigeArray(v.prioriteiten, B2B_PRIORITEITEN, MAX_PRIORITEITEN) || (v.prioriteiten as unknown[]).length === 0) {
-    return { ok: false, error: `Kies minimaal 1 en maximaal ${MAX_PRIORITEITEN} prioriteiten (vraag 13).` };
-  }
-
   return {
     ok: true,
     waarde: {
@@ -135,12 +111,6 @@ export function valideerKoperVoorkeuren(input: unknown): { ok: true; waarde: B2b
       minOppervlak: v.minOppervlak as B2bKoperVoorkeuren["minOppervlak"],
       buitenruimte: v.buitenruimte as B2bKoperVoorkeuren["buitenruimte"],
       minEnergielabel: v.minEnergielabel as B2bKoperVoorkeuren["minEnergielabel"],
-      belangrijkeVoorzieningen,
-      parkeren: v.parkeren as B2bKoperVoorkeuren["parkeren"],
-      dealbreakers,
-      dealbreakerAnders,
-      afwegingen: v.afwegingen as B2bKoperVoorkeuren["afwegingen"],
-      prioriteiten: v.prioriteiten as B2bKoperVoorkeuren["prioriteiten"],
       ingevuldOp: new Date().toISOString(),
     },
   };

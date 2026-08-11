@@ -1,7 +1,7 @@
 import { randomUUID, randomBytes } from "crypto";
 import { kvGet, kvSet, kvDel, kvZAdd, kvZRangeByScore, kvZRem, kvIncrWithTtl } from "@/lib/services/kvStore";
 import { slugify } from "@/lib/utils/slug";
-import { berekenMatchScore, voldoetAanHardeEisen } from "@/lib/services/matchScore";
+import { voldoetAanHardeEisen } from "@/lib/services/matchScore";
 import { vindGekoppeldRapport } from "@/lib/services/matchRapportKoppeling";
 import { haalListingDetails } from "@/lib/data-sources/fundaFeed";
 import type {
@@ -449,39 +449,40 @@ export async function ruimVerouderdeMatchenOp(klantId: string, koperVoorkeuren: 
 // gewoon eerlijk minder tonen. Wordt aangeroepen NA het opslaan van nieuwe
 // matches.
 //
-// MATCHING-MODEL (zie het Cowork-gesprek hierover): was FIFO (de oudste
-// matches vlogen eruit) -- dat had geen enkele notie van kwaliteit, dus een
-// uitstekende match kon zomaar wegvallen zodra er een middelmatige nieuwere
-// bijkwam. Nu wordt op score gerangschikt (berekenMatchScore,
-// lib/services/matchScore.ts) en vallen de LAAGST scorende matches als eerste
-// weg. Een match met een gekoppeld Kooprapport (vindGekoppeldRapport) is
-// altijd beschermd, ongeacht score -- de makelaar heeft daar al tijd in
+// VEREENVOUDIGING (Sjoerd, "vragenlijst echt inkorten tot alleen harde
+// eisen" / "score helemaal weg"): dit rangschikte een tijdlang op
+// matchingsscore (berekenMatchScore) en liet de LAAGST scorende matches als
+// eerste wegvallen -- dat scoreproces bestaat niet meer (zie matchScore.ts).
+// Terug naar FIFO (oudste-eerst): `listMatchenVoorKlant` geeft al newest-
+// first terug, dus de oudste matches staan aan het EIND van `huidige`. Een
+// match met een gekoppeld Kooprapport (vindGekoppeldRapport) blijft
+// beschermd, ongeacht leeftijd -- de makelaar heeft daar al tijd in
 // gestoken, die mag nooit stilzwijgend uit het overzicht verdwijnen. Zijn er
 // méér beschermde matches dan maxAantal, dan wordt de cap bewust niet
 // gehaald -- bescherming gaat voor de weergavelimiet.
 //
-// MATCHINGMODEL V3: alle matches die hier binnenkomen, voldoen al aan de 7
-// harde eisen van fase 1 (dat is al gegarandeerd vóór het opslaan, zie
-// matches-verversen/route.ts en cron/matches-controleren/route.ts, en
-// ruimVerouderdeMatchenOp() hierboven ruimt bestaande matches op zodra dat
-// niet meer zo is) -- de score hier is dus puur een rangschikking, geen
-// tweede afwijzingsronde.
+// Alle matches die hier binnenkomen, voldoen al aan de harde eisen (dat is
+// al gegarandeerd vóór het opslaan, zie matches-verversen/route.ts en
+// cron/matches-controleren/route.ts, en ruimVerouderdeMatchenOp() hierboven
+// ruimt bestaande matches op zodra dat niet meer zo is) -- dit is dus puur
+// een weergavelimiet, geen tweede afwijzingsronde.
 export async function kapMatchenOpMax(klantId: string, maxAantal: number): Promise<void> {
-  const huidige = await listMatchenVoorKlant(klantId);
+  const huidige = await listMatchenVoorKlant(klantId); // newest-first
   if (huidige.length <= maxAantal) return;
 
-  const [dossier, rapporten] = await Promise.all([getKlantdossier(klantId), listRapportenVoorKlant(klantId)]);
+  const rapporten = await listRapportenVoorKlant(klantId);
   const beschermdeIds = new Set(huidige.filter((m) => vindGekoppeldRapport(m.titel, rapporten) != null).map((m) => m.id));
 
   const teVeel = huidige.length - maxAantal;
-  const kandidatenMetScore = await Promise.all(
-    huidige
-      .filter((m) => !beschermdeIds.has(m.id))
-      .map(async (match) => ({ match, score: (await berekenMatchScore(match, dossier?.zoekopdracht?.koperVoorkeuren ?? null)).totaal }))
-  );
-  const kandidaten = kandidatenMetScore.sort((a, b) => a.score - b.score);
+  const kandidaten = huidige.filter((m) => !beschermdeIds.has(m.id));
+  // `kandidaten` staat nog steeds newest-first -- de laatste `teVeel`
+  // elementen zijn dus de OUDSTE onbeschermde matches. `slice` met een
+  // negatieve start die groter is dan de array clampt vanzelf naar het
+  // begin, dus als er minder onbeschermde kandidaten zijn dan `teVeel`
+  // worden die simpelweg allemaal verwijderd (bescherming gaat voor de cap).
+  const teVerwijderen = kandidaten.slice(-teVeel);
 
-  for (const { match } of kandidaten.slice(0, teVeel)) {
+  for (const match of teVerwijderen) {
     await verwijderMatch(match);
   }
 }

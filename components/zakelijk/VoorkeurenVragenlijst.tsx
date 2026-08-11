@@ -10,11 +10,6 @@ import type {
   B2bMinOppervlakOptie,
   B2bBuitenruimteVoorkeur,
   B2bMinEnergielabelOptie,
-  B2bVoorzieningWens,
-  B2bParkerenVoorkeur,
-  B2bDealbreaker,
-  B2bAfweging,
-  B2bPrioriteitOptie,
 } from "@/types/b2b";
 import {
   BUDGET_MIN,
@@ -26,20 +21,11 @@ import {
   B2B_MIN_OPPERVLAK_OPTIES,
   B2B_BUITENRUIMTE_OPTIES,
   B2B_MIN_ENERGIELABEL_OPTIES,
-  B2B_VOORZIENING_WENSEN,
-  B2B_PARKEREN_OPTIES,
-  B2B_DEALBREAKERS,
-  B2B_AFWEGINGEN,
-  B2B_PRIORITEITEN,
   MAX_VOORKEUR_LOCATIES,
-  MAX_DEALBREAKERS,
-  MAX_AFWEGINGEN,
-  MAX_PRIORITEITEN,
 } from "@/types/b2b";
 import LocatieAutocomplete from "@/components/zakelijk/LocatieAutocomplete";
 import {
   CheckIcon,
-  ArrowRightIcon,
   EuroIcon,
   MapPinIcon,
   BuildingIcon,
@@ -55,42 +41,32 @@ import {
 } from "@/components/report/icons";
 
 // -----------------------------------------------------------------------------
-// Matchingmodel v2 -- de volledige 13-vragen-vragenlijst (zie het Cowork-
-// gesprek hierover, "matchingsproces onder de loep"). Dit ÉNE, gedeelde
-// component wordt hergebruikt door zowel de makelaar (in het dashboard, zie
-// ZoekopdrachtForm.tsx) als de koper (publieke link, zie KoperVoorkeurenForm.tsx)
-// -- beide invulkanalen blijven bestaan (zie het gesprek hierover), alleen de
-// vragenlijst zelf is nu overal identiek, i.p.v. twee losse implementaties
-// van (voorheen) 4 vragen.
+// Koper-voorkeurenlijst -- VEREENVOUDIGD (Sjoerd, na de visuele
+// herontwerp-sessie van het zoekfilterproces: "vragenlijst echt inkorten tot
+// alleen harde eisen"). Dit was tot nu toe een 13-vragen/7-stappen-wizard
+// (matchingmodel v2/v4) inclusief voorzieningenwensen, parkeren,
+// dealbreakers, afwegingen en prioriteiten -- die vijf vragen voedden
+// uitsluitend het inmiddels verwijderde matchingsscore-model (Fase 1-3, zie
+// matchScore.ts). Sjoerd gaf expliciet aan dat matches voortaan simpelweg
+// getoond worden zodra ze aan alle harde eisen voldoen, zonder score of
+// ranking -- die vijf vragen hebben dus geen functie meer en zijn hier
+// volledig verwijderd. Wat overblijft is precies de "Harde eisen"-stap die
+// eerder deze sessie al werd herontworpen (schuifregelaar voor budget,
+// icoon-kaarten, EU-label-stijl energielabel-kiezer, zie de toelichting bij
+// de subcomponenten hieronder) -- nu de ENIGE stap, dus de hele
+// stappen-mechaniek (Stappenbalk, Vorige/Volgende) is ook verdwenen.
 //
-// Bewust ALLES-OF-NIETS: `onOpslaan` wordt pas aangeroepen met een compleet,
-// geldig B2bKoperVoorkeuren-object -- een half ingevulde lijst wordt hier niet
-// tussentijds opgeslagen (elke vraag is "Required: true" in de opgave, op
-// Vraag 9 na). De wizard bewaart de voortgang alleen lokaal in React-state
-// zolang de gebruiker aan het invullen is.
-//
-// HERONTWERP ZOEKFILTERPROCES (Sjoerd, visuele redesign-sessie: "Mooier
-// design / Duidelijkere keuzes / Alleen de harde eisen", uitgevoerd zonder
-// live backend-aanroep): de oude Stap 0 (budget/kosten koper), Stap 1
-// (locatie) en Stap 2 (woningtype/kamers/oppervlak/buitenruimte/energielabel)
-// zijn hier samengevoegd tot ÉÉN "Harde eisen"-stap -- dat zijn precies de 8
-// harde eisen uit Fase 0 van het scoreproces (zie voldoetAanHardeEisen in
-// matchScore.ts), die inhoudelijk bij elkaar horen en nu ook zo gepresenteerd
-// worden i.p.v. als drie losse, willekeurig aanvoelende stappen. Budget is
-// vervangen door een doorlopende schuifregelaar (zie BudgetSlider hieronder
-// en de toelichting bij BUDGET_MIN in types/b2b.ts) i.p.v. 6 vaste buckets --
-// BEWUST GEEN live aantal-passende-woningen-teller hierboven (zou een
-// backend-aanroep per klik vereisen, zie het gesprek hierover), de golfvorm
-// achter de schuifregelaar is puur decoratief.
+// Dit ÉNE, gedeelde component wordt nog steeds hergebruikt door zowel de
+// makelaar (in het dashboard, zie ZoekopdrachtForm.tsx) als de koper
+// (publieke link, zie KoperVoorkeurenForm.tsx).
 // -----------------------------------------------------------------------------
 
 interface Draft {
   maxKoopprijs: number | null;
   // Los van `maxKoopprijs` zelf bijgehouden: `null` is zowel de starttoestand
-  // (nog niets gekozen, stap ongeldig) als een geldige eindkeuze ("nog geen
-  // vast maximum", stap juist wél geldig) -- zonder deze vlag zou er geen
-  // onderscheid te maken zijn tussen die twee, en zou de stap dus nooit
-  // geldig kunnen worden als de koper bewust "geen vast maximum" kiest.
+  // (nog niets gekozen, formulier ongeldig) als een geldige eindkeuze ("nog
+  // geen vast maximum", formulier juist wél geldig) -- zonder deze vlag zou
+  // er geen onderscheid te maken zijn tussen die twee.
   budgetAangeraakt: boolean;
   kostenKoper: B2bKostenKoperOptie | null;
   voorkeurLocaties: B2bLocatie[];
@@ -100,12 +76,6 @@ interface Draft {
   minOppervlak: B2bMinOppervlakOptie | null;
   buitenruimte: B2bBuitenruimteVoorkeur | null;
   minEnergielabel: B2bMinEnergielabelOptie | null;
-  belangrijkeVoorzieningen: B2bVoorzieningWens[];
-  parkeren: B2bParkerenVoorkeur | null;
-  dealbreakers: B2bDealbreaker[];
-  dealbreakerAnders: string;
-  afwegingen: B2bAfweging[];
-  prioriteiten: B2bPrioriteitOptie[];
 }
 
 function leegDraft(bestaand: B2bKoperVoorkeuren | null): Draft {
@@ -116,10 +86,6 @@ function leegDraft(bestaand: B2bKoperVoorkeuren | null): Draft {
     // behandelen we hier hetzelfde als "nog geen vast maximum" (null), nooit
     // een crash of NaN op verouderde data.
     maxKoopprijs: typeof bestaand?.maxKoopprijs === "number" ? bestaand.maxKoopprijs : null,
-    // Bij een bestaand dossier is deze stap al eerder (al dan niet expliciet
-    // op "geen vast maximum") ingevuld, dus meteen als aangeraakt markeren --
-    // anders zou een koper die eerder bewust "geen vast maximum" koos hier
-    // opnieuw als "nog niets gekozen" verschijnen.
     budgetAangeraakt: bestaand != null,
     kostenKoper: bestaand?.kostenKoper ?? null,
     voorkeurLocaties: bestaand?.voorkeurLocaties ?? [],
@@ -129,33 +95,6 @@ function leegDraft(bestaand: B2bKoperVoorkeuren | null): Draft {
     minOppervlak: bestaand?.minOppervlak ?? null,
     buitenruimte: bestaand?.buitenruimte ?? null,
     minEnergielabel: bestaand?.minEnergielabel ?? null,
-    // Zelfde bescherming als bij dealbreakers hierboven: "workplace" bestond
-    // eerder als optie (zie types/b2b.ts) en is verwijderd -- een bestaand
-    // dossier met die waarde nog in belangrijkeVoorzieningen filteren we hier
-    // weg, anders lijkt de stap "ingevuld" terwijl de server 'm alsnog zou
-    // afwijzen bij opslaan.
-    belangrijkeVoorzieningen: (bestaand?.belangrijkeVoorzieningen ?? []).filter((w) => B2B_VOORZIENING_WENSEN.some((o) => o.waarde === w)),
-    parkeren: bestaand?.parkeren ?? null,
-    // BUGFIX (matchingmodel v3, B2B_DEALBREAKERS is van 11 naar 7 naar 3
-    // opties getrimd): een bestaand dossier kan nog een inmiddels verwijderde
-    // waarde bevatten (bv. "no_outdoor_space", "no_parking"). MultiSelect
-    // toont zo'n waarde niet als chip (zit niet meer in `opties`), maar de
-    // array bleef wel gevuld -- de stap leek dus al "klaar" (length > 0)
-    // terwijl de server 'm bij opslaan alsnog afwijst omdat de waarde niet
-    // meer geldig is. Daarom hier al filteren tegen de actuele lijst, zodat
-    // het formulier meteen laat zien wat er nog écht gekozen moet worden.
-    dealbreakers: (bestaand?.dealbreakers ?? []).filter((d) => B2B_DEALBREAKERS.some((o) => o.waarde === d)),
-    dealbreakerAnders: bestaand?.dealbreakerAnders ?? "",
-    // NIEUW SCOREPROCES (v4): dezelfde bescherming als bij dealbreakers/
-    // voorzieningen hierboven, nu ook toegepast op afwegingen/prioriteiten --
-    // beide lijsten zijn met de overstap naar v4 getrimd (afwegingen verloor
-    // "less_parking"/"fewer_rooms", prioriteiten verloor "rooms"/
-    // "amenities_nearby"/"condition_year"), dus een ouder dossier kan hier nu
-    // ook stale waarden bevatten. Zonder filter zou de server
-    // (koperVoorkeurenValidatie.ts) zo'n dossier bij opnieuw opslaan alsnog
-    // afwijzen, terwijl het formulier zelf allang "ingevuld" leek.
-    afwegingen: (bestaand?.afwegingen ?? []).filter((a) => B2B_AFWEGINGEN.some((o) => o.waarde === a)),
-    prioriteiten: (bestaand?.prioriteiten ?? []).filter((p) => B2B_PRIORITEITEN.some((o) => o.waarde === p)),
   };
 }
 
@@ -193,43 +132,10 @@ function SingleSelect<T extends string>({
   );
 }
 
-function MultiSelect<T extends string>({
-  opties,
-  waarden,
-  max,
-  onWijzigen,
-}: {
-  opties: { waarde: T; label: string }[];
-  waarden: T[];
-  max?: number;
-  onWijzigen: (w: T[]) => void;
-}) {
-  function toggle(w: T) {
-    if (waarden.includes(w)) {
-      onWijzigen(waarden.filter((x) => x !== w));
-    } else if (!max || waarden.length < max) {
-      onWijzigen([...waarden, w]);
-    }
-  }
-  return (
-    <div className="mt-2 flex flex-wrap gap-2">
-      {opties.map((o) => (
-        <Keuze
-          key={o.waarde}
-          actief={waarden.includes(o.waarde)}
-          disabled={!waarden.includes(o.waarde) && Boolean(max) && waarden.length >= (max ?? Infinity)}
-          label={o.label}
-          onClick={() => toggle(o.waarde)}
-        />
-      ))}
-    </div>
-  );
-}
-
-// Herontwerp: een rijtje aaneengesloten segmenten (i.p.v. losse pillen) voor
-// keuzes met een natuurlijke oplopende volgorde -- kamers en oppervlak
-// hieronder. Voelt aan als "kies een punt op een schaal" i.p.v. "kies een
-// los label uit een lijst", en is compacter dan de vorige pil-rij.
+// Een rijtje aaneengesloten segmenten (i.p.v. losse pillen) voor keuzes met
+// een natuurlijke oplopende volgorde -- kamers en oppervlak hieronder. Voelt
+// aan als "kies een punt op een schaal" i.p.v. "kies een los label uit een
+// lijst", en is compacter dan een pil-rij.
 function SegmentSelect<T extends string>({
   opties,
   waarde,
@@ -261,8 +167,7 @@ type IconComponent = (props: { className?: string }) => ReactElement;
 
 // Eén icoon-kaart -- gedeelde presentatie-primitive voor zowel de
 // multi-keuze (woningtype) als de single-keuze (buitenruimte) variant
-// hieronder. Duidelijker en herkenbaarder dan een tekstpil, precies wat
-// Sjoerd vroeg met "Duidelijkere keuzes".
+// hieronder. Duidelijker en herkenbaarder dan een tekstpil.
 function IconKaart({
   actief,
   icon: Icon,
@@ -467,8 +372,8 @@ function BudgetSlider({
   );
 }
 
-// Landelijke multi-locatiekeuze (Vraag 3, max MAX_VOORKEUR_LOCATIES) --
-// hergebruikt dezelfde live PDOK-autocomplete als de oude zoekopdracht
+// Landelijke multi-locatiekeuze (max MAX_VOORKEUR_LOCATIES) -- hergebruikt
+// dezelfde live PDOK-autocomplete als de oude zoekopdracht
 // (LocatieAutocomplete.tsx is van zichzelf een single-value component). Elke
 // gekozen locatie wordt een verwijderbare chip; zodra er ruimte over is
 // (waarden.length < max) staat er een leeg invoerveld klaar voor de
@@ -516,21 +421,6 @@ function LocatiePicker({ waarden, max, onWijzigen }: { waarden: B2bLocatie[]; ma
   );
 }
 
-function Stappenbalk({ stap, totaal }: { stap: number; totaal: number }) {
-  return (
-    <div className="flex items-center gap-1">
-      {Array.from({ length: totaal }).map((_, i) => (
-        <span key={i} className={`h-1.5 flex-1 rounded-full ${i <= stap ? "bg-accent" : "bg-ink/[0.08]"}`} />
-      ))}
-    </div>
-  );
-}
-
-// HERONTWERP: de oude Budget/Locatie/Woning-stappen (3 losse stappen) zijn nu
-// samen ÉÉN "Harde eisen"-stap -- zie de toelichting bovenaan dit bestand.
-const STAP_LABELS = ["Harde eisen", "Voorzieningen", "Dealbreakers", "Afwegingen", "Prioriteiten"];
-const TOTAAL_STAPPEN = STAP_LABELS.length;
-
 export default function VoorkeurenVragenlijst({
   bestaand,
   onOpslaan,
@@ -542,50 +432,31 @@ export default function VoorkeurenVragenlijst({
   bezig: boolean;
   opslaanLabel?: string;
 }) {
-  const [stap, setStap] = useState(0);
   const [draft, setDraft] = useState<Draft>(() => leegDraft(bestaand));
 
   function zet<K extends keyof Draft>(key: K, waarde: Draft[K]) {
     setDraft((d) => ({ ...d, [key]: waarde }));
   }
 
-  const stapGeldig: boolean[] = [
-    // Harde eisen -- combinatie van de oude drie stappen (budget/kosten
-    // koper, locatie, woning) in één geldigheidscheck.
-    Boolean(
-      draft.budgetAangeraakt &&
-        draft.kostenKoper &&
-        draft.voorkeurLocaties.length > 0 &&
-        draft.woningtypes.length > 0 &&
-        (!draft.woningtypes.includes("other") || draft.woningtypeAnders.trim()) &&
-        draft.minKamers &&
-        draft.minOppervlak &&
-        draft.buitenruimte &&
-        draft.minEnergielabel
-    ),
-    Boolean(draft.parkeren), // Vraag 9 (voorzieningen) is optioneel, Vraag 10 (parkeren) niet
-    Boolean(draft.dealbreakers.length > 0 && (!draft.dealbreakers.includes("other") || draft.dealbreakerAnders.trim())),
-    draft.afwegingen.length > 0,
-    draft.prioriteiten.length > 0,
-  ];
-  const huidigeStapGeldig = stapGeldig[stap];
-  const alleStappenGeldig = stapGeldig.every(Boolean);
-
-  function volgende() {
-    if (!huidigeStapGeldig) return;
-    if (stap < TOTAAL_STAPPEN - 1) setStap((s) => s + 1);
-  }
-  function vorige() {
-    if (stap > 0) setStap((s) => s - 1);
-  }
+  const geldig = Boolean(
+    draft.budgetAangeraakt &&
+      draft.kostenKoper &&
+      draft.voorkeurLocaties.length > 0 &&
+      draft.woningtypes.length > 0 &&
+      (!draft.woningtypes.includes("other") || draft.woningtypeAnders.trim()) &&
+      draft.minKamers &&
+      draft.minOppervlak &&
+      draft.buitenruimte &&
+      draft.minEnergielabel
+  );
 
   function versturen() {
-    if (!alleStappenGeldig) return;
+    if (!geldig) return;
     onOpslaan({
-      // Geen non-null-assertion meer: `null` ("nog geen vast maximum") is nu
-      // een legitieme, geldige waarde -- zie de toelichting bij BUDGET_MIN in
-      // types/b2b.ts. De geldigheid van deze stap wordt bewaakt door
-      // `budgetAangeraakt` in stapGeldig hierboven, niet door de waarde zelf.
+      // Geen non-null-assertion: `null` ("nog geen vast maximum") is een
+      // legitieme, geldige waarde -- zie de toelichting bij BUDGET_MIN in
+      // types/b2b.ts. De geldigheid hiervan wordt bewaakt door
+      // `budgetAangeraakt` in `geldig` hierboven, niet door de waarde zelf.
       maxKoopprijs: draft.maxKoopprijs,
       kostenKoper: draft.kostenKoper!,
       voorkeurLocaties: draft.voorkeurLocaties,
@@ -595,194 +466,107 @@ export default function VoorkeurenVragenlijst({
       minOppervlak: draft.minOppervlak!,
       buitenruimte: draft.buitenruimte!,
       minEnergielabel: draft.minEnergielabel!,
-      belangrijkeVoorzieningen: draft.belangrijkeVoorzieningen,
-      parkeren: draft.parkeren!,
-      dealbreakers: draft.dealbreakers,
-      dealbreakerAnders: draft.dealbreakers.includes("other") ? draft.dealbreakerAnders.trim() || null : null,
-      afwegingen: draft.afwegingen,
-      prioriteiten: draft.prioriteiten,
       ingevuldOp: new Date().toISOString(),
     });
   }
 
   return (
     <div>
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-[11px] font-bold uppercase tracking-wide text-ink/40">
-          Stap {stap + 1}/{TOTAAL_STAPPEN} -- {STAP_LABELS[stap]}
-        </p>
-      </div>
-      <div className="mt-2">
-        <Stappenbalk stap={stap} totaal={TOTAAL_STAPPEN} />
-      </div>
+      <p className="text-[11px] font-bold uppercase tracking-wide text-ink/40">Harde eisen</p>
 
       <div className="mt-5 flex flex-col gap-5">
-        {stap === 0 && (
-          <>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <EuroIcon className="h-4 w-4 text-ink/40" />
-                <p className="text-[12.5px] font-semibold text-ink">Maximale koopprijs</p>
-              </div>
-              <BudgetSlider
-                waarde={draft.maxKoopprijs}
-                aangeraakt={draft.budgetAangeraakt}
-                onWijzigen={(w) => setDraft((d) => ({ ...d, maxKoopprijs: w, budgetAangeraakt: true }))}
-                onGeenMaximum={() => setDraft((d) => ({ ...d, maxKoopprijs: null, budgetAangeraakt: true }))}
-              />
-              <p className="mt-3.5 text-[12.5px] font-semibold text-ink">Is kosten koper hierin meegenomen?</p>
-              <SingleSelect opties={B2B_KOSTEN_KOPER_OPTIES} waarde={draft.kostenKoper} onKiezen={(w) => zet("kostenKoper", w)} />
-            </div>
-
-            <div>
-              <div className="flex items-center gap-1.5">
-                <MapPinIcon className="h-4 w-4 text-ink/40" />
-                <p className="text-[12.5px] font-semibold text-ink">Waar wil je wonen?</p>
-              </div>
-              <p className="mt-0.5 text-[11.5px] text-ink/45">Zoek een plaats of wijk -- kies maximaal {MAX_VOORKEUR_LOCATIES}.</p>
-              <LocatiePicker waarden={draft.voorkeurLocaties} max={MAX_VOORKEUR_LOCATIES} onWijzigen={(w) => zet("voorkeurLocaties", w)} />
-            </div>
-
-            <div>
-              <div className="flex items-center gap-1.5">
-                <BuildingIcon className="h-4 w-4 text-ink/40" />
-                <p className="text-[12.5px] font-semibold text-ink">Wat voor type woning zoek je?</p>
-              </div>
-              <IconKaartMultiSelect
-                opties={B2B_WONINGTYPE_VOORKEUREN}
-                iconen={WONINGTYPE_ICONEN}
-                waarden={draft.woningtypes}
-                onWijzigen={(w) => zet("woningtypes", w)}
-              />
-              {draft.woningtypes.includes("other") && (
-                <input
-                  value={draft.woningtypeAnders}
-                  onChange={(e) => zet("woningtypeAnders", e.target.value)}
-                  placeholder="Welk type precies?"
-                  className="mt-2 w-full rounded-lg border border-ink/15 px-3 py-2 text-[12.5px] font-medium text-ink focus:border-accent focus:outline-none"
-                />
-              )}
-            </div>
-
-            <div>
-              <div className="flex items-center gap-1.5">
-                <DoorIcon className="h-4 w-4 text-ink/40" />
-                <p className="text-[12.5px] font-semibold text-ink">Hoeveel kamers wil je minimaal?</p>
-              </div>
-              <SegmentSelect opties={B2B_MIN_KAMERS_OPTIES} waarde={draft.minKamers} onKiezen={(w) => zet("minKamers", w)} />
-            </div>
-
-            <div>
-              <div className="flex items-center gap-1.5">
-                <RulerIcon className="h-4 w-4 text-ink/40" />
-                <p className="text-[12.5px] font-semibold text-ink">Minimale woonoppervlakte?</p>
-              </div>
-              <SegmentSelect opties={B2B_MIN_OPPERVLAK_OPTIES} waarde={draft.minOppervlak} onKiezen={(w) => zet("minOppervlak", w)} />
-            </div>
-
-            <div>
-              <div className="flex items-center gap-1.5">
-                <LeafIcon className="h-4 w-4 text-ink/40" />
-                <p className="text-[12.5px] font-semibold text-ink">Buitenruimte?</p>
-              </div>
-              <IconKaartSingleSelect
-                opties={B2B_BUITENRUIMTE_OPTIES}
-                iconen={BUITENRUIMTE_ICONEN}
-                waarde={draft.buitenruimte}
-                onKiezen={(w) => zet("buitenruimte", w)}
-              />
-            </div>
-
-            <div>
-              <div className="flex items-center gap-1.5">
-                <BoltIcon className="h-4 w-4 text-ink/40" />
-                <p className="text-[12.5px] font-semibold text-ink">Minimaal energielabel?</p>
-              </div>
-              <EnergielabelSelect waarde={draft.minEnergielabel} onKiezen={(w) => zet("minEnergielabel", w)} />
-            </div>
-          </>
-        )}
-
-        {stap === 1 && (
-          <>
-            <div>
-              <p className="text-[12.5px] font-semibold text-ink">Welke voorzieningen zijn belangrijk?</p>
-              <p className="mt-0.5 text-[11.5px] text-ink/45">Optioneel.</p>
-              <MultiSelect
-                opties={B2B_VOORZIENING_WENSEN}
-                waarden={draft.belangrijkeVoorzieningen}
-                onWijzigen={(w) => zet("belangrijkeVoorzieningen", w)}
-              />
-            </div>
-            <div>
-              <p className="text-[12.5px] font-semibold text-ink">Parkeergelegenheid?</p>
-              <SingleSelect opties={B2B_PARKEREN_OPTIES} waarde={draft.parkeren} onKiezen={(w) => zet("parkeren", w)} />
-            </div>
-          </>
-        )}
-
-        {stap === 2 && (
-          <div>
-            <p className="text-[12.5px] font-semibold text-ink">Wat zijn je absolute dealbreakers?</p>
-            <p className="mt-0.5 text-[11.5px] text-ink/45">Kies maximaal {MAX_DEALBREAKERS}.</p>
-            <MultiSelect opties={B2B_DEALBREAKERS} waarden={draft.dealbreakers} max={MAX_DEALBREAKERS} onWijzigen={(w) => zet("dealbreakers", w)} />
-            {draft.dealbreakers.includes("other") && (
-              <input
-                value={draft.dealbreakerAnders}
-                onChange={(e) => zet("dealbreakerAnders", e.target.value)}
-                placeholder="Welke dealbreaker precies?"
-                className="mt-2 w-full rounded-lg border border-ink/15 px-3 py-2 text-[12.5px] font-medium text-ink focus:border-accent focus:outline-none"
-              />
-            )}
+        <div>
+          <div className="flex items-center gap-1.5">
+            <EuroIcon className="h-4 w-4 text-ink/40" />
+            <p className="text-[12.5px] font-semibold text-ink">Maximale koopprijs</p>
           </div>
-        )}
+          <BudgetSlider
+            waarde={draft.maxKoopprijs}
+            aangeraakt={draft.budgetAangeraakt}
+            onWijzigen={(w) => setDraft((d) => ({ ...d, maxKoopprijs: w, budgetAangeraakt: true }))}
+            onGeenMaximum={() => setDraft((d) => ({ ...d, maxKoopprijs: null, budgetAangeraakt: true }))}
+          />
+          <p className="mt-3.5 text-[12.5px] font-semibold text-ink">Is kosten koper hierin meegenomen?</p>
+          <SingleSelect opties={B2B_KOSTEN_KOPER_OPTIES} waarde={draft.kostenKoper} onKiezen={(w) => zet("kostenKoper", w)} />
+        </div>
 
-        {stap === 3 && (
-          <div>
-            <p className="text-[12.5px] font-semibold text-ink">Waar zou je op willen inleveren?</p>
-            <p className="mt-0.5 text-[11.5px] text-ink/45">Kies maximaal {MAX_AFWEGINGEN}.</p>
-            <MultiSelect opties={B2B_AFWEGINGEN} waarden={draft.afwegingen} max={MAX_AFWEGINGEN} onWijzigen={(w) => zet("afwegingen", w)} />
+        <div>
+          <div className="flex items-center gap-1.5">
+            <MapPinIcon className="h-4 w-4 text-ink/40" />
+            <p className="text-[12.5px] font-semibold text-ink">Waar wil je wonen?</p>
           </div>
-        )}
+          <p className="mt-0.5 text-[11.5px] text-ink/45">Zoek een plaats of wijk -- kies maximaal {MAX_VOORKEUR_LOCATIES}.</p>
+          <LocatiePicker waarden={draft.voorkeurLocaties} max={MAX_VOORKEUR_LOCATIES} onWijzigen={(w) => zet("voorkeurLocaties", w)} />
+        </div>
 
-        {stap === 4 && (
-          <div>
-            <p className="text-[12.5px] font-semibold text-ink">Wat is het allerbelangrijkste?</p>
-            <p className="mt-0.5 text-[11.5px] text-ink/45">Kies maximaal {MAX_PRIORITEITEN}.</p>
-            <MultiSelect opties={B2B_PRIORITEITEN} waarden={draft.prioriteiten} max={MAX_PRIORITEITEN} onWijzigen={(w) => zet("prioriteiten", w)} />
+        <div>
+          <div className="flex items-center gap-1.5">
+            <BuildingIcon className="h-4 w-4 text-ink/40" />
+            <p className="text-[12.5px] font-semibold text-ink">Wat voor type woning zoek je?</p>
           </div>
-        )}
+          <IconKaartMultiSelect
+            opties={B2B_WONINGTYPE_VOORKEUREN}
+            iconen={WONINGTYPE_ICONEN}
+            waarden={draft.woningtypes}
+            onWijzigen={(w) => zet("woningtypes", w)}
+          />
+          {draft.woningtypes.includes("other") && (
+            <input
+              value={draft.woningtypeAnders}
+              onChange={(e) => zet("woningtypeAnders", e.target.value)}
+              placeholder="Welk type precies?"
+              className="mt-2 w-full rounded-lg border border-ink/15 px-3 py-2 text-[12.5px] font-medium text-ink focus:border-accent focus:outline-none"
+            />
+          )}
+        </div>
+
+        <div>
+          <div className="flex items-center gap-1.5">
+            <DoorIcon className="h-4 w-4 text-ink/40" />
+            <p className="text-[12.5px] font-semibold text-ink">Hoeveel kamers wil je minimaal?</p>
+          </div>
+          <SegmentSelect opties={B2B_MIN_KAMERS_OPTIES} waarde={draft.minKamers} onKiezen={(w) => zet("minKamers", w)} />
+        </div>
+
+        <div>
+          <div className="flex items-center gap-1.5">
+            <RulerIcon className="h-4 w-4 text-ink/40" />
+            <p className="text-[12.5px] font-semibold text-ink">Minimale woonoppervlakte?</p>
+          </div>
+          <SegmentSelect opties={B2B_MIN_OPPERVLAK_OPTIES} waarde={draft.minOppervlak} onKiezen={(w) => zet("minOppervlak", w)} />
+        </div>
+
+        <div>
+          <div className="flex items-center gap-1.5">
+            <LeafIcon className="h-4 w-4 text-ink/40" />
+            <p className="text-[12.5px] font-semibold text-ink">Buitenruimte?</p>
+          </div>
+          <IconKaartSingleSelect
+            opties={B2B_BUITENRUIMTE_OPTIES}
+            iconen={BUITENRUIMTE_ICONEN}
+            waarde={draft.buitenruimte}
+            onKiezen={(w) => zet("buitenruimte", w)}
+          />
+        </div>
+
+        <div>
+          <div className="flex items-center gap-1.5">
+            <BoltIcon className="h-4 w-4 text-ink/40" />
+            <p className="text-[12.5px] font-semibold text-ink">Minimaal energielabel?</p>
+          </div>
+          <EnergielabelSelect waarde={draft.minEnergielabel} onKiezen={(w) => zet("minEnergielabel", w)} />
+        </div>
       </div>
 
-      <div className="mt-6 flex items-center justify-between gap-2">
+      <div className="mt-6 flex justify-end">
         <button
           type="button"
-          onClick={vorige}
-          disabled={stap === 0}
-          className="rounded-lg bg-ink/5 px-3.5 py-2 text-[11.5px] font-semibold text-ink/60 hover:bg-ink/10 disabled:opacity-40"
+          onClick={versturen}
+          disabled={!geldig || bezig}
+          className="rounded-lg bg-accent px-4 py-2.5 text-[11.5px] font-semibold text-white hover:bg-accent-dark disabled:opacity-60"
         >
-          Vorige
+          {bezig ? "Opslaan…" : opslaanLabel}
         </button>
-        {stap < TOTAAL_STAPPEN - 1 ? (
-          <button
-            type="button"
-            onClick={volgende}
-            disabled={!huidigeStapGeldig}
-            className="flex items-center gap-1.5 rounded-lg bg-accent px-3.5 py-2 text-[11.5px] font-semibold text-white hover:bg-accent-dark disabled:opacity-40"
-          >
-            Volgende
-            <ArrowRightIcon className="h-3 w-3" />
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={versturen}
-            disabled={!alleStappenGeldig || bezig}
-            className="rounded-lg bg-accent px-3.5 py-2 text-[11.5px] font-semibold text-white hover:bg-accent-dark disabled:opacity-60"
-          >
-            {bezig ? "Opslaan…" : opslaanLabel}
-          </button>
-        )}
       </div>
     </div>
   );

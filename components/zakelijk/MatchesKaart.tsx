@@ -1,60 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { B2bWoningMatch, B2bRapportAanvraag, B2bZoekopdracht, B2bKoperVoorkeuren } from "@/types/b2b";
-import { B2B_PRIORITEITEN, B2B_DEALBREAKERS } from "@/types/b2b";
+import { B2B_WONINGTYPE_VOORKEUREN } from "@/types/b2b";
 import { vindGekoppeldRapport } from "@/lib/services/matchRapportKoppeling";
-import type { MatchScore, MatchScoreOnderdeel, MatchScoreDetailRegel } from "@/lib/services/matchScore";
-import {
-  BoltIcon,
-  ArrowRightIcon,
-  FileCheckIcon,
-  InfoIcon,
-  LayersIcon,
-  RulerIcon,
-  ChevronDownIcon,
-  AlertTriangleIcon,
-  CheckIcon,
-} from "@/components/report/icons";
+import { BoltIcon, ArrowRightIcon, FileCheckIcon, LayersIcon, RulerIcon, ChevronDownIcon, AlertTriangleIcon, CheckIcon } from "@/components/report/icons";
 
 // -----------------------------------------------------------------------------
-// Matches (#2) -- HERONTWERP na duidelijke afkeuring van de vorige versie
-// (hero-blok + altijd-open puntenverdeling eronder: "ziet er echt niet uit,
-// niet alleen de teksten ook visueel"). Uitgangspunten voor deze versie,
-// letterlijk overgenomen uit de feedback dit hele traject:
-//   - "Puur een i per huis" -- elke kaart toont alleen een scorecirkel en één
-//     klein (i)-knopje. De volledige puntenverdeling staat NERGENS meer
-//     standaard op de pagina, alleen in een los overlay-schermpje na een
-//     klik op dat knopje (ScoreModal hieronder).
-//   - "Overzichtelijker" -- geen apart, breder hero-blok voor de topmatch
-//     meer (dat maakte de layout juist onrustiger); alle kaarten zijn nu
-//     gelijk van vorm in één grid, de topmatch krijgt alleen een label.
-//   - "Meer woningen (tot max 30) met een knop" -- de grid toont in eerste
-//     instantie een beperkt aantal, met een "Toon meer"-knop die oploopt tot
-//     het volledige aantal opgeslagen matches (server-side al begrensd op
-//     MAX_ZICHTBARE_MATCHEN, zie types/b2b.ts).
-//   - "De vragen zijn niet verwerkt" -- dat klopte functioneel niet (de
-//     koper-voorkeuren-antwoorden worden wel degelijk in de score verwerkt,
-//     live geverifieerd), maar er was nergens op DEZE pagina een zichtbaar
-//     bewijs daarvan. `koperVoorkeurenSamenvatting` hieronder zet dat nu in
-//     platte taal boven de resultaten.
-//   - Losstaande bugfix in dezelfde ronde: een mislukte zoekaanvraag (bv. een
-//     proxy-timeout, zie fundaFeed.ts) zag er voorheen identiek uit als "0
-//     passende woningen" -- de "Ververs"-knop toont nu een aparte
-//     foutmelding i.p.v. dat stilzwijgend te verbergen.
-//
-// MATCHINGMODEL V3 (zie het Cowork-gesprek hierover, "ik twijfel over ons
-// filtersysteem met punten; een match kan 90 punten krijgen die in een heel
-// ander gebied ligt"): elke woning die hier getoond wordt, heeft de 7 harde
-// eisen van fase 1 (budget, locatie, woningtype, kamers, oppervlak,
-// buitenruimte, energielabel) al gehaald -- dat gebeurt server-side vóór het
-// opslaan (zie voldoetAanHardeEisen() in matchScore.ts), dus is hier geen
-// aparte "voldoet niet"-status meer nodig. De score/scorecirkel drukt sinds
-// v3 dus NIET meer uit "voldoet dit wel of niet", maar "hoeveel beter dan het
-// gevraagde minimum is dit" -- puur om de al-gekwalificeerde matches
-// onderling te rangschikken.
+// Matches -- VEREENVOUDIGD (Sjoerd, na de visuele herontwerp-sessie van het
+// zoekfilterproces: "vragenlijst echt inkorten tot alleen harde eisen" /
+// "score helemaal weg, alleen voldoet/voldoet niet"). Dit component toonde
+// tot nu toe een matchingsscore per woning (scorecirkel + een getabde
+// "waarom deze score"-overlay met dealbreakers/afwegingen/prioriteiten-
+// weging, matchingmodel v4) -- dat hele scoreproces is verwijderd (zie
+// matchScore.ts). Elke woning die hier getoond wordt, voldoet aan de harde
+// eisen (dat gebeurt server-side vóór het opslaan, zie voldoetAanHardeEisen()
+// in matchScore.ts) -- er is dus geen ranking of percentage meer nodig, en
+// ook geen aparte client-side scoreberekening (de vroegere fetch naar
+// /api/zakelijk/klanten/[id]/matches-score, die bestond puur om de CBS-
+// voorzieningenscore server-side te berekenen, is vervallen samen met die
+// route). De `matches`-prop komt al newest-first van de server
+// (listMatchenVoorKlant in b2bStore.ts) en wordt hier direct getoond.
 // -----------------------------------------------------------------------------
 
 const HUIS_KLEUREN = [
@@ -105,271 +73,6 @@ function MatchThumbnail({ fotoUrl, index }: { fotoUrl: string | null; index: num
   );
 }
 
-// Groen bij een uitstekende match, ink-grijs daaronder -- bewust maar twee
-// niveaus (geen driekleurenschaal) om de kaarten rustig te houden. Alle
-// woningen hier voldoen al aan de harde eisen (zie hierboven) -- dit
-// onderscheidt alleen HOEVEEL beter dan het gevraagde minimum, niet of het
-// een match is.
-function scoreKleur(score: number): string {
-  return score >= 85 ? "#3B6D11" : "#8A8A85";
-}
-
-function scoreLabel(score: number): string {
-  if (score >= 85) return "Uitstekend boven het gevraagde";
-  if (score >= 60) return "Ruim boven het gevraagde";
-  return "Voldoet aan het gevraagde";
-}
-
-function ScoreRing({ score, groot }: { score: number; groot?: boolean }) {
-  const straal = groot ? 22 : 15;
-  const strokeBreedte = groot ? 5 : 4;
-  const omtrek = 2 * Math.PI * straal;
-  const fractie = Math.max(0, Math.min(100, score)) / 100;
-  const kleur = scoreKleur(score);
-  const midden = straal + strokeBreedte;
-  const grootte = midden * 2;
-  return (
-    <svg width={grootte} height={grootte} viewBox={`0 0 ${grootte} ${grootte}`} className="shrink-0">
-      <circle cx={midden} cy={midden} r={straal} fill="none" stroke="#EEEEE6" strokeWidth={strokeBreedte} />
-      <circle
-        cx={midden}
-        cy={midden}
-        r={straal}
-        fill="none"
-        stroke={kleur}
-        strokeWidth={strokeBreedte}
-        strokeLinecap="round"
-        strokeDasharray={omtrek}
-        strokeDashoffset={omtrek * (1 - fractie)}
-        transform={`rotate(-90 ${midden} ${midden})`}
-      />
-      <text x={midden} y={midden + (groot ? 5 : 4)} textAnchor="middle" fontSize={groot ? 15 : 11} fontWeight={700} fill="#26251F">
-        {Math.round(score)}
-      </text>
-    </svg>
-  );
-}
-
-// Getabde scoretoelichting (Cowork-gesprek "visualize deze schermen dat je
-// bovenaan kan klikken", eerst als mockup goedgekeurd) -- verving de vorige
-// platte lijst van alle onderdelen onder elkaar. Vier tabs, elk met een eigen
-// invalshoek op dezelfde `score.onderdelen`.
-//
-// NIEUW SCOREPROCES (matchingmodel v4, Sjoerds specificatie "Nieuw
-// Scoreproces -- Overzicht"): de 8 losse v3-onderdelen (budget/locatie/type/
-// kamers/oppervlak/buitenruimte/energielabel/parkeren) zijn vervangen door 6
-// gewogen Fase-2-criteria (locatie/prijs/woninggrootte/buitenruimte/
-// energielabel/parkeren & voorzieningen, zie matchScore.ts) -- "woningtype"
-// bestaat sinds v4 alleen nog als harde eis (fase 0), niet meer als los
-// scoreonderdeel; "kamers"/"oppervlak" zijn samengevoegd tot "woninggrootte";
-// "parkeren"/"voorzieningen" tot "parkeren & voorzieningen".
-//   - Algemeen: de 6 gewogen criteria als rustige label+balkje+cijfer-rijen,
-//     nu ook met het genormaliseerde gewicht (%) per criterium erbij.
-//   - Voorzieningen: het criterium "Parkeren & voorzieningen" met zijn
-//     `detail`-array (parkeren-score + per-voorziening afstand).
-//   - Inleveren: TWEE onderdelen onder elkaar, dealbreakers (fase 1, "Geen
-//     parkeermogelijkheid"/"Geen voorzieningen" zijn sinds v4 automatisch,
-//     de rest opt-in via vraag 11) en de trade-off-bonus (fase 3, vraag 12).
-//   - Belangrijkst: niet langer een losse scorebonus (die bestaat niet meer
-//     sinds v4), maar de "Weging"-samenvatting: welke 3 prioriteiten (vraag
-//     13) gekozen zijn en welk gewicht dat elke Fase-2-categorie oplevert.
-const ALGEMEEN_KEYS = ["locatie", "prijs", "woninggrootte", "buitenruimte", "energielabel", "parkeren_voorzieningen"];
-
-type ScoreTabKey = "algemeen" | "voorzieningen" | "inleveren" | "belangrijkst";
-
-const SCORE_TABS: { key: ScoreTabKey; label: string }[] = [
-  { key: "algemeen", label: "Algemeen" },
-  { key: "voorzieningen", label: "Voorzieningen" },
-  { key: "inleveren", label: "Inleveren" },
-  { key: "belangrijkst", label: "Belangrijkst" },
-];
-
-const DETAIL_STATUS_STIJL: Record<MatchScoreDetailRegel["status"], { bg: string; tekst: string }> = {
-  goed: { bg: "bg-[#EAF3DE]", tekst: "text-[#27500A]" },
-  matig: { bg: "bg-[#FAEEDA]", tekst: "text-[#633806]" },
-  slecht: { bg: "bg-[#FBEAEA]", tekst: "text-rust" },
-  onbekend: { bg: "bg-ink/5", tekst: "text-ink/40" },
-};
-
-function DetailRegel({ regel }: { regel: MatchScoreDetailRegel }) {
-  const stijl = DETAIL_STATUS_STIJL[regel.status];
-  return (
-    <div className="flex items-center justify-between gap-2 py-1.5">
-      <span className="text-[11.5px] text-ink/70">{regel.label}</span>
-      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${stijl.bg} ${stijl.tekst}`}>{regel.waarde}</span>
-    </div>
-  );
-}
-
-function AlgemeenRegel({ onderdeel }: { onderdeel: MatchScoreOnderdeel }) {
-  const ratio = onderdeel.maxPunten > 0 ? Math.max(0, Math.min(1, onderdeel.punten / onderdeel.maxPunten)) : 0;
-  const kleur = ratio >= 0.75 ? "#3B6D11" : ratio >= 0.5 ? "#D97706" : "#B7302B";
-  return (
-    <div className="flex items-center gap-2.5 py-1.5">
-      <span className="flex-1 text-[11.5px] text-ink/70">
-        {onderdeel.label}
-        {/* NIEUW SCOREPROCES (v4): genormaliseerd gewicht per Fase-2-criterium, zie berekenGewichten() in matchScore.ts. */}
-        {onderdeel.gewicht != null && <span className="ml-1 text-[9.5px] font-medium text-ink/35">{Math.round(onderdeel.gewicht)}% weging</span>}
-      </span>
-      <div className="h-1 w-12 shrink-0 overflow-hidden rounded-full bg-mist">
-        <div className="h-full rounded-full" style={{ width: `${ratio * 100}%`, background: kleur }} />
-      </div>
-      <span className="w-10 shrink-0 text-right text-[11px] font-semibold text-ink/60">
-        {onderdeel.punten}/{onderdeel.maxPunten}
-      </span>
-    </div>
-  );
-}
-
-function OnderdeelKop({ onderdeel }: { onderdeel: MatchScoreOnderdeel }) {
-  return (
-    <div className="flex items-baseline justify-between gap-2">
-      <span className="text-[11.5px] font-semibold text-ink">{onderdeel.label}</span>
-      <span className="text-[13px] font-semibold text-ink">
-        {onderdeel.punten}
-        <span className="font-normal text-ink/40">/{onderdeel.maxPunten}</span>
-      </span>
-    </div>
-  );
-}
-
-function ScoreTabs({ score }: { score: MatchScore }) {
-  const [tab, setTab] = useState<ScoreTabKey>("algemeen");
-  const perKey = Object.fromEntries(score.onderdelen.map((o) => [o.key, o])) as Record<string, MatchScoreOnderdeel>;
-  const algemeenOnderdelen = ALGEMEEN_KEYS.map((k) => perKey[k]).filter((o): o is MatchScoreOnderdeel => o != null);
-  // "Voorzieningen"-tab toont sinds v4 het gecombineerde criterium "Parkeren
-  // & voorzieningen" (zie matchScore.ts) -- de detailregels bevatten zowel de
-  // parkeerscore als de per-voorziening afstanden.
-  const voorzieningen = perKey.parkeren_voorzieningen;
-  const dealbreakers = perKey.dealbreakers;
-  const afwegingen = perKey.afwegingen;
-  // "Belangrijkst"-tab toont sinds v4 geen losse scorebonus meer (die bestaat
-  // niet meer), maar de weging-samenvatting (zie bouwWegingOnderdeel in
-  // matchScore.ts).
-  const prioriteiten = perKey.weging;
-
-  return (
-    <div>
-      <div className="flex gap-1 border-b border-line">
-        {SCORE_TABS.map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            onClick={() => setTab(t.key)}
-            className={`flex-1 border-b-2 px-1 pb-2 text-[11px] font-semibold transition-colors ${
-              tab === t.key ? "border-accent text-ink" : "border-transparent text-ink/40 hover:text-ink/60"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-      <div className="pt-3">
-        {tab === "algemeen" && (
-          <div className="flex flex-col divide-y divide-mist">
-            {algemeenOnderdelen.map((o) => (
-              <AlgemeenRegel key={o.key} onderdeel={o} />
-            ))}
-          </div>
-        )}
-
-        {tab === "voorzieningen" && voorzieningen && (
-          <div>
-            <OnderdeelKop onderdeel={voorzieningen} />
-            <p className="mt-1 text-[10.5px] text-ink/40">{voorzieningen.toelichting}</p>
-            {voorzieningen.detail && voorzieningen.detail.length > 0 && (
-              <div className="mt-2 flex flex-col divide-y divide-mist">
-                {voorzieningen.detail.map((d) => (
-                  <DetailRegel key={d.label} regel={d} />
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {tab === "inleveren" && dealbreakers && (
-          <div>
-            <div className="flex items-baseline justify-between gap-2">
-              <span className="text-[11.5px] font-semibold text-ink">Dealbreakers</span>
-              <span className={`text-[11.5px] font-semibold ${dealbreakers.punten < 0 ? "text-rust" : "text-[#27500A]"}`}>
-                {dealbreakers.toelichting}
-              </span>
-            </div>
-            {dealbreakers.detail && dealbreakers.detail.length > 0 ? (
-              <div className="mt-2 flex flex-col divide-y divide-mist">
-                {dealbreakers.detail.map((d) => (
-                  <DetailRegel key={d.label} regel={d} />
-                ))}
-              </div>
-            ) : (
-              <p className="mt-2 text-[10.5px] text-ink/40">Geen dealbreakers opgegeven.</p>
-            )}
-            {afwegingen && (
-              <div className="mt-4">
-                <OnderdeelKop onderdeel={afwegingen} />
-                <p className="mt-1 text-[10.5px] text-ink/40">{afwegingen.toelichting}</p>
-                {afwegingen.detail && afwegingen.detail.length > 0 && (
-                  <div className="mt-2 flex flex-col divide-y divide-mist">
-                    {afwegingen.detail.map((d) => (
-                      <DetailRegel key={d.label} regel={d} />
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        {tab === "belangrijkst" && prioriteiten && (
-          <div>
-            <OnderdeelKop onderdeel={prioriteiten} />
-            <p className="mt-1 text-[10.5px] text-ink/40">{prioriteiten.toelichting}</p>
-            {prioriteiten.detail && prioriteiten.detail.length > 0 ? (
-              <div className="mt-2 flex flex-col divide-y divide-mist">
-                {prioriteiten.detail.map((d) => (
-                  <DetailRegel key={d.label} regel={d} />
-                ))}
-              </div>
-            ) : (
-              <p className="mt-2 text-[10.5px] text-ink/40">Geen prioriteiten opgegeven.</p>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// Overlay-schermpje voor de puntenverdeling van ÉÉN match -- vervangt de
-// vorige, altijd-zichtbare tekstblokken onder de kaarten ("puur een i per
-// huis": de uitleg staat nu alleen hier, nooit standaard op de pagina).
-function ScoreModal({ match, score, onSluiten }: { match: B2bWoningMatch; score: MatchScore; onSluiten: () => void }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 px-4" onClick={onSluiten}>
-      <div className="w-full max-w-[380px] rounded-2xl bg-white p-5 shadow-overlay" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="truncate text-[12.5px] font-semibold text-ink">{match.titel}</p>
-            {match.prijsLabel && <p className="mt-0.5 text-[11.5px] text-ink/50">{match.prijsLabel}</p>}
-          </div>
-          <ScoreRing score={score.totaal} groot />
-        </div>
-        <p className="mt-4 text-[10.5px] font-bold uppercase tracking-wide text-ink/35">Waarom deze score</p>
-        <div className="mt-2.5">
-          <ScoreTabs score={score} />
-        </div>
-        <button
-          type="button"
-          onClick={onSluiten}
-          className="mt-4 w-full rounded-lg bg-mist px-4 py-2.5 text-[11.5px] font-semibold text-ink/60 hover:bg-ink/10"
-        >
-          Sluiten
-        </button>
-      </div>
-    </div>
-  );
-}
-
 function Kenmerkenchips({ match }: { match: B2bWoningMatch }) {
   const v = match.verificatie;
   if (!v) return null;
@@ -391,28 +94,29 @@ function Kenmerkenchips({ match }: { match: B2bWoningMatch }) {
   );
 }
 
-// Zet de ingevulde koper-voorkeuren om in korte, leesbare zinnetjes -- puur
-// om zichtbaar te maken dat de vragenlijst daadwerkelijk iets doet (de
-// backend verwerkt de antwoorden al wel, zie berekenMatchScore/fundaFeed,
-// maar nergens op DEZE pagina was dat eerder terug te zien).
-//
-// MATCHINGMODEL V2: het oude 4-vragen-formulier (prioriteit/bouwstijl/
-// budgetFlexibel/kenmerkenFlexibel) bestaat niet meer -- de meest
-// betekenisvolle samenvatting van de nieuwe 13-vragen-lijst is wat de koper
-// als belangrijkst aanwees (Vraag 13) en waar de harde dealbreakers zitten
-// (Vraag 11), dus die twee worden hier getoond.
+// Zet de ingevulde harde-eisen-voorkeuren om in korte, leesbare zinnetjes --
+// puur om zichtbaar te maken dat de vragenlijst daadwerkelijk iets doet.
+// VEREENVOUDIGING: sinds "vragenlijst echt inkorten tot alleen harde eisen"
+// bestaan dealbreakers/prioriteiten niet meer als koperVoorkeuren-velden --
+// deze samenvatting toont nu budget/locatie/woningtype, precies de velden
+// die nog wél bestaan en die de Funda-zoekopdracht ook daadwerkelijk sturen.
 function koperVoorkeurenSamenvatting(koperVoorkeuren: B2bKoperVoorkeuren | null | undefined): string[] {
   if (!koperVoorkeuren) return [];
   const zinnen: string[] = [];
-  if (koperVoorkeuren.prioriteiten.length > 0) {
-    const labels = koperVoorkeuren.prioriteiten.map((p) => B2B_PRIORITEITEN.find((o) => o.waarde === p)?.label.toLowerCase() ?? p);
-    zinnen.push(`belangrijkst: ${labels.join(", ")}`);
-  }
-  if (koperVoorkeuren.dealbreakers.length > 0) {
-    const labels = koperVoorkeuren.dealbreakers.map((d) =>
-      d === "other" ? koperVoorkeuren.dealbreakerAnders ?? "anders" : B2B_DEALBREAKERS.find((o) => o.waarde === d)?.label.toLowerCase() ?? d
+  if (typeof koperVoorkeuren.maxKoopprijs === "number") {
+    const budgetLabel = new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(
+      koperVoorkeuren.maxKoopprijs
     );
-    zinnen.push(`dealbreakers: ${labels.join(", ")}`);
+    zinnen.push(`budget: tot ${budgetLabel}`);
+  }
+  if (koperVoorkeuren.voorkeurLocaties.length > 0) {
+    zinnen.push(`locatie: ${koperVoorkeuren.voorkeurLocaties.map((l) => l.label).join(", ")}`);
+  }
+  if (koperVoorkeuren.woningtypes.length > 0) {
+    const labels = koperVoorkeuren.woningtypes.map((w) =>
+      w === "other" ? koperVoorkeuren.woningtypeAnders ?? "anders" : B2B_WONINGTYPE_VOORKEUREN.find((o) => o.waarde === w)?.label.toLowerCase() ?? w
+    );
+    zinnen.push(`type: ${labels.join(", ")}`);
   }
   return zinnen;
 }
@@ -498,57 +202,11 @@ export default function MatchesKaart({
 }) {
   const router = useRouter();
   const [actieveMatch, setActieveMatch] = useState<B2bWoningMatch | null>(null);
-  const [scoreWeergave, setScoreWeergave] = useState<{ match: B2bWoningMatch; score: MatchScore } | null>(null);
   const [ververst, setVerverst] = useState(false);
   const [zoekFout, setZoekFout] = useState(false);
   const [aantalZichtbaar, setAantalZichtbaar] = useState(INITIEEL_ZICHTBAAR);
-  // MATCHINGMODEL V2: berekenMatchScore is nu async (Component 9/10 kunnen
-  // een gratis, maar niet-instante CBS-voorzieningenopzoeking triggeren, zie
-  // matchScore.ts) -- de scores worden daarom hier in een effect berekend
-  // i.p.v. synchroon tijdens het renderen, met een korte laadstand terwijl
-  // dat gebeurt.
-  const [gescoord, setGescoord] = useState<{ match: B2bWoningMatch; score: MatchScore }[]>([]);
-  const [scoresLaden, setScoresLaden] = useState(true);
 
   const koperVoorkeuren = zoekopdracht?.koperVoorkeuren ?? null;
-
-  // BUGFIX (Sjoerd: "de CBS databron geeft bij voorzieningen aan bij allemaal
-  // onbekend"): berekenMatchScore() deed hier voorheen rechtstreeks een CBS-
-  // OData-opzoeking (voorzieningenMatch.ts/buurtprofiel.ts) VANUIT DE BROWSER
-  // -- live geverifieerd dat opendata.cbs.nl geen CORS-headers zet, dus die
-  // fetch faalde daar altijd stilzwijgend op (PDOK zet wél `Access-Control-
-  // Allow-Origin: *`, dus de adresresolutie werkte toevallig wel). De
-  // berekening is daarom verplaatst naar een nieuwe server-side route
-  // (/api/zakelijk/klanten/[id]/matches-score, server-naar-server heeft geen
-  // CORS-beperking) -- deze effect roept die nu aan i.p.v. berekenMatchScore
-  // rechtstreeks te importeren en client-side uit te voeren.
-  useEffect(() => {
-    let actief = true;
-    setScoresLaden(true);
-    (async () => {
-      try {
-        const res = await fetch(`/api/zakelijk/klanten/${dossierId}/matches-score`, { method: "POST" });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data: { gescoord: { match: B2bWoningMatch; score: MatchScore }[] } = await res.json();
-        if (!actief) return;
-        setGescoord(data.gescoord);
-      } catch {
-        // Val bij een mislukte aanroep terug op de matches zonder score
-        // (allemaal 0, geen onderdelen) i.p.v. de hele lijst stil te laten
-        // verdwijnen -- de kaarten blijven zo zichtbaar, alleen de
-        // rangschikking/toelichting ontbreekt dan tijdelijk.
-        if (actief) {
-          setGescoord(matches.map((match) => ({ match, score: { totaal: 0, ruwTotaal: 0, onderdelen: [], dealbreakersGetriggerd: [] } })));
-        }
-      } finally {
-        if (actief) setScoresLaden(false);
-      }
-    })();
-    return () => {
-      actief = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [matches, dossierId]);
 
   async function ververs() {
     setVerverst(true);
@@ -568,11 +226,7 @@ export default function MatchesKaart({
   }
 
   const laatstGevonden = matches[0]?.gevondenOp;
-
-  // Gesorteerd op score i.p.v. vindmoment (matchingmodel, zie
-  // lib/services/matchScore.ts) -- geen apart hero-blok meer voor de beste
-  // match (afgekeurd als "onrustig"), alleen een label op de eerste kaart.
-  const zichtbaar = gescoord.slice(0, aantalZichtbaar);
+  const zichtbaar = matches.slice(0, aantalZichtbaar);
   const voorkeurenZinnen = koperVoorkeurenSamenvatting(koperVoorkeuren);
 
   return (
@@ -601,8 +255,7 @@ export default function MatchesKaart({
       </div>
 
       <p className="mt-2 text-[10.5px] text-ink/40">
-        Elke woning hier voldoet al aan de harde eisen (budget, locatie, type, kamers, oppervlak, buitenruimte, energielabel) -- de score
-        rangschikt alleen hoe ver ze daar bovenop uitkomen.
+        Elke woning hier voldoet aan de harde eisen: budget, locatie, type, kamers, oppervlak, buitenruimte en energielabel.
       </p>
 
       {voorkeurenZinnen.length > 0 && (
@@ -644,20 +297,13 @@ export default function MatchesKaart({
           Nog geen woningen gevonden die aan de zoekopdracht voldoen. Geen paniek -- als ze er niet zijn, zijn ze er niet; zodra er een
           passende advertentie verschijnt, staat die hier.
         </p>
-      ) : scoresLaden && !ververst ? (
-        <p className="mt-4 text-[12px] text-ink/40">Scores worden berekend…</p>
       ) : (
         <>
           <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {zichtbaar.map(({ match: m, score }, i) => (
+            {zichtbaar.map((m, i) => (
               <div key={m.id} className="flex flex-col overflow-hidden rounded-xl border border-ink/[0.06] hover:border-accent/30 hover:shadow-sm">
                 <button type="button" onClick={() => setActieveMatch(m)} className="relative block h-36 w-full bg-mist text-left">
                   <MatchThumbnail fotoUrl={m.fotoUrl} index={i} />
-                  {i === 0 && score.totaal >= 85 && (
-                    <span className="absolute left-2.5 top-2.5 rounded-full bg-[#3B6D11] px-2.5 py-1 text-[10.5px] font-bold text-white">
-                      Topmatch
-                    </span>
-                  )}
                 </button>
                 <div className="flex flex-1 flex-col gap-1.5 p-3">
                   <div className="flex items-center justify-between gap-2">
@@ -671,32 +317,22 @@ export default function MatchesKaart({
                     {m.prijsLabel && <p className="text-[11.5px] text-ink/50">{m.prijsLabel}</p>}
                   </button>
                   <Kenmerkenchips match={m} />
-                  <div className="mt-auto flex items-center justify-between pt-2">
-                    <div className="flex items-center gap-1.5">
-                      <ScoreRing score={score.totaal} />
-                      <span className="text-[10.5px] font-semibold text-ink/50">{scoreLabel(score.totaal)}</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setScoreWeergave({ match: m, score })}
-                      className="flex h-6 w-6 items-center justify-center rounded-full border border-ink/15 text-ink/40 hover:border-accent/40 hover:bg-mist hover:text-accent"
-                      aria-label="Waarom deze score"
-                    >
-                      <InfoIcon className="h-3 w-3" />
-                    </button>
+                  <div className="mt-auto flex items-center gap-1.5 pt-2">
+                    <CheckIcon className="h-3.5 w-3.5 shrink-0 text-[#3B6D11]" />
+                    <span className="text-[10.5px] font-semibold text-[#3B6D11]">Voldoet aan alle eisen</span>
                   </div>
                 </div>
               </div>
             ))}
           </div>
 
-          {aantalZichtbaar < gescoord.length && (
+          {aantalZichtbaar < matches.length && (
             <button
               type="button"
               onClick={() => setAantalZichtbaar((n) => n + STAP_ZICHTBAAR)}
               className="mx-auto mt-4 flex items-center gap-1.5 rounded-lg border border-ink/15 px-4 py-2 text-[11.5px] font-semibold text-ink/60 hover:bg-mist"
             >
-              Toon meer ({zichtbaar.length} van {gescoord.length})
+              Toon meer ({zichtbaar.length} van {matches.length})
               <ChevronDownIcon className="h-3.5 w-3.5" />
             </button>
           )}
@@ -710,9 +346,6 @@ export default function MatchesKaart({
           gekoppeldRapport={vindGekoppeldRapport(actieveMatch.titel, rapporten)}
           onSluiten={() => setActieveMatch(null)}
         />
-      )}
-      {scoreWeergave && (
-        <ScoreModal match={scoreWeergave.match} score={scoreWeergave.score} onSluiten={() => setScoreWeergave(null)} />
       )}
     </div>
   );
