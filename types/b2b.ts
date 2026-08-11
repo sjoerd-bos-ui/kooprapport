@@ -429,12 +429,21 @@ export const B2B_PARKEREN_OPTIES: { waarde: B2bParkerenVoorkeur; label: string }
 ];
 
 // --- Stap 5: dealbreakers -----------------------------------------------------------
-// Niet elke dealbreaker is automatisch te detecteren uit Funda-data --
-// "busy_road_noise" (geen geluidsdata beschikbaar) en "too_far_from_work"
-// (geen werkadres bekend) triggeren daarom NOOIT automatisch (zie
-// evalueerDealbreakers() in matchScore.ts) en tellen dus nooit mee als
-// strafpunt -- bewust geen valse zekerheid voorwenden over iets wat simpelweg
-// niet gemeten wordt.
+// Niet elke dealbreaker is automatisch te detecteren uit Funda-data -- "other"
+// is bewust vrije tekst (dealbreakerAnders) voor de makelaar om handmatig te
+// lezen, geen databron-probleem maar een INTENTIONEEL menselijk vangnet, dus
+// die blijft bestaan.
+//
+// BUGFIX/opschoning (Sjoerd: "Te ver van werk staat hier nog steeds in"):
+// "too_far_from_work" (geen werkadres bekend) is verwijderd -- triggerde
+// nooit automatisch (de oude isDealbreakerGetriggerd()-case in matchScore.ts
+// gaf hier altijd `false` terug), dus een koper die 'm aanvinkte kreeg
+// feitelijk een dode checkbox zonder enig effect. Op eigen initiatief ook
+// "busy_road_noise" (Drukke weg/geluidsoverlast) meteen meegenomen -- had
+// exact hetzelfde probleem (geen geluidsdata beschikbaar, ook altijd
+// `false`), niet apart gemeld maar dezelfde bug als de net gemelde. Zelfde
+// opschoningspatroon als eerder bij "workplace"/"park" (voorzieningen),
+// "longer_commute_for_area" (afwegingen) en "quiet_location" (prioriteiten).
 //
 // MATCHINGMODEL V3 (zie het Cowork-gesprek hierover, "ik twijfel over ons
 // filtersysteem met punten"): vier oorspronkelijke opties ("Geen tuin/
@@ -446,14 +455,12 @@ export const B2B_PARKEREN_OPTIES: { waarde: B2bParkerenVoorkeur; label: string }
 // konden ze nooit meer triggeren. "Slecht energielabel" blijft wél bestaan:
 // die gebruikt een eigen, VASTE grens ("lager dan C"), los van de
 // koper-gekozen ondergrens uit Vraag 8 -- dus geen overlap met de harde eis.
-export type B2bDealbreaker = "no_parking" | "ground_floor_no_elevator" | "busy_road_noise" | "poor_energy_label" | "too_far_from_work" | "no_amenities" | "other";
+export type B2bDealbreaker = "no_parking" | "ground_floor_no_elevator" | "poor_energy_label" | "no_amenities" | "other";
 
 export const B2B_DEALBREAKERS: { waarde: B2bDealbreaker; label: string }[] = [
   { waarde: "no_parking", label: "Geen parkeermogelijkheid" },
   { waarde: "ground_floor_no_elevator", label: "Benedenwoning zonder lift" },
-  { waarde: "busy_road_noise", label: "Drukke weg / geluidsoverlast" },
   { waarde: "poor_energy_label", label: "Slecht energielabel (lager dan C)" },
-  { waarde: "too_far_from_work", label: "Te ver van werk / voorzieningen" },
   { waarde: "no_amenities", label: "Geen voorzieningen in buurt" },
   { waarde: "other", label: "Anders" },
 ];
@@ -470,11 +477,12 @@ export const MAX_DEALBREAKERS = 3;
 //
 // "longer_commute_for_area" ("Langere reistijd voor betere buurt") is
 // geschrapt: in tegenstelling tot de andere 7 opties bestaat hiervoor
-// ÜBERHAUPT geen databron -- we vragen geen werkadres uit (zoals bij de
-// dealbreaker "too_far_from_work", zie hierboven) en reistijd (i.p.v. platte
-// afstand) vereist een routing-API die niet is aangesloten. Zelfde
-// opschoningsprincipe als eerder bij "workplace" (voorzieningen) en "park"
-// (Park / groen): geen vinkje laten staan dat nooit iets kon opleveren.
+// ÜBERHAUPT geen databron -- we vragen geen werkadres uit (net zomin als bij
+// de inmiddels ook verwijderde dealbreaker "too_far_from_work", zie Stap 5
+// hierboven) en reistijd (i.p.v. platte afstand) vereist een routing-API die
+// niet is aangesloten. Zelfde opschoningsprincipe als eerder bij "workplace"
+// (voorzieningen) en "park" (Park / groen): geen vinkje laten staan dat
+// nooit iets kon opleveren.
 export type B2bAfweging =
   | "smaller_for_location"
   | "older_for_space"

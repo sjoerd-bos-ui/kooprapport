@@ -438,10 +438,8 @@ function isDealbreakerGetriggerd(
       return verificatie ? !verificatie.heeftEigenParkeerplek && /geen\s+parkeer/i.test(verificatie.parkeerOmschrijving ?? "") : false;
     case "ground_floor_no_elevator":
       return verificatie ? verificatie.woonlaag != null && verificatie.woonlaag > 0 && !verificatie.heeftLift : false;
-    case "busy_road_noise":
-    case "too_far_from_work":
     case "other":
-      return false; // geen databron
+      return false; // vrije tekst, alleen door de makelaar handmatig te beoordelen
     case "poor_energy_label": {
       // Eigen, vaste grens ("lager dan C") -- los van de harde eis uit Vraag 8,
       // die de KOPER-gekozen ondergrens gebruikt. Beide kunnen dus tegelijk
@@ -464,21 +462,36 @@ function isDealbreakerGetriggerd(
   }
 }
 
-// "busy_road_noise"/"too_far_from_work"/"other" hebben geen databron (zie
-// isDealbreakerGetriggerd hierboven, geeft daar altijd `false`) -- voor de
-// UI-uitsplitsing is dat een ander signaal dan "gecheckt en niet geraakt",
-// dus apart zichtbaar gemaakt i.p.v. stilzwijgend als "goed" te tonen.
+// "other" heeft geen databron (zie isDealbreakerGetriggerd hierboven, geeft
+// daar altijd `false`) -- voor de UI-uitsplitsing is dat een ander signaal
+// dan "gecheckt en niet geraakt", dus apart zichtbaar gemaakt i.p.v.
+// stilzwijgend als "goed" te tonen.
+//
+// BUGFIX/opschoning (Sjoerd: "Te ver van werk staat hier nog steeds in"):
+// "too_far_from_work" en "busy_road_noise" (zelfde databron-probleem, op
+// eigen initiatief meegenomen) zijn verwijderd uit B2bDealbreaker (zie
+// types/b2b.ts) -- geen `!== "other"`-uitsluitingslijst meer nodig, "other"
+// is nu de enige uitzondering.
 function heeftDealbreakerDatabron(db: B2bDealbreaker): boolean {
-  return db !== "busy_road_noise" && db !== "too_far_from_work" && db !== "other";
+  return db !== "other";
 }
 
+// Defensief tegen bestaande dossiers met een inmiddels verwijderde waarde
+// ("too_far_from_work"/"busy_road_noise") nog in `dealbreakers` -- zelfde
+// patroon als eerder bij "workplace"/"park"/"quiet_location": zonder filter
+// zou B2B_DEALBREAKERS.find() hieronder gewoon `undefined` teruggeven (label
+// valt terug op de ruwe waarde, geen crash), maar zo'n stale waarde toch nog
+// laten meetellen in de dealbreakers-lijst van de koper is misleidend -- een
+// optie die niet meer bestaat, kan ook niet meer "niet geraakt" of "geen
+// databron" zijn.
 function evalueerDealbreakers(
   verificatie: B2bMatchVerificatie | null,
   voorzieningen: VoorzieningenResultaat,
   voorkeuren: B2bKoperVoorkeuren
 ): { getriggerd: B2bDealbreaker[]; onderdeel: MatchScoreOnderdeel } {
-  const getriggerd = voorkeuren.dealbreakers.filter((db) => isDealbreakerGetriggerd(db, verificatie, voorzieningen, voorkeuren));
-  const detail: MatchScoreDetailRegel[] = voorkeuren.dealbreakers.map((db) => {
+  const dealbreakers = voorkeuren.dealbreakers.filter((db) => B2B_DEALBREAKERS.some((o) => o.waarde === db));
+  const getriggerd = dealbreakers.filter((db) => isDealbreakerGetriggerd(db, verificatie, voorzieningen, voorkeuren));
+  const detail: MatchScoreDetailRegel[] = dealbreakers.map((db) => {
     const label = B2B_DEALBREAKERS.find((o) => o.waarde === db)?.label ?? db;
     if (getriggerd.includes(db)) return { label, waarde: "geraakt", status: "slecht" };
     if (!heeftDealbreakerDatabron(db)) return { label, waarde: "geen databron", status: "onbekend" };
