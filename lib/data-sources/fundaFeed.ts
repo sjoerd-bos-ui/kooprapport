@@ -1,6 +1,6 @@
 import { FUNDA_FEED_MODE, FUNDA_SEARCH_TIMEOUT_MS, FUNDA_DETAIL_TIMEOUT_MS } from "@/lib/config/fundaFeed";
 import type { B2bKoperVoorkeuren, B2bMatchVerificatie, B2bWoningtypeVoorkeur } from "@/types/b2b";
-import { B2B_BUDGET_OPTIES } from "@/types/b2b";
+import { B2B_BUDGET_OPTIES, B2B_MIN_OPPERVLAK_OPTIES, B2B_MIN_ENERGIELABEL_OPTIES } from "@/types/b2b";
 
 // -----------------------------------------------------------------------------
 // Directe adapter voor de publieke funda.nl-pagina's (zie de uitleg in
@@ -148,12 +148,80 @@ export const ENERGIELABEL_VOLGORDE_FUNDA = ["A+++++", "A++++", "A+++", "A++", "A
 // checkbox, dus dit is een echt server-side Funda-filter, geen giswerk).
 // Hiermee filtert Funda zelf onderhandeling/verkocht er al uit -- geen losse
 // scrape-/matchScore-logica nodig om dit hierna nog eens te checken.
-function bouwZoekUrl(gebiedSlugs: string[], budgetMax: number | null, objectType: string | null, pagina = 1): string {
+// BUGFIX (Sjoerd: concreet voorbeeld, strenge citywide zoekopdracht --
+// Rotterdam, appartement, max €350k, min 2 kamers, min 80m², tuin verplicht,
+// label A of beter -- Funda zelf toonde 2 resultaten, wij 0, "dit heb ik vaak
+// gevraagd"): root cause is fundamenteel anders dan de eerdere twee bugs in
+// dit bestand (CORS, ontbrekende retry) -- deze zoekopdracht was niet eens
+// fout, hij was gewoon te GROOT om ooit compleet te scannen. bouwZoekUrl zette
+// tot nu toe alleen gebied/beschikbaarheid/type/budget in de Funda-URL; alles
+// wat verder onderscheidt (min. oppervlak, min. energielabel, tuin verplicht)
+// werd pas ACHTERAF gecheckt, per kandidaat, na een dure detailpagina-fetch.
+// Voor een nauwe wijkzoekopdracht (Kralingen Oost) maakt dat niets uit -- een
+// paar kandidaten, allemaal binnen bereik. Maar "heel Rotterdam, appartement,
+// max €350k" alleen al levert 683 resultaten op (live geverifieerd) -- en
+// haalFundaMatches doorzoekt maar de eerste ~100 (KANDIDATENPOOL, zie
+// matches-verversen/route.ts), in Funda's eigen "Relevantie"-volgorde, NIET
+// gesorteerd op wat voor ONS relevant is. Een appartement met tuin + min 80m²
+// + label A kan dus moeiteloos buiten die eerste 100 vallen -- niet
+// afgewezen, gewoon nooit bekeken.
+//
+// Fix: Funda's EIGEN filterparameters voor oppervlak/energielabel/tuin
+// meegeven in de zoek-URL zelf (live geverifieerd, stuk voor stuk, via het
+// echte filterpaneel: `floor_area=80-` toont zelf "Min 80 m² woonoppervlakte"
+// als actief filter, `energy_label=A,B` beperkt tot precies die labels,
+// `exterior_space_type=garden` bracht een test van 683 naar 68 resultaten --
+// dus een echt werkend, server-side Funda-filter, geen genegeerde parameter).
+// Funda filtert dan zelf vooraf tot een klein, precies relevant aanbod, i.p.v.
+// dat wij blind door de eerste 100 van 683 scannen en hopen dat de juiste
+// kandidaten daarbij zitten. De eigen, betrouwbare harde-eisen-check
+// (voldoetAanHardeEisen) blijft gewoon nog een keer per kandidaat draaien --
+// dit is puur een betere PRE-filter, geen vervanging daarvan.
+//
+// Bewust alleen deze drie (oppervlak/energielabel/tuin): dit zijn de enige
+// drie voorkeuren met een simpele, ondubbelzinnige Funda-parameter EN een
+// hard-eis die in de praktijk sterk kan pruneren (citywide zoekopdrachten
+// zonder wijkkeuze). "balcony_ok" (balkon/dakterras/tuin is al voldoende)
+// laat ik bewust ongemoeid -- de meeste appartementen hebben al een balkon,
+// dus die eis pruneert nauwelijks en het risico op een verkeerd geraden
+// parameterwaarde weegt daar niet tegenop.
+function afgeleidFloorAreaFilter(voorkeuren: B2bKoperVoorkeuren): string | null {
+  const minArea = B2B_MIN_OPPERVLAK_OPTIES.find((o) => o.waarde === voorkeuren.minOppervlak)?.minArea ?? 0;
+  return minArea > 0 ? `${minArea}-` : null;
+}
+
+function afgeleidEnergielabelFilter(voorkeuren: B2bKoperVoorkeuren): string | null {
+  const minLabel = B2B_MIN_ENERGIELABEL_OPTIES.find((o) => o.waarde === voorkeuren.minEnergielabel)?.minLabel ?? null;
+  if (!minLabel) return null;
+  const rang = ENERGIELABEL_VOLGORDE_FUNDA.indexOf(minLabel);
+  if (rang === -1) return null;
+  // "Label X of beter" = X zelf én alles wat ervoor staat in de ordening
+  // (beste naar slechtste) -- zie ENERGIELABEL_VOLGORDE_FUNDA hierboven.
+  return ENERGIELABEL_VOLGORDE_FUNDA.slice(0, rang + 1).join(",");
+}
+
+function afgeleidExteriorSpaceFilter(voorkeuren: B2bKoperVoorkeuren): string | null {
+  return voorkeuren.buitenruimte === "garden_required" ? "garden" : null;
+}
+
+function bouwZoekUrl(
+  gebiedSlugs: string[],
+  budgetMax: number | null,
+  objectType: string | null,
+  voorkeuren: B2bKoperVoorkeuren,
+  pagina = 1
+): string {
   const params = new URLSearchParams();
   params.set("selected_area", gebiedSlugs.join(","));
   params.set("availability", "available");
   if (objectType) params.set("object_type", objectType);
   if (budgetMax != null && budgetMax > 0) params.set("price", `0-${Math.round(budgetMax)}`);
+  const floorArea = afgeleidFloorAreaFilter(voorkeuren);
+  if (floorArea) params.set("floor_area", floorArea);
+  const energyLabel = afgeleidEnergielabelFilter(voorkeuren);
+  if (energyLabel) params.set("energy_label", energyLabel);
+  const exteriorSpace = afgeleidExteriorSpaceFilter(voorkeuren);
+  if (exteriorSpace) params.set("exterior_space_type", exteriorSpace);
   if (pagina > 1) params.set("page", String(pagina));
   return `https://www.funda.nl/zoeken/koop?${params.toString()}`;
 }
@@ -742,7 +810,7 @@ export async function haalFundaMatches(
   let heeftFout = false;
 
   for (let pagina = 1; pagina <= MAX_PAGINAS && links.length < limiet; pagina++) {
-    const zoekUrl = bouwZoekUrl(gebiedSlugs, budgetMax, objectType, pagina);
+    const zoekUrl = bouwZoekUrl(gebiedSlugs, budgetMax, objectType, voorkeuren, pagina);
     try {
       const res = await fetchMetTimeout(zoekUrl, FUNDA_SEARCH_TIMEOUT_MS);
       console.log(`[fundaFeed] LIVE zoekaanvraag (pagina ${pagina}) ${zoekUrl} -> HTTP ${res.status}`);
