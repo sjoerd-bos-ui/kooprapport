@@ -20,12 +20,31 @@ export const PRESENTATIE_TOON_OPTIES: { waarde: PresentatieToon; label: string }
   { waarde: "zakelijk", label: "Zakelijk feitelijk" },
 ];
 
-// Vaste volgorde/set van vijf dia's -- zelfde vijf als besproken/gevisualiseerd
-// met Sjoerd: titel, marktanalyse, vraagprijsadvies, vergelijkbare woningen,
+// Vaste basis van vijf dia's -- zelfde vijf als besproken/gevisualiseerd met
+// Sjoerd: titel, marktanalyse, vraagprijsadvies, vergelijkbare woningen,
 // aanpak. Een `key` per dia (i.p.v. alleen een array-positie) zodat de UI en
 // een latere Adobe Express-mapping (Fase 2) een dia altijd betrouwbaar kunnen
 // herkennen, ook als de volgorde ooit wijzigt.
-export type VerkoperspresentatieDiaKey = "titel" | "marktanalyse" | "vraagprijsadvies" | "vergelijkbare_woningen" | "aanpak";
+export type KernDiaKey = "titel" | "marktanalyse" | "vraagprijsadvies" | "vergelijkbare_woningen" | "aanpak";
+
+// Optionele dia's (Cowork-gesprek "Wat kunnen we nog meer in de presentatie
+// verwerken?") -- allemaal uit data die al in het rapport staat, BEHALVE
+// funderingsrisico: Sjoerd gaf expliciet aan die eruit te laten (nummer 6 uit
+// de voorgestelde lijst). De makelaar vinkt zelf aan welke hij per generatie
+// wil meenemen -- vandaar OPTIONELE_DIA_OPTIES hieronder, voor de checkboxes
+// in VerkoperspresentatieGenerator.tsx.
+export type OptioneleDiaKey = "kerngegevens" | "sterke_punten" | "voorzieningen" | "marktcontext" | "verduurzaming" | "doelgroep";
+
+export const OPTIONELE_DIA_OPTIES: { waarde: OptioneleDiaKey; label: string; omschrijving: string }[] = [
+  { waarde: "sterke_punten", label: "Sterke punten", omschrijving: "Automatisch gegenereerde hoogtepunten uit het rapport" },
+  { waarde: "kerngegevens", label: "Kerngegevens", omschrijving: "Bouwjaar, woonoppervlak en kavelgrootte" },
+  { waarde: "voorzieningen", label: "Voorzieningen in de buurt", omschrijving: "Afstand tot school, huisarts, OV en meer" },
+  { waarde: "marktcontext", label: "De markt nu", omschrijving: "Landelijke cijfers uit de nieuwste Marktupdate" },
+  { waarde: "verduurzaming", label: "Verduurzamingspotentieel", omschrijving: "Waardestijging en besparing bij energetische verbetering" },
+  { waarde: "doelgroep", label: "Doelgroep", omschrijving: "Voor welk koperssegment deze woning interessant is" },
+];
+
+export type VerkoperspresentatieDiaKey = KernDiaKey | OptioneleDiaKey;
 
 export interface VerkoperspresentatieDia {
   key: VerkoperspresentatieDiaKey;
@@ -55,4 +74,5 @@ export interface VerkoperspresentatieInvoer {
   rapportId: string;
   toon: PresentatieToon;
   verkoperNaam: string;
+  optioneleDias: OptioneleDiaKey[];
 }

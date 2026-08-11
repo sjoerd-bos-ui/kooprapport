@@ -1,5 +1,5 @@
 import type { Report } from "@/types/report";
-import type { Verkoperspresentatie, VerkoperspresentatieDia, PresentatieToon } from "@/types/verkoperspresentatie";
+import type { Verkoperspresentatie, VerkoperspresentatieDia, VerkoperspresentatieDiaKey, OptioneleDiaKey, PresentatieToon } from "@/types/verkoperspresentatie";
 import {
   VERKOPERSPRESENTATIE_MODE,
   ANTHROPIC_API_KEY,
@@ -7,7 +7,8 @@ import {
   VERKOPERSPRESENTATIE_MAX_TOKENS,
   VERKOPERSPRESENTATIE_TIMEOUT_MS,
 } from "@/lib/config/verkoperspresentatie";
-import { berekenBiedadvies } from "@/lib/services/biedadvies";
+import { berekenBiedadvies, checkNhg } from "@/lib/services/biedadvies";
+import { MARKTUPDATES } from "@/lib/content/marktupdates";
 
 // -----------------------------------------------------------------------------
 // Verkoperspresentatie -- content-laag (Fase 1, zie types/verkoperspresentatie.ts
@@ -120,19 +121,115 @@ function bouwAanpakDia(organisatieNaam: string | null, toon: PresentatieToon): V
   return { key: "aanpak", titel: "Onze aanpak", tekst, kerncijfer: null };
 }
 
+// -----------------------------------------------------------------------------
+// Optionele dia's (Cowork-gesprek "Wat kunnen we nog meer in de presentatie
+// verwerken?") -- allemaal uit data die al in het rapport of in de bestaande
+// Marktupdate-content staat. Funderingsrisico is BEWUST hier niet
+// opgenomen: Sjoerd gaf expliciet aan die eruit te laten.
+// -----------------------------------------------------------------------------
+
+function bouwKerngegevensDia(report: Report): VerkoperspresentatieDia {
+  const building = report.building.data;
+  const kavel = report.kavel.data;
+  const delen: string[] = [];
+  if (building?.bouwjaar) delen.push(`bouwjaar ${building.bouwjaar}`);
+  if (building?.oppervlakteM2) delen.push(`${building.oppervlakteM2} m² woonoppervlak`);
+  if (kavel?.oppervlakteM2) delen.push(`${kavel.oppervlakteM2} m² kavel`);
+  const tekst = delen.length > 0 ? `Kerngegevens: ${delen.join(", ")}.` : "Voor deze woning zijn nog geen bevestigde kerngegevens bekend.";
+  return { key: "kerngegevens", titel: "Kerngegevens", tekst, kerncijfer: building?.oppervlakteM2 ? `${building.oppervlakteM2} m²` : null };
+}
+
+function bouwSterkePuntenDia(report: Report): VerkoperspresentatieDia {
+  const positief = report.insights.filter((i) => i.toon === "positief").slice(0, 4);
+  const gekozen = positief.length > 0 ? positief : report.insights.slice(0, 4);
+  const tekst = gekozen.length > 0 ? gekozen.map((i) => i.tekst).join(" ") : "Voor deze woning zijn nog geen automatische hoogtepunten beschikbaar.";
+  return { key: "sterke_punten", titel: "Sterke punten van deze woning", tekst, kerncijfer: null };
+}
+
+function bouwVoorzieningenDia(report: Report): VerkoperspresentatieDia {
+  const items = report.buurtprofiel.data?.voorzieningen.items ?? [];
+  if (items.length === 0) {
+    return { key: "voorzieningen", titel: "Voorzieningen in de buurt", tekst: "Voor deze buurt zijn nog geen voorzieningengegevens bekend.", kerncijfer: null };
+  }
+  const top = [...items].sort((a, b) => a.afstandKm - b.afstandKm).slice(0, 4);
+  const regels = top.map((v) => `${v.label} (${v.afstandKm.toLocaleString("nl-NL", { maximumFractionDigits: 1 })} km)`);
+  return { key: "voorzieningen", titel: "Voorzieningen in de buurt", tekst: `${regels.join(", ")}.`, kerncijfer: null };
+}
+
+function nieuwsteMarktupdate() {
+  return MARKTUPDATES[MARKTUPDATES.length - 1] ?? null;
+}
+
+function bouwMarktcontextDia(toon: PresentatieToon): VerkoperspresentatieDia {
+  const update = nieuwsteMarktupdate();
+  if (!update) {
+    return { key: "marktcontext", titel: "De woningmarkt nu", tekst: "Geen actuele landelijke marktcijfers beschikbaar.", kerncijfer: null };
+  }
+  const nadrukStat = update.landelijkeCijfers.stats.find((s) => s.nadruk) ?? update.landelijkeCijfers.stats[0] ?? null;
+  const tekst = toon === "persoonlijk" ? `Landelijk gezien: ${update.samenvatting}` : update.samenvatting;
+  return { key: "marktcontext", titel: "De woningmarkt nu", tekst, kerncijfer: nadrukStat?.waarde ?? null };
+}
+
+function bouwVerduurzamingDia(report: Report): VerkoperspresentatieDia {
+  const v = report.verduurzaming.data;
+  if (!v || !v.huidigLabel || !v.haalbaarLabel) {
+    return { key: "verduurzaming", titel: "Verduurzamingspotentieel", tekst: "Voor deze woning is nog geen verduurzamingsadvies beschikbaar.", kerncijfer: null };
+  }
+  const delen: string[] = [`Van label ${v.huidigLabel} naar label ${v.haalbaarLabel} is haalbaar`];
+  if (v.investering) delen.push(`met een investering van ${euro(v.investering)}`);
+  if (v.besparingPerJaar) delen.push(`en een besparing van ${euro(v.besparingPerJaar)} per jaar op de energierekening`);
+  const tekst = delen.join(" ") + (v.waardestijging ? `. Dit kan de waarde van de woning met naar schatting ${euro(v.waardestijging)} verhogen.` : ".");
+  return { key: "verduurzaming", titel: "Verduurzamingspotentieel", tekst, kerncijfer: v.waardestijging ? `+ ${euro(v.waardestijging)}` : null };
+}
+
+function bouwDoelgroepDia(report: Report): VerkoperspresentatieDia {
+  const market = report.market.data;
+  const nhg = market ? checkNhg(market.geschatteWaarde) : null;
+  const sociaal = report.buurtprofiel.data?.sociaal;
+  const delen: string[] = [];
+  if (nhg) {
+    delen.push(
+      nhg.onderGrens
+        ? `Met een geschatte waarde onder de ${nhg.grensLabel} (${euro(nhg.grens)}) is deze woning ook financierbaar voor starters met NHG.`
+        : `Met een geschatte waarde boven de ${nhg.grensLabel} (${euro(nhg.grens)}) is deze woning vooral interessant voor doorstromers.`
+    );
+  }
+  if (sociaal?.percentageMetKinderen != null) {
+    delen.push(`In deze buurt heeft ${Math.round(sociaal.percentageMetKinderen)}% van de huishoudens kinderen.`);
+  }
+  const tekst = delen.length > 0 ? delen.join(" ") : "Voor een doelgroepbepaling zijn nog niet genoeg buurtgegevens beschikbaar.";
+  return { key: "doelgroep", titel: "Doelgroep", tekst, kerncijfer: null };
+}
+
+// Vaste, makelaar-onafhankelijke basis (KERN_DIAS) plus de optioneel
+// aangevinkte dia's (optioneleDias) -- samengevoegd in een vaste, logische
+// pitch-volgorde: intro -> woning -> markt -> vergelijking -> prijs -> extra
+// verkoopargumenten -> afsluiting. Niet-aangevinkte optionele dia's worden
+// simpelweg overgeslagen, geen lege placeholder.
+const KERN_DIAS: ReadonlySet<VerkoperspresentatieDiaKey> = new Set(["titel", "marktanalyse", "vraagprijsadvies", "vergelijkbare_woningen", "aanpak"]);
+
 function bouwMockPresentatie(
   report: Report,
   verkoperNaam: string,
   organisatieNaam: string | null,
-  toon: PresentatieToon
+  toon: PresentatieToon,
+  optioneleDias: OptioneleDiaKey[]
 ): VerkoperspresentatieDia[] {
-  return [
-    bouwTitelDia(report.core.address.label, verkoperNaam, organisatieNaam, toon),
-    bouwMarktanalyseDia(report, toon),
-    bouwVraagprijsadviesDia(report, toon),
-    bouwVergelijkbareWoningenDia(report, toon),
-    bouwAanpakDia(organisatieNaam, toon),
+  const geselecteerd = new Set(optioneleDias);
+  const alleDias: [VerkoperspresentatieDiaKey, () => VerkoperspresentatieDia][] = [
+    ["titel", () => bouwTitelDia(report.core.address.label, verkoperNaam, organisatieNaam, toon)],
+    ["kerngegevens", () => bouwKerngegevensDia(report)],
+    ["sterke_punten", () => bouwSterkePuntenDia(report)],
+    ["marktanalyse", () => bouwMarktanalyseDia(report, toon)],
+    ["voorzieningen", () => bouwVoorzieningenDia(report)],
+    ["marktcontext", () => bouwMarktcontextDia(toon)],
+    ["vergelijkbare_woningen", () => bouwVergelijkbareWoningenDia(report, toon)],
+    ["vraagprijsadvies", () => bouwVraagprijsadviesDia(report, toon)],
+    ["verduurzaming", () => bouwVerduurzamingDia(report)],
+    ["doelgroep", () => bouwDoelgroepDia(report)],
+    ["aanpak", () => bouwAanpakDia(organisatieNaam, toon)],
   ];
+  return alleDias.filter(([key]) => KERN_DIAS.has(key) || geselecteerd.has(key as OptioneleDiaKey)).map(([, bouw]) => bouw());
 }
 
 async function fetchMetTimeout(url: string, init: RequestInit, timeoutMs: number): Promise<Response> {
@@ -150,7 +247,7 @@ interface AnthropicMessageResponse {
   error?: { message?: string };
 }
 
-const SYSTEEMPROMPT = `Je herschrijft vijf dia-teksten voor een verkoperspresentatie van een makelaar, in het Nederlands. Elke dia heeft al een feitelijk kloppende basistekst -- verzin NOOIT nieuwe cijfers of feiten, herschrijf alleen de FORMULERING zodat hij vloeiender en persoonlijker/zakelijker klinkt volgens de gevraagde toon. Antwoord UITSLUITEND met geldige JSON: een array van vijf objecten met de velden "key" en "tekst" (exact dezelfde keys en volgorde als de invoer), zonder omliggende tekst.`;
+const SYSTEEMPROMPT = `Je herschrijft de dia-teksten voor een verkoperspresentatie van een makelaar, in het Nederlands. Elke dia heeft al een feitelijk kloppende basistekst -- verzin NOOIT nieuwe cijfers of feiten, herschrijf alleen de FORMULERING zodat hij vloeiender en persoonlijker/zakelijker klinkt volgens de gevraagde toon. Antwoord UITSLUITEND met geldige JSON: een array met evenveel objecten als de invoer, met de velden "key" en "tekst" (exact dezelfde keys en volgorde als de invoer), zonder omliggende tekst.`;
 
 async function herschrijfMetAi(dias: VerkoperspresentatieDia[], toon: PresentatieToon): Promise<VerkoperspresentatieDia[] | null> {
   try {
@@ -199,9 +296,10 @@ export async function genereerVerkoperspresentatie(
   report: Report,
   verkoperNaam: string,
   organisatieNaam: string | null,
-  toon: PresentatieToon
+  toon: PresentatieToon,
+  optioneleDias: OptioneleDiaKey[]
 ): Promise<Verkoperspresentatie> {
-  const mockDias = bouwMockPresentatie(report, verkoperNaam, organisatieNaam, toon);
+  const mockDias = bouwMockPresentatie(report, verkoperNaam, organisatieNaam, toon, optioneleDias);
 
   let dias = mockDias;
   let bron: "ai" | "rapportgegevens" = "rapportgegevens";

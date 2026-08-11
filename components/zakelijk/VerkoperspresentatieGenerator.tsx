@@ -2,14 +2,15 @@
 
 import { useState } from "react";
 import type { B2bRapportAanvraag } from "@/types/b2b";
-import type { PresentatieToon, Verkoperspresentatie } from "@/types/verkoperspresentatie";
-import { PRESENTATIE_TOON_OPTIES } from "@/types/verkoperspresentatie";
+import type { PresentatieToon, Verkoperspresentatie, OptioneleDiaKey } from "@/types/verkoperspresentatie";
+import { PRESENTATIE_TOON_OPTIES, OPTIONELE_DIA_OPTIES } from "@/types/verkoperspresentatie";
 import { SparklesIcon } from "@/components/report/icons";
 
 // -----------------------------------------------------------------------------
 // Fase 1 ("content-laag") van de verkoperspresentatie-generator, zie het
 // Cowork-gesprek "Verkoper-presentatie generator". Dit scherm genereert en
-// toont de vijf dia's als tekst -- nog GEEN Adobe Express-vormgeving (Fase 2,
+// toont de dia's (vijf vaste + eventueel aangevinkte extra dia's) als tekst
+// -- nog GEEN Adobe Express-vormgeving (Fase 2,
 // hangt af van een Adobe-autorisatie die Sjoerd zelf moet regelen). Bewust
 // zo'n eenvoudige preview i.p.v. iets dat al op een "echte presentatie" lijkt,
 // om niet te suggereren dat dit al de uiteindelijke vormgeving is.
@@ -27,6 +28,10 @@ export default function VerkoperspresentatieGenerator({
   const [rapportId, setRapportId] = useState(rapporten[0]?.id ?? "");
   const [verkoperNaam, setVerkoperNaam] = useState(klantnaam);
   const [toon, setToon] = useState<PresentatieToon>("persoonlijk");
+  // Standaard allemaal uit -- de makelaar vinkt zelf aan welke extra dia's hij
+  // per generatie wil meenemen (zie het Cowork-gesprek "dan kunnen ze zelf
+  // kiezen welke ze aan kunnen vinken").
+  const [optioneleDias, setOptioneleDias] = useState<OptioneleDiaKey[]>([]);
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState<string | null>(null);
   const [presentatie, setPresentatie] = useState<Verkoperspresentatie | null>(null);
@@ -39,6 +44,10 @@ export default function VerkoperspresentatieGenerator({
     );
   }
 
+  function toggleOptioneleDia(sleutel: OptioneleDiaKey) {
+    setOptioneleDias((huidig) => (huidig.includes(sleutel) ? huidig.filter((k) => k !== sleutel) : [...huidig, sleutel]));
+  }
+
   async function genereer() {
     setBezig(true);
     setFout(null);
@@ -46,7 +55,7 @@ export default function VerkoperspresentatieGenerator({
       const res = await fetch(`/api/zakelijk/klanten/${dossierId}/verkoperspresentatie`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rapportId, toon, verkoperNaam }),
+        body: JSON.stringify({ rapportId, toon, verkoperNaam, optioneleDias }),
       });
       const body = await res.json();
       if (!res.ok) {
@@ -113,6 +122,29 @@ export default function VerkoperspresentatieGenerator({
               >
                 {optie.label}
               </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-3">
+          <label className="text-[10.5px] font-semibold text-ink/50">Extra dia&apos;s (optioneel)</label>
+          <div className="mt-1.5 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+            {OPTIONELE_DIA_OPTIES.map((optie) => (
+              <label
+                key={optie.waarde}
+                className="flex cursor-pointer items-start gap-2 rounded-lg border border-ink/10 px-3 py-2 hover:bg-mist"
+              >
+                <input
+                  type="checkbox"
+                  checked={optioneleDias.includes(optie.waarde)}
+                  onChange={() => toggleOptioneleDia(optie.waarde)}
+                  className="mt-0.5 accent-accent"
+                />
+                <span>
+                  <span className="block text-[11.5px] font-semibold text-ink">{optie.label}</span>
+                  <span className="block text-[10px] text-ink/45">{optie.omschrijving}</span>
+                </span>
+              </label>
             ))}
           </div>
         </div>

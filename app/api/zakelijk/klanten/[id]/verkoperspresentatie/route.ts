@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getB2bSessieUitRequest } from "@/lib/services/b2bAuth";
 import { getKlantdossier, listRapportenVoorKlant } from "@/lib/services/b2bStore";
 import { genereerVerkoperspresentatie } from "@/lib/services/verkoperspresentatie";
-import type { PresentatieToon } from "@/types/verkoperspresentatie";
+import type { PresentatieToon, OptioneleDiaKey } from "@/types/verkoperspresentatie";
+import { OPTIONELE_DIA_OPTIES } from "@/types/verkoperspresentatie";
 
 // -----------------------------------------------------------------------------
 // Genereert een verkoperspresentatie voor één rapport binnen een dossier.
@@ -23,18 +24,30 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Onbekend klantdossier." }, { status: 404 });
   }
 
-  const body = (await req.json().catch(() => null)) as { rapportId?: string; toon?: PresentatieToon; verkoperNaam?: string } | null;
+  const body = (await req.json().catch(() => null)) as {
+    rapportId?: string;
+    toon?: PresentatieToon;
+    verkoperNaam?: string;
+    optioneleDias?: string[];
+  } | null;
   if (!body?.rapportId) return NextResponse.json({ error: "Geen rapport opgegeven." }, { status: 400 });
 
   const toon: PresentatieToon = body.toon === "zakelijk" ? "zakelijk" : "persoonlijk";
   const verkoperNaam = body.verkoperNaam?.trim() || dossier.klantnaam;
+
+  // Defensief tegen onbekende/verouderde waarden in de request (bv. een
+  // dia-key die inmiddels is hernoemd of verwijderd) -- alleen echt geldige
+  // OPTIONELE_DIA_OPTIES-waarden komen door, de rest wordt stilzwijgend
+  // genegeerd i.p.v. een crash of een onbedoelde dia.
+  const geldigeSleutels = new Set(OPTIONELE_DIA_OPTIES.map((o) => o.waarde));
+  const optioneleDias = (body.optioneleDias ?? []).filter((k): k is OptioneleDiaKey => geldigeSleutels.has(k as OptioneleDiaKey));
 
   const rapporten = await listRapportenVoorKlant(id);
   const rapport = rapporten.find((r) => r.id === body.rapportId);
   if (!rapport) return NextResponse.json({ error: "Onbekend rapport in dit dossier." }, { status: 404 });
 
   const organisatieNaam = context.organisatie.branding?.weergaveNaam ?? context.organisatie.naam;
-  const presentatie = await genereerVerkoperspresentatie(rapport.report, verkoperNaam, organisatieNaam, toon);
+  const presentatie = await genereerVerkoperspresentatie(rapport.report, verkoperNaam, organisatieNaam, toon, optioneleDias);
 
   return NextResponse.json({ presentatie });
 }
