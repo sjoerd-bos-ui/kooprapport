@@ -263,6 +263,8 @@ export async function maakOfVernieuwKoperVoorkeurenToken(dossierId: string): Pro
     matchenActief: false,
     koperVoorkeuren: null,
     koperVoorkeurenToken: null,
+    emailKoper: null,
+    mailBijNieuweMatches: false,
   };
   await kvSet(koperVoorkeurenTokenKey(token), dossierId);
   await zetKlantdossierZoekopdracht(dossierId, { ...basisZoekopdracht, koperVoorkeurenToken: token });

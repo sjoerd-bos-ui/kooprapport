@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getB2bSessieUitRequest } from "@/lib/services/b2bAuth";
 import { getKlantdossier, zetKlantdossierStatus, zetKlantdossierZoekopdracht, verwijderKlantdossier } from "@/lib/services/b2bStore";
 import { valideerKoperVoorkeuren } from "@/lib/services/koperVoorkeurenValidatie";
+import { isGeldigEmailadres } from "@/lib/services/email";
 import type { B2bDossierStatus, B2bZoekopdracht } from "@/types/b2b";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -70,10 +71,30 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ error: "Vul eerst de voorkeurenlijst in om automatische meldingen aan te zetten." }, { status: 400 });
     }
 
+    // Koper-mailnotificatie (zie het Cowork-gesprek "Nieuwe matches ... via
+    // de mail"): zelfde "ontbreekt in body = ongewijzigd laten"-patroon als
+    // koperVoorkeuren hierboven, zodat een aanroeper die deze velden niet
+    // meestuurt nooit per ongeluk een al ingevuld e-mailadres wist.
+    let emailKoper = dossier.zoekopdracht?.emailKoper ?? null;
+    if ("emailKoper" in z) {
+      const waarde = z.emailKoper?.trim() || null;
+      if (waarde && !isGeldigEmailadres(waarde)) {
+        return NextResponse.json({ error: "Vul een geldig e-mailadres in." }, { status: 400 });
+      }
+      emailKoper = waarde;
+    }
+
+    const mailBijNieuweMatches = Boolean(z.mailBijNieuweMatches);
+    if (mailBijNieuweMatches && !emailKoper) {
+      return NextResponse.json({ error: "Vul eerst een e-mailadres van de koper in om mailmeldingen aan te zetten." }, { status: 400 });
+    }
+
     const bijgewerkt = await zetKlantdossierZoekopdracht(id, {
       matchenActief,
       koperVoorkeuren,
       koperVoorkeurenToken: dossier.zoekopdracht?.koperVoorkeurenToken ?? null,
+      emailKoper,
+      mailBijNieuweMatches,
     });
     return NextResponse.json({ ok: true, dossier: bijgewerkt });
   }

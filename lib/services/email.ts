@@ -670,6 +670,107 @@ export async function stuurNieuweMatchesEmail(input: StuurNieuweMatchesEmailInpu
   return { ok: true };
 }
 
+export interface StuurNieuweMatchesKoperEmailInput {
+  naar: string;
+  klantnaam: string;
+  organisatieNaam: string;
+  matches: NieuweMatchEmailItem[];
+}
+
+// -----------------------------------------------------------------------------
+// Melding aan de KOPER zelf bij nieuwe woningmatches (zie het Cowork-gesprek
+// "Nieuwe matches ... via de mail") -- bewust een LOSSE functie i.p.v.
+// hergebruik van stuurNieuweMatchesEmail() hierboven: die is expliciet
+// makelaar-georiënteerd (onderwerp/knoptekst "Bekijk dossier", link naar het
+// besloten /zakelijk/-dashboard waar een koper toch geen toegang toe heeft,
+// zie getB2bSessieUitRequest). Hier dus geen dashboardlink -- elke match
+// linkt rechtstreeks naar de advertentie zelf (net als de "eenklik delen"-
+// gedachte: de koper hoeft niets in te loggen om door te klikken), en de
+// afzendernaam in de tekst is de organisatie van de makelaar (branding), niet
+// "Kooprapport Zakelijk" -- de koper kent zijn makelaar, niet onze naam.
+// -----------------------------------------------------------------------------
+export async function stuurNieuweMatchesKoperEmail(input: StuurNieuweMatchesKoperEmailInput): Promise<StuurRapportEmailResultaat> {
+  const apiKey = process.env.RESEND_API_KEY;
+  const van = process.env.RESEND_FROM_EMAIL;
+  if (!apiKey || !van) {
+    return { ok: false, error: "E-mailverzending is nog niet geconfigureerd." };
+  }
+
+  const klantnaam = escapeHtml(input.klantnaam);
+  const organisatieNaam = escapeHtml(input.organisatieNaam);
+  const aantal = input.matches.length;
+
+  const matchRegels = input.matches
+    .map(
+      (m) =>
+        `<tr><td style="padding:10px 0;border-top:1px solid #EEF0FF;">
+          <a href="${escapeHtml(m.url)}" style="font-size:14px;font-weight:600;color:#1F1F2E;text-decoration:none;">${escapeHtml(m.titel)}</a>
+          ${m.prijsLabel ? `<div style="margin-top:2px;font-size:13px;color:#6B7280;">${escapeHtml(m.prijsLabel)}</div>` : ""}
+        </td></tr>`
+    )
+    .join("");
+
+  const html = `<!DOCTYPE html>
+<html lang="nl">
+  <body style="margin:0;padding:0;background-color:#F5F5FA;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F5F5FA;padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background-color:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #EEF0FF;">
+            <tr>
+              <td style="background-color:#1F1F2E;padding:22px 32px;">
+                <span style="font-size:18px;font-weight:700;color:#ffffff;letter-spacing:-0.01em;">${organisatieNaam}</span>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:32px;">
+                <p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#4F46E5;">
+                  Nieuw voor jou gevonden
+                </p>
+                <p style="margin:0 0 18px;font-size:20px;line-height:1.4;font-weight:700;color:#1F1F2E;">
+                  Hoi ${klantnaam}, ${aantal} ${aantal === 1 ? "nieuwe woning past" : "nieuwe woningen passen"} bij je wensen
+                </p>
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;">
+                  ${matchRegels}
+                </table>
+                <p style="margin:24px 0 0;font-size:12.5px;line-height:1.6;color:#9CA3AF;">
+                  Deze melding komt van ${organisatieNaam}, die jouw zoekopdracht voor je bijhoudt.
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:20px 32px;background-color:#F5F5FA;border-top:1px solid #EEF0FF;">
+                <p style="margin:0;font-size:12px;line-height:1.6;color:#9CA3AF;">
+                  Verzonden via Kooprapport namens ${organisatieNaam}.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+
+  const res = await fetch(RESEND_API_URL, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: van,
+      to: [input.naar],
+      subject: `${aantal} ${aantal === 1 ? "nieuwe woning" : "nieuwe woningen"} gevonden voor jou`,
+      html,
+    }),
+  });
+
+  if (!res.ok) {
+    const tekst = await res.text().catch(() => "");
+    console.error(`[email] Resend gaf status ${res.status} (nieuwe-matches-koper):`, tekst);
+    return { ok: false, error: "Versturen is niet gelukt. Probeer het later opnieuw." };
+  }
+  return { ok: true };
+}
+
 // -----------------------------------------------------------------------------
 // Interne melding naar Sjoerd bij een tier-wijzigingsverzoek (zie
 // app/api/zakelijk/abonnement/wijzigen/route.ts) -- er is geen automatische

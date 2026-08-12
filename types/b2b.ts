@@ -133,6 +133,19 @@ export interface B2bZoekopdracht {
   // voor het eerst genereert, dus ook hier `null` totdat dat gebeurt.
   koperVoorkeuren: B2bKoperVoorkeuren | null;
   koperVoorkeurenToken: string | null;
+  // "Bewaar als interessant" / mail-notificaties (zie het Cowork-gesprek
+  // "Nieuwe matches ... via de mail"): het e-mailadres van de koper zelf,
+  // door de makelaar ingevuld (er is nog geen publieke opt-in-flow zoals bij
+  // koperVoorkeurenToken). Los van `koperVoorkeuren` omdat het een
+  // contactgegeven is, geen zoekcriterium. `null` = nog niet ingevuld.
+  emailKoper: string | null;
+  // Aan/uit-instelling, analoog aan `matchenActief` hierboven -- bewust een
+  // apart veld i.p.v. "mail versturen zodra emailKoper gevuld is": de
+  // makelaar kan een adres invullen zonder dat er meteen mail uitgaat (bv.
+  // tijdens het gesprek met de koper, voordat die toestemming heeft
+  // gegeven). Alleen relevant als emailKoper ook is ingevuld -- zie de
+  // check in de cron-route.
+  mailBijNieuweMatches: boolean;
 }
 
 export interface B2bKlantdossier {

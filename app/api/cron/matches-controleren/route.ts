@@ -9,7 +9,7 @@ import {
 } from "@/lib/services/b2bStore";
 import { haalFundaMatches } from "@/lib/data-sources/fundaFeed";
 import { voldoetAanHardeEisen } from "@/lib/services/matchScore";
-import { stuurNieuweMatchesEmail } from "@/lib/services/email";
+import { stuurNieuweMatchesEmail, stuurNieuweMatchesKoperEmail } from "@/lib/services/email";
 import { APP_BASE_URL } from "@/lib/config/payment";
 import { MAX_ZICHTBARE_MATCHEN } from "@/types/b2b";
 import type { B2bWoningMatch } from "@/types/b2b";
@@ -82,6 +82,8 @@ export async function GET(req: NextRequest) {
   let nieuweMatches = 0;
   let mailsVerstuurd = 0;
   let mailsMislukt = 0;
+  let mailsKoperVerstuurd = 0;
+  let mailsKoperMislukt = 0;
   // BUGFIX: telt hoe vaak de zoekaanvraag zelf mislukte (netwerk/timeout,
   // zie fundaFeed.ts) i.p.v. gewoon 0 nieuwe matches op te leveren -- zichtbaar
   // in de cron-response, zodat dit niet verborgen blijft achter "nieuweMatches: 0".
@@ -155,6 +157,23 @@ export async function GET(req: NextRequest) {
           if (resultaat.ok) mailsVerstuurd++;
           else mailsMislukt++;
         }
+
+        // Koper-mailnotificatie (zie het Cowork-gesprek "Nieuwe matches ...
+        // via de mail"): apart van de makelaar-mail hierboven, eigen aan/uit-
+        // vlag (mailBijNieuweMatches) en eigen ontvanger (emailKoper) -- een
+        // dossier kan dus de makelaar wel informeren en de koper niet, of
+        // andersom. Organisatienaam (branding) i.p.v. "Kooprapport Zakelijk"
+        // als afzendernaam in de tekst: de koper kent zijn makelaar.
+        if (dossier.zoekopdracht?.mailBijNieuweMatches && dossier.zoekopdracht.emailKoper) {
+          const resultaat = await stuurNieuweMatchesKoperEmail({
+            naar: dossier.zoekopdracht.emailKoper,
+            klantnaam: dossier.klantnaam,
+            organisatieNaam: org.branding?.weergaveNaam ?? org.naam,
+            matches: nieuwOpgeslagen.map((item) => ({ titel: item.titel, url: item.url, prijsLabel: item.prijsLabel })),
+          });
+          if (resultaat.ok) mailsKoperVerstuurd++;
+          else mailsKoperMislukt++;
+        }
       } catch (err) {
         console.error(`[cron/matches-controleren] mislukt voor dossier ${dossier.id}:`, err);
       }
@@ -168,6 +187,8 @@ export async function GET(req: NextRequest) {
     nieuweMatches,
     mailsVerstuurd,
     mailsMislukt,
+    mailsKoperVerstuurd,
+    mailsKoperMislukt,
     zoekFouten,
   });
 }

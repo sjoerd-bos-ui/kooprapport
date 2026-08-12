@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import type { B2bZoekopdracht, B2bKoperVoorkeuren } from "@/types/b2b";
 import { B2B_WONINGTYPE_VOORKEUREN } from "@/types/b2b";
 import VoorkeurenVragenlijst from "@/components/zakelijk/VoorkeurenVragenlijst";
-import { MapPinIcon, CheckIcon, BoltIcon } from "@/components/report/icons";
+import { MapPinIcon, CheckIcon, BoltIcon, MailIcon } from "@/components/report/icons";
 
 function labelVoor<T extends string>(opties: { waarde: T; label: string }[], waarde: T): string {
   return opties.find((o) => o.waarde === waarde)?.label ?? waarde;
@@ -51,9 +51,20 @@ export default function ZoekopdrachtForm({ dossierId, huidig }: { dossierId: str
   const [linkBezig, setLinkBezig] = useState(false);
   const [linkMelding, setLinkMelding] = useState<string | null>(null);
   const [matchenBezig, setMatchenBezig] = useState(false);
+  // Koper-mailnotificatie (zie het Cowork-gesprek "Nieuwe matches ... via de
+  // mail"): het invoerveld is bewust een LOKALE, ongebonden string (niet
+  // meteen bij elke toetsaanslag opslaan) -- pas bij "Opslaan" gaat de PATCH
+  // eruit. De toggle-pill hieronder gebruikt wél meteen de al OPGESLAGEN
+  // waarde (huidig?.emailKoper), net als matchenActief hierboven, zodat je
+  // 'm niet per ongeluk aanzet op een adres dat nog niet is opgeslagen.
+  const [emailKoperInput, setEmailKoperInput] = useState(huidig?.emailKoper ?? "");
+  const [mailBezig, setMailBezig] = useState(false);
+  const [mailMelding, setMailMelding] = useState<string | null>(null);
 
   const koperVoorkeuren = huidig?.koperVoorkeuren ?? null;
   const matchenActief = huidig?.matchenActief ?? false;
+  const emailKoperOpgeslagen = huidig?.emailKoper ?? null;
+  const mailBijNieuweMatches = huidig?.mailBijNieuweMatches ?? false;
 
   async function kopieerVoorkeurenLink() {
     setLinkBezig(true);
@@ -91,6 +102,51 @@ export default function ZoekopdrachtForm({ dossierId, huidig }: { dossierId: str
     } finally {
       setMatchenBezig(false);
     }
+  }
+
+  // BELANGRIJK: matchenActief/koperVoorkeuren moeten hier ALTIJD expliciet
+  // meegestuurd worden (zelfde als bij toggleMatchenActief hierboven) --
+  // de PATCH-route behandelt een ontbrekend `matchenActief` als `false`
+  // (geen "laat ongewijzigd"-fallback zoals bij koperVoorkeuren), dus zonder
+  // dit zou het opslaan van alleen het e-mailadres automatisch matchen
+  // stilzwijgend uitzetten.
+  async function opslaanKoperMail(email: string, mailAan: boolean) {
+    setMailBezig(true);
+    setMailMelding(null);
+    try {
+      const res = await fetch(`/api/zakelijk/klanten/${dossierId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          zoekopdracht: { matchenActief, koperVoorkeuren, emailKoper: email, mailBijNieuweMatches: mailAan },
+        }),
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        setMailMelding(body.error ?? "Opslaan is niet gelukt.");
+        return;
+      }
+      setMailMelding("Opgeslagen.");
+      router.refresh();
+    } catch {
+      setMailMelding("Opslaan is niet gelukt.");
+    } finally {
+      setMailBezig(false);
+    }
+  }
+
+  function opslaanEmailKoper() {
+    const email = emailKoperInput.trim();
+    // Een leeg adres kan nooit samengaan met een aanstaande mailtoggle (zie
+    // de validatie in de PATCH-route) -- die zetten we hier meteen mee uit
+    // i.p.v. de gebruiker een foutmelding te laten zien over iets dat hij
+    // niet heeft aangeraakt.
+    opslaanKoperMail(email, email ? mailBijNieuweMatches : false);
+  }
+
+  function toggleMailBijNieuweMatches() {
+    if (!emailKoperOpgeslagen) return;
+    opslaanKoperMail(emailKoperOpgeslagen, !mailBijNieuweMatches);
   }
 
   async function opslaanVoorkeuren(nieuw: B2bKoperVoorkeuren) {
@@ -195,6 +251,38 @@ export default function ZoekopdrachtForm({ dossierId, huidig }: { dossierId: str
         ) : (
           <p className="mt-2 text-[11.5px] text-ink/40">Nog geen voorkeurenlijst ingevuld voor dit dossier.</p>
         )}
+
+        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-ink/[0.06] pt-3">
+          <MailIcon className="h-3.5 w-3.5 shrink-0 text-ink/30" />
+          <input
+            type="email"
+            value={emailKoperInput}
+            onChange={(e) => setEmailKoperInput(e.target.value)}
+            placeholder="e-mailadres van de koper"
+            className="min-w-[200px] flex-1 rounded-lg border border-ink/15 px-2.5 py-1.5 text-[11.5px] text-ink focus:border-accent focus:outline-none"
+          />
+          <button
+            type="button"
+            onClick={opslaanEmailKoper}
+            disabled={mailBezig || emailKoperInput.trim() === (emailKoperOpgeslagen ?? "")}
+            className="rounded-lg border border-ink/15 px-3 py-1.5 text-[10.5px] font-semibold text-ink/60 hover:bg-mist disabled:opacity-50"
+          >
+            {mailBezig ? "Bezig…" : "Opslaan"}
+          </button>
+          <button
+            type="button"
+            onClick={toggleMailBijNieuweMatches}
+            disabled={mailBezig || !emailKoperOpgeslagen}
+            title={!emailKoperOpgeslagen ? "Vul en bewaar eerst een e-mailadres" : undefined}
+            className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors disabled:opacity-50 ${
+              mailBijNieuweMatches ? "bg-[#EAF3DE] text-[#3B6D11]" : "bg-ink/5 text-ink/40"
+            }`}
+          >
+            <MailIcon className="h-3 w-3" />
+            Mail bij nieuwe matches {mailBijNieuweMatches ? "aan" : "uit"}
+          </button>
+          {mailMelding && <p className="w-full text-[10.5px] font-semibold text-accent">{mailMelding}</p>}
+        </div>
       </div>
     );
   }
