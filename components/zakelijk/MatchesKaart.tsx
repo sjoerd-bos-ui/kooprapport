@@ -256,6 +256,12 @@ export default function MatchesKaart({
   const laatstGevonden = matches[0]?.gevondenOp;
   const zichtbaar = matches.slice(0, aantalZichtbaar);
   const voorkeurenZinnen = koperVoorkeurenSamenvatting(koperVoorkeuren);
+  // "Favorieten": losse, compacte sectie bovenaan met alleen de door de
+  // makelaar aangevinkte matches (zie het Cowork-gesprek "echt de favorieten
+  // pagina") -- een shortlist los van de volledige (potentieel lange)
+  // matcheslijst eronder, met de twee acties die er het meest toe doen
+  // meteen zichtbaar i.p.v. achter het actiemenu verstopt.
+  const favorieten = matches.filter((m) => isInteressant(m));
 
   return (
     <div className="rounded-2xl bg-white p-5 shadow-sm">
@@ -295,6 +301,65 @@ export default function MatchesKaart({
               {zin}
             </span>
           ))}
+        </div>
+      )}
+
+      {favorieten.length > 0 && (
+        <div className="mt-3 rounded-xl bg-mist/50 p-3.5">
+          <div className="flex items-center gap-1.5">
+            <StarIcon className="h-3.5 w-3.5 text-[#BA7517]" filled />
+            <p className="text-[11px] font-bold uppercase tracking-wide text-ink/40">Favorieten</p>
+            <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold text-white">{favorieten.length}</span>
+          </div>
+          <div className="mt-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
+            {favorieten.map((m, i) => {
+              const gekoppeldRapport = vindGekoppeldRapport(m.titel, rapporten);
+              return (
+                <div key={m.id} className="overflow-hidden rounded-xl border border-ink/[0.06] bg-white">
+                  <div className="relative h-24 w-full bg-mist">
+                    <MatchThumbnail fotoUrl={m.fotoUrl} index={i} />
+                    <button
+                      type="button"
+                      onClick={() => toggleInteressant(m)}
+                      aria-label="Niet meer interessant"
+                      className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-[#FAC775] text-[#633806] shadow-sm"
+                    >
+                      <StarIcon className="h-3.5 w-3.5" filled />
+                    </button>
+                  </div>
+                  <div className="p-3">
+                    <p className="truncate text-[12px] font-semibold text-ink">{m.titel}</p>
+                    {m.prijsLabel && <p className="text-[11px] text-ink/50">{m.prijsLabel}</p>}
+                    <div className="mt-2 flex gap-1.5">
+                      <a
+                        href={m.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 rounded-lg border border-ink/15 py-1.5 text-center text-[10.5px] font-semibold text-ink/60 hover:bg-mist"
+                      >
+                        Advertentie
+                      </a>
+                      {gekoppeldRapport ? (
+                        <Link
+                          href={`/zakelijk/rapporten/${gekoppeldRapport.id}`}
+                          className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-[#EAF3DE] py-1.5 text-[10.5px] font-semibold text-[#3B6D11]"
+                        >
+                          <CheckIcon className="h-3 w-3" /> Rapport
+                        </Link>
+                      ) : (
+                        <Link
+                          href={`/zakelijk/rapporten/nieuw?klantId=${dossierId}&adres=${encodeURIComponent(m.titel)}`}
+                          className="flex-1 rounded-lg bg-[#EEF0FF] py-1.5 text-center text-[10.5px] font-semibold text-accent"
+                        >
+                          Rapport
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
