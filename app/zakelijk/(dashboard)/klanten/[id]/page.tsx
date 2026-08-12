@@ -11,7 +11,7 @@ import VerwijderDossierKnop from "@/components/zakelijk/VerwijderDossierKnop";
 import MatchesKaart from "@/components/zakelijk/MatchesKaart";
 import KlantdossierTabs, { type KlantdossierTab } from "@/components/zakelijk/KlantdossierTabs";
 import VerkoperspresentatieGenerator from "@/components/zakelijk/VerkoperspresentatieGenerator";
-import { FileCheckIcon, TrendingUpIcon } from "@/components/report/icons";
+import { FileCheckIcon, TrendingUpIcon, HomeIcon, ArrowRightIcon } from "@/components/report/icons";
 
 function euro(bedrag: number | null | undefined): string {
   if (bedrag == null) return "onbekend";
@@ -143,24 +143,63 @@ export default async function ZakelijkKlantDetailPagina({ params }: { params: Pr
             key: "rapporten",
             label: `Rapporten (${rapporten.length})`,
             content: (
-              <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
+              // HERONTWERP (zie het Cowork-gesprek "Stuk mooier en duidelijker"):
+              // was een kale, gedeelde lijst-kaart met alleen adres + datum per
+              // rij (justify-between, geen context) -- nu losse kaarten per
+              // rapport met een iconvlak en chips (type/geschatte waarde/datum)
+              // zodat je zonder doorklikken al ziet wat erin zit, plus een
+              // duidelijke CTA onderaan i.p.v. dat de tab na het laatste
+              // rapport gewoon leeg lijkt op te houden.
+              <div className="flex flex-col gap-2.5">
                 {rapporten.length === 0 ? (
-                  <div className="flex flex-col items-center gap-2.5 px-5 py-9 text-center">
+                  <div className="flex flex-col items-center gap-2.5 rounded-2xl bg-white px-5 py-9 text-center shadow-sm">
                     <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#EEF0FF] text-accent">
                       <FileCheckIcon className="h-5 w-5" />
                     </span>
                     <p className="text-[12.5px] text-ink/50">Nog geen rapporten in dit dossier.</p>
                   </div>
                 ) : (
-                  <div className="divide-y divide-ink/[0.06]">
-                    {rapporten.map((r) => (
-                      <Link key={r.id} href={`/zakelijk/rapporten/${r.id}`} className="flex items-center justify-between px-5 py-3.5 hover:bg-mist">
-                        <span className="text-[12.5px] font-semibold text-ink">{r.adres.label}</span>
-                        <span className="text-[10.5px] text-ink/45">{new Date(r.aangemaaktOp).toLocaleDateString("nl-NL")}</span>
+                  rapporten.map((r) => {
+                    const geschatteWaarde = r.report.market.data?.geschatteWaarde ?? null;
+                    return (
+                      <Link
+                        key={r.id}
+                        href={`/zakelijk/rapporten/${r.id}`}
+                        className="flex items-center gap-4 rounded-2xl bg-white p-4 shadow-sm hover:bg-mist/40"
+                      >
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent text-white">
+                          <HomeIcon className="h-5 w-5" />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[13.5px] font-semibold text-ink">{r.adres.label}</p>
+                          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                            <span className="rounded-full bg-[#EEF0FF] px-2.5 py-0.5 text-[10px] font-semibold text-accent">
+                              {dossier.type === "aankoop" ? "Aankooprapport" : "Verkooprapport"}
+                            </span>
+                            {geschatteWaarde != null && (
+                              <span className="rounded-full bg-mist px-2.5 py-0.5 text-[10px] font-semibold text-ink/60">
+                                Geschatte waarde {euro(geschatteWaarde)}
+                              </span>
+                            )}
+                            <span className="rounded-full bg-mist px-2.5 py-0.5 text-[10px] font-semibold text-ink/60">
+                              {new Date(r.aangemaaktOp).toLocaleDateString("nl-NL")}
+                            </span>
+                          </div>
+                        </div>
+                        <span className="flex shrink-0 items-center gap-1 rounded-lg bg-accent px-3.5 py-2 text-[11px] font-semibold text-white">
+                          Bekijk rapport
+                          <ArrowRightIcon className="h-3 w-3" />
+                        </span>
                       </Link>
-                    ))}
-                  </div>
+                    );
+                  })
                 )}
+                <Link
+                  href={`/zakelijk/rapporten/nieuw?klantId=${dossier.id}`}
+                  className="flex items-center gap-2.5 rounded-2xl border border-dashed border-ink/15 px-5 py-3.5 text-[12px] font-semibold text-ink/40 hover:border-accent/40 hover:text-accent"
+                >
+                  + Nog een adres toevoegen aan dit dossier
+                </Link>
               </div>
             ),
           },
