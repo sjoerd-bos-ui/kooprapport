@@ -164,7 +164,17 @@ export async function GET(req: NextRequest) {
         // dossier kan dus de makelaar wel informeren en de koper niet, of
         // andersom. Organisatienaam (branding) i.p.v. "Kooprapport Zakelijk"
         // als afzendernaam in de tekst: de koper kent zijn makelaar.
-        if (dossier.zoekopdracht?.mailBijNieuweMatches && dossier.zoekopdracht.emailKoper) {
+        // BELANGRIJK -- emailKoperBevestigd: dubbele opt-in (zie types/b2b.ts
+        // en het Cowork-gesprek "koper-e-mailadres heeft geen opt-in van de
+        // koper zelf"). Zonder deze check zou een makelaar iemands adres
+        // kunnen invullen en meteen mail laten sturen zonder dat de koper
+        // daar ooit toestemming voor heeft gegeven -- mailBijNieuweMatches
+        // mag dus aan staan, maar er gaat pas echt iets uit ná bevestiging.
+        if (
+          dossier.zoekopdracht?.mailBijNieuweMatches &&
+          dossier.zoekopdracht.emailKoper &&
+          dossier.zoekopdracht.emailKoperBevestigd
+        ) {
           // Personalisatie voor de v2-mail (zie het Cowork-gesprek "veel mooier
           // maken"): budget/locatie komen uit de al ingevulde koperVoorkeuren
           // (kunnen ontbreken -- de mail moet ook zonder deze regel goed ogen,

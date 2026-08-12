@@ -60,11 +60,16 @@ export default function ZoekopdrachtForm({ dossierId, huidig }: { dossierId: str
   const [emailKoperInput, setEmailKoperInput] = useState(huidig?.emailKoper ?? "");
   const [mailBezig, setMailBezig] = useState(false);
   const [mailMelding, setMailMelding] = useState<string | null>(null);
+  const [bevestigingBezig, setBevestigingBezig] = useState(false);
 
   const koperVoorkeuren = huidig?.koperVoorkeuren ?? null;
   const matchenActief = huidig?.matchenActief ?? false;
   const emailKoperOpgeslagen = huidig?.emailKoper ?? null;
   const mailBijNieuweMatches = huidig?.mailBijNieuweMatches ?? false;
+  // Dubbele opt-in (zie types/b2b.ts: emailKoperBevestigd) -- de koper moet
+  // zelf op de link in de bevestigingsmail klikken vóór er daadwerkelijk
+  // mailmeldingen uitgaan, ook als de toggle hieronder al "aan" staat.
+  const emailKoperBevestigd = huidig?.emailKoperBevestigd ?? false;
 
   async function kopieerVoorkeurenLink() {
     setLinkBezig(true);
@@ -110,7 +115,7 @@ export default function ZoekopdrachtForm({ dossierId, huidig }: { dossierId: str
   // (geen "laat ongewijzigd"-fallback zoals bij koperVoorkeuren), dus zonder
   // dit zou het opslaan van alleen het e-mailadres automatisch matchen
   // stilzwijgend uitzetten.
-  async function opslaanKoperMail(email: string, mailAan: boolean) {
+  async function opslaanKoperMail(email: string, mailAan: boolean, emailIsGewijzigd: boolean) {
     setMailBezig(true);
     setMailMelding(null);
     try {
@@ -126,7 +131,10 @@ export default function ZoekopdrachtForm({ dossierId, huidig }: { dossierId: str
         setMailMelding(body.error ?? "Opslaan is niet gelukt.");
         return;
       }
-      setMailMelding("Opgeslagen.");
+      // De PATCH-route verstuurt zelf al een bevestigingsmail bij een
+      // ECHTE wijziging van het adres (zie de toelichting daar) -- hier
+      // alleen het bijpassende bericht tonen, geen dubbele aanroep.
+      setMailMelding(emailIsGewijzigd && email ? "Opgeslagen -- we hebben een bevestigingsmail naar de koper gestuurd." : "Opgeslagen.");
       router.refresh();
     } catch {
       setMailMelding("Opslaan is niet gelukt.");
@@ -137,16 +145,31 @@ export default function ZoekopdrachtForm({ dossierId, huidig }: { dossierId: str
 
   function opslaanEmailKoper() {
     const email = emailKoperInput.trim();
+    const gewijzigd = email !== (emailKoperOpgeslagen ?? "");
     // Een leeg adres kan nooit samengaan met een aanstaande mailtoggle (zie
     // de validatie in de PATCH-route) -- die zetten we hier meteen mee uit
     // i.p.v. de gebruiker een foutmelding te laten zien over iets dat hij
     // niet heeft aangeraakt.
-    opslaanKoperMail(email, email ? mailBijNieuweMatches : false);
+    opslaanKoperMail(email, email ? mailBijNieuweMatches : false, gewijzigd);
   }
 
   function toggleMailBijNieuweMatches() {
     if (!emailKoperOpgeslagen) return;
-    opslaanKoperMail(emailKoperOpgeslagen, !mailBijNieuweMatches);
+    opslaanKoperMail(emailKoperOpgeslagen, !mailBijNieuweMatches, false);
+  }
+
+  async function opnieuwBevestigingVersturen() {
+    setBevestigingBezig(true);
+    setMailMelding(null);
+    try {
+      const res = await fetch(`/api/zakelijk/klanten/${dossierId}/koper-mail-bevestiging`, { method: "POST" });
+      const body = await res.json();
+      setMailMelding(res.ok ? "Bevestigingsmail opnieuw verstuurd." : body.error ?? "Versturen is niet gelukt.");
+    } catch {
+      setMailMelding("Versturen is niet gelukt.");
+    } finally {
+      setBevestigingBezig(false);
+    }
   }
 
   async function opslaanVoorkeuren(nieuw: B2bKoperVoorkeuren) {
@@ -281,6 +304,28 @@ export default function ZoekopdrachtForm({ dossierId, huidig }: { dossierId: str
             <MailIcon className="h-3 w-3" />
             Mail bij nieuwe matches {mailBijNieuweMatches ? "aan" : "uit"}
           </button>
+          {/* Dubbele opt-in-status (zie types/b2b.ts: emailKoperBevestigd) --
+              ook zichtbaar als de toggle nog uit staat, zodat de makelaar
+              alvast weet dat de koper straks nog moet bevestigen. */}
+          {emailKoperOpgeslagen &&
+            (emailKoperBevestigd ? (
+              <span className="flex items-center gap-1 rounded-full bg-[#EAF3DE] px-2.5 py-1 text-[11px] font-semibold text-[#3B6D11]">
+                <CheckIcon className="h-3 w-3" />
+                Bevestigd door koper
+              </span>
+            ) : (
+              <span className="flex items-center gap-2 rounded-full bg-[#FDF3E0] px-2.5 py-1 text-[11px] font-semibold text-[#8A5A00]">
+                Wacht op bevestiging van de koper
+                <button
+                  type="button"
+                  onClick={opnieuwBevestigingVersturen}
+                  disabled={bevestigingBezig || mailBezig}
+                  className="font-semibold text-accent underline decoration-dotted hover:no-underline disabled:opacity-50"
+                >
+                  {bevestigingBezig ? "Bezig…" : "opnieuw versturen"}
+                </button>
+              </span>
+            ))}
           {mailMelding && <p className="w-full text-[10.5px] font-semibold text-accent">{mailMelding}</p>}
         </div>
       </div>

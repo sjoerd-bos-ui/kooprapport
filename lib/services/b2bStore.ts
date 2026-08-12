@@ -265,6 +265,7 @@ export async function maakOfVernieuwKoperVoorkeurenToken(dossierId: string): Pro
     koperVoorkeurenToken: null,
     emailKoper: null,
     mailBijNieuweMatches: false,
+    emailKoperBevestigd: false,
   };
   await kvSet(koperVoorkeurenTokenKey(token), dossierId);
   await zetKlantdossierZoekopdracht(dossierId, { ...basisZoekopdracht, koperVoorkeurenToken: token });
@@ -284,6 +285,63 @@ export async function zetKoperVoorkeuren(dossierId: string, voorkeuren: B2bKoper
   const dossier = await getKlantdossier(dossierId);
   if (!dossier || !dossier.zoekopdracht) return null;
   return zetKlantdossierZoekopdracht(dossierId, { ...dossier.zoekopdracht, koperVoorkeuren: voorkeuren });
+}
+
+// --- Dubbele opt-in koper-e-mail (zie het Cowork-gesprek "koper-e-mailadres
+// heeft geen opt-in van de koper zelf") ----------------------------------------
+// Zelfde patroon als lib/services/marktupdateAbonnees.ts (vraagAanmeldingAan
+// / bevestigAanmelding): een willekeurig, NIET van het e-mailadres afgeleid
+// token (crypto.randomBytes) -- een voorspelbaar token zou een makelaar in
+// staat stellen om zelf een adres te "bevestigen" zonder dat de koper ooit de
+// mail heeft gezien, precies wat dubbele opt-in moet voorkomen. Bewust een
+// APART kv-record i.p.v. meteen op het dossier zetten: het adres in de
+// pending-record is de snapshot van het moment waarop de bevestigingsmail
+// verstuurd is -- als de makelaar het adres daarna nog wijzigt (nieuwe
+// aanvraag, nieuw token), mag een oude link nooit meer het nieuwe adres
+// kunnen bevestigen. Vandaar de match-check in bevestigKoperMail hieronder.
+
+const KOPER_MAIL_PENDING_TTL_SECONDEN = 7 * 24 * 60 * 60; // 7 dagen geldig, zelfde als marktupdateAbonnees.ts
+
+function koperMailPendingKey(token: string): string {
+  return `koper-mail-pending:${token}`;
+}
+
+interface KoperMailPending {
+  dossierId: string;
+  email: string;
+}
+
+// Stap 1: aanvragen. Geeft het token terug zodat de aanroepende route er een
+// bevestigingsmail (stuurKoperMailBevestigingsEmail) mee kan versturen.
+export async function vraagKoperMailBevestigingAan(dossierId: string, email: string): Promise<string> {
+  const token = randomBytes(24).toString("base64url");
+  const pending: KoperMailPending = { dossierId, email: email.trim().toLowerCase() };
+  await kvSet(koperMailPendingKey(token), JSON.stringify(pending), KOPER_MAIL_PENDING_TTL_SECONDEN);
+  return token;
+}
+
+// Stap 2: bevestiging via de link in de e-mail (zie app/api/koper-mail/
+// bevestigen/route.ts). Zet emailKoperBevestigd pas op `true` als het
+// dossier nog bestaat EN het huidige emailKoper nog exact overeenkomt met
+// het adres waar de bevestigingsmail destijds naartoe ging -- zo kan een
+// oude, nog niet-verlopen link nooit een inmiddels gewijzigd adres
+// bevestigen. Geeft het bijgewerkte dossier terug bij succes, anders `null`
+// (de aanroepende route toont dan een "link werkt niet meer"-pagina).
+export async function bevestigKoperMail(token: string): Promise<B2bKlantdossier | null> {
+  const raw = await kvGet(koperMailPendingKey(token));
+  if (!raw) return null;
+  let pending: KoperMailPending;
+  try {
+    pending = JSON.parse(raw) as KoperMailPending;
+  } catch {
+    return null;
+  }
+
+  const dossier = await getKlantdossier(pending.dossierId);
+  if (!dossier || !dossier.zoekopdracht) return null;
+  if ((dossier.zoekopdracht.emailKoper ?? "").trim().toLowerCase() !== pending.email) return null;
+
+  return zetKlantdossierZoekopdracht(pending.dossierId, { ...dossier.zoekopdracht, emailKoperBevestigd: true });
 }
 
 // Verwijdert een klantdossier (#3). Rapportdata wordt NOOIT weggegooid (dat

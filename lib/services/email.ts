@@ -931,3 +931,106 @@ function buildRapportEmailHtml(adresLabel: string): string {
   </body>
 </html>`;
 }
+
+export interface StuurKoperMailBevestigingsEmailInput {
+  naar: string;
+  klantnaam: string;
+  organisatieNaam: string;
+  bevestigUrl: string;
+}
+
+// -----------------------------------------------------------------------------
+// Dubbele-opt-in-bevestigingsmail voor het koper-e-mailadres bij matchmeldingen
+// (zie het Cowork-gesprek "koper-e-mailadres heeft geen opt-in van de koper
+// zelf", en lib/services/b2bStore.ts: vraagKoperMailBevestigingAan/
+// bevestigKoperMail). Zelfde dubbele-opt-in-principe als
+// stuurMarktupdateBevestigingsEmail hierboven, alleen hier aangevraagd door
+// de MAKELAAR namens de koper (niet door de koper zelf op een publieke
+// pagina) -- precies waarom deze bevestigingsstap nodig is: zonder klik in
+// deze mail stuurt de cron-route (matches-controleren) nooit iets naar dit
+// adres, ook niet als de makelaar "Mail bij nieuwe matches" al heeft
+// aangezet.
+// -----------------------------------------------------------------------------
+export async function stuurKoperMailBevestigingsEmail(input: StuurKoperMailBevestigingsEmailInput): Promise<StuurRapportEmailResultaat> {
+  const apiKey = process.env.RESEND_API_KEY;
+  const van = process.env.RESEND_FROM_EMAIL;
+  if (!apiKey || !van) {
+    return { ok: false, error: "E-mailverzending is nog niet geconfigureerd." };
+  }
+
+  const klantnaam = escapeHtml(input.klantnaam);
+  const organisatieNaam = escapeHtml(input.organisatieNaam);
+  const link = escapeHtml(input.bevestigUrl);
+
+  const html = `<!DOCTYPE html>
+<html lang="nl">
+  <body style="margin:0;padding:0;background-color:#F5F5FA;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F5F5FA;padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background-color:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #EEF0FF;">
+            <tr>
+              <td style="background-color:#4F46E5;padding:26px 32px;">
+                <span style="font-size:17px;font-weight:700;color:#ffffff;letter-spacing:-0.01em;">${organisatieNaam}</span>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:32px;">
+                <p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#4F46E5;">
+                  Nog één stap
+                </p>
+                <p style="margin:0 0 18px;font-size:19px;line-height:1.4;font-weight:700;color:#1F1F2E;">
+                  Bevestig dat u mailmeldingen wilt ontvangen
+                </p>
+                <p style="margin:0 0 24px;font-size:14px;line-height:1.6;color:#1F1F2E;">
+                  Hoi ${klantnaam}, ${organisatieNaam} houdt uw zoekopdracht voor u bij. Klik op onderstaande knop
+                  om te bevestigen dat wij u mogen mailen zodra er een nieuwe passende woning wordt gevonden.
+                  Zonder deze bevestiging sturen wij niets.
+                </p>
+                <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;">
+                  <tr>
+                    <td align="center" style="border-radius:10px;background-color:#4F46E5;">
+                      <a href="${link}" style="display:inline-block;padding:14px 28px;font-size:14px;font-weight:700;color:#ffffff;text-decoration:none;">
+                        Ja, mail mij bij nieuwe matches
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin:24px 0 0;font-size:12.5px;line-height:1.6;color:#6B7280;">
+                  Dit adres is doorgegeven door ${organisatieNaam}. Heeft u dit niet verwacht, dan kunt u deze
+                  e-mail gewoon negeren -- er verandert dan niets en u ontvangt geen mailmeldingen.
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:16px 32px;background-color:#F5F5FA;border-top:1px solid #EEF0FF;">
+                <p style="margin:0;font-size:11px;line-height:1.6;color:#9CA3AF;">
+                  Verzonden via Kooprapport namens ${organisatieNaam}.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+
+  const res = await fetch(RESEND_API_URL, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: van,
+      to: [input.naar],
+      subject: `Bevestig: mailmeldingen van ${input.organisatieNaam}`,
+      html,
+    }),
+  });
+
+  if (!res.ok) {
+    const tekst = await res.text().catch(() => "");
+    console.error(`[email] Resend gaf status ${res.status} (koper-mail-bevestiging):`, tekst);
+    return { ok: false, error: "Versturen is niet gelukt. Probeer het later opnieuw." };
+  }
+  return { ok: true };
+}

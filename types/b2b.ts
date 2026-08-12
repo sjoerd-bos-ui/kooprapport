@@ -51,9 +51,11 @@ export function getTierInfo(tier: B2bAbonnementTier): B2bAbonnementTierInfo {
 // Eigen huisstijl op alles wat een EINDKLANT te zien krijgt (het gedeelde
 // rapport, zie app/deelrapport/[token]) -- alle velden optioneel, zodat een
 // kantoor zonder ingevulde branding gewoon de standaard Kooprapport-uitstraling
-// behoudt. Geen file-upload-infrastructuur in dit project (zie ook de
-// widget-/badge-aanpak in instellingen), dus een logo is een geplakte URL,
-// geen upload.
+// behoudt. `logoUrl` is een gewone string, maar in de praktijk meestal een
+// base64 data-URI: BrandingForm.tsx verkleint een geüpload bestand client-side
+// (canvas, max 160px) en slaat dat direct hier op -- geen aparte
+// bestandsopslag nodig (geen Vercel Blob/S3/Cloudinary). Wie liever een al
+// gehoste URL gebruikt, kan die ook gewoon plakken; het veld accepteert beide.
 export interface B2bBranding {
   weergaveNaam: string | null; // bv. "Jansen Makelaars" i.p.v. "Kooprapport" op het gedeelde rapport
   logoUrl: string | null;
@@ -135,17 +137,29 @@ export interface B2bZoekopdracht {
   koperVoorkeurenToken: string | null;
   // "Bewaar als interessant" / mail-notificaties (zie het Cowork-gesprek
   // "Nieuwe matches ... via de mail"): het e-mailadres van de koper zelf,
-  // door de makelaar ingevuld (er is nog geen publieke opt-in-flow zoals bij
-  // koperVoorkeurenToken). Los van `koperVoorkeuren` omdat het een
+  // door de makelaar ingevuld. Los van `koperVoorkeuren` omdat het een
   // contactgegeven is, geen zoekcriterium. `null` = nog niet ingevuld.
   emailKoper: string | null;
   // Aan/uit-instelling, analoog aan `matchenActief` hierboven -- bewust een
   // apart veld i.p.v. "mail versturen zodra emailKoper gevuld is": de
   // makelaar kan een adres invullen zonder dat er meteen mail uitgaat (bv.
   // tijdens het gesprek met de koper, voordat die toestemming heeft
-  // gegeven). Alleen relevant als emailKoper ook is ingevuld -- zie de
-  // check in de cron-route.
+  // gegeven). Alleen relevant als emailKoper ook is ingevuld EN bevestigd is
+  // (zie emailKoperBevestigd hieronder) -- zie de check in de cron-route.
   mailBijNieuweMatches: boolean;
+  // DUBBELE OPT-IN (zie het Cowork-gesprek "koper-e-mailadres heeft geen
+  // opt-in van de koper zelf"): de makelaar vult emailKoper in, maar dat is
+  // een derde die toestemming geeft namens iemand anders -- niet genoeg voor
+  // AVG-nette mailmeldingen. Daarom, zelfde patroon als de Marktupdates-
+  // nieuwsbrief (lib/services/marktupdateAbonnees.ts): zodra emailKoper wordt
+  // gezet/gewijzigd (zie de PATCH-route) gaat er een bevestigingsmail naar
+  // DAT adres, en pas na een klik op de link daarin wordt dit `true`. De
+  // cron-route (matches-controleren) stuurt nooit mail bij `false`, ook niet
+  // als mailBijNieuweMatches al aan staat -- de makelaar kan de toggle vast
+  // aanzetten, het gaat pas echt lopen zodra de koper heeft bevestigd. Wordt
+  // automatisch weer `false` zodra emailKoper verandert (nieuwe bevestiging
+  // nodig voor een nieuw adres).
+  emailKoperBevestigd: boolean;
 }
 
 export interface B2bKlantdossier {

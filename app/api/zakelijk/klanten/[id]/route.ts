@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getB2bSessieUitRequest } from "@/lib/services/b2bAuth";
-import { getKlantdossier, zetKlantdossierStatus, zetKlantdossierZoekopdracht, verwijderKlantdossier } from "@/lib/services/b2bStore";
+import {
+  getKlantdossier,
+  zetKlantdossierStatus,
+  zetKlantdossierZoekopdracht,
+  verwijderKlantdossier,
+  vraagKoperMailBevestigingAan,
+} from "@/lib/services/b2bStore";
 import { valideerKoperVoorkeuren } from "@/lib/services/koperVoorkeurenValidatie";
-import { isGeldigEmailadres } from "@/lib/services/email";
+import { isGeldigEmailadres, stuurKoperMailBevestigingsEmail } from "@/lib/services/email";
+import { APP_BASE_URL } from "@/lib/config/payment";
 import type { B2bDossierStatus, B2bZoekopdracht } from "@/types/b2b";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -75,6 +82,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     // de mail"): zelfde "ontbreekt in body = ongewijzigd laten"-patroon als
     // koperVoorkeuren hierboven, zodat een aanroeper die deze velden niet
     // meestuurt nooit per ongeluk een al ingevuld e-mailadres wist.
+    const emailKoperWasVoor = (dossier.zoekopdracht?.emailKoper ?? "").trim().toLowerCase();
     let emailKoper = dossier.zoekopdracht?.emailKoper ?? null;
     if ("emailKoper" in z) {
       const waarde = z.emailKoper?.trim() || null;
@@ -89,13 +97,42 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ error: "Vul eerst een e-mailadres van de koper in om mailmeldingen aan te zetten." }, { status: 400 });
     }
 
+    // DUBBELE OPT-IN (zie types/b2b.ts: emailKoperBevestigd): een gewijzigd
+    // e-mailadres verliest altijd zijn bevestiging, ongeacht of het nieuw is
+    // of terug is naar een eerder adres -- eenvoudiger en veiliger dan per
+    // adres een geschiedenis bijhouden, en het is toch nooit meer dan één
+    // klik voor de koper om opnieuw te bevestigen. Alleen bij een ECHTE
+    // wijziging (ander adres dan wat er al stond) gaat er een nieuwe
+    // bevestigingsmail uit -- simpelweg opnieuw dezelfde waarde opslaan
+    // (bv. omdat de makelaar alleen mailBijNieuweMatches toggelt) mag nooit
+    // een makelaar spammen met herhaalde bevestigingsmails naar de koper.
+    const emailWerkelijkGewijzigd = "emailKoper" in z && (emailKoper?.trim().toLowerCase() ?? "") !== emailKoperWasVoor;
+    const emailKoperBevestigd = emailWerkelijkGewijzigd ? false : dossier.zoekopdracht?.emailKoperBevestigd ?? false;
+
     const bijgewerkt = await zetKlantdossierZoekopdracht(id, {
       matchenActief,
       koperVoorkeuren,
       koperVoorkeurenToken: dossier.zoekopdracht?.koperVoorkeurenToken ?? null,
       emailKoper,
       mailBijNieuweMatches,
+      emailKoperBevestigd,
     });
+
+    if (emailWerkelijkGewijzigd && emailKoper) {
+      const token = await vraagKoperMailBevestigingAan(id, emailKoper);
+      const bevestigUrl = new URL(`/api/koper-mail/bevestigen?token=${token}`, APP_BASE_URL).toString();
+      // Bewust niet blokkerend op het antwoord van de PATCH -- een mislukte
+      // verzending (bv. Resend nog niet geconfigureerd in dev) mag het
+      // opslaan van het e-mailadres zelf niet laten mislukken; de makelaar
+      // kan de bevestigingsmail hierna alsnog opnieuw laten versturen.
+      await stuurKoperMailBevestigingsEmail({
+        naar: emailKoper,
+        klantnaam: dossier.klantnaam,
+        organisatieNaam: context.organisatie.branding?.weergaveNaam ?? context.organisatie.naam,
+        bevestigUrl,
+      });
+    }
+
     return NextResponse.json({ ok: true, dossier: bijgewerkt });
   }
 
