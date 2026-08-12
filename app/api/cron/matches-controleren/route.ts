@@ -165,11 +165,33 @@ export async function GET(req: NextRequest) {
         // andersom. Organisatienaam (branding) i.p.v. "Kooprapport Zakelijk"
         // als afzendernaam in de tekst: de koper kent zijn makelaar.
         if (dossier.zoekopdracht?.mailBijNieuweMatches && dossier.zoekopdracht.emailKoper) {
+          // Personalisatie voor de v2-mail (zie het Cowork-gesprek "veel mooier
+          // maken"): budget/locatie komen uit de al ingevulde koperVoorkeuren
+          // (kunnen ontbreken -- de mail moet ook zonder deze regel goed ogen,
+          // zie de "??" fallbacks in stuurNieuweMatchesKoperEmail zelf), en de
+          // "Zoekopdracht aanpassen"-link hergebruikt het bestaande publieke
+          // koperVoorkeurenToken i.p.v. er hier eentje aan te maken.
+          const voorkeuren = dossier.zoekopdracht.koperVoorkeuren;
+          const budgetLabel =
+            voorkeuren?.maxKoopprijs != null
+              ? `€ ${new Intl.NumberFormat("nl-NL").format(voorkeuren.maxKoopprijs)}`
+              : null;
+          const locatieLabel =
+            voorkeuren && voorkeuren.voorkeurLocaties.length > 0
+              ? voorkeuren.voorkeurLocaties.map((l) => l.label).join(", ")
+              : null;
+          const voorkeurenUrl = dossier.zoekopdracht.koperVoorkeurenToken
+            ? new URL(`/koper-voorkeuren/${dossier.zoekopdracht.koperVoorkeurenToken}`, APP_BASE_URL).toString()
+            : null;
+
           const resultaat = await stuurNieuweMatchesKoperEmail({
             naar: dossier.zoekopdracht.emailKoper,
             klantnaam: dossier.klantnaam,
             organisatieNaam: org.branding?.weergaveNaam ?? org.naam,
             matches: nieuwOpgeslagen.map((item) => ({ titel: item.titel, url: item.url, prijsLabel: item.prijsLabel })),
+            budgetLabel,
+            locatieLabel,
+            voorkeurenUrl,
           });
           if (resultaat.ok) mailsKoperVerstuurd++;
           else mailsKoperMislukt++;

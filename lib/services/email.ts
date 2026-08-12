@@ -675,6 +675,14 @@ export interface StuurNieuweMatchesKoperEmailInput {
   klantnaam: string;
   organisatieNaam: string;
   matches: NieuweMatchEmailItem[];
+  // Personalisatie (zie het Cowork-gesprek "veel mooier maken"): optioneel,
+  // want niet elk dossier heeft een volledig ingevulde koperVoorkeuren of
+  // al een voorkeuren-token -- de mail moet ook zonder deze twee gewoon goed
+  // ogen (zie budgetLocatieRegel/aanpassenLink hieronder, die dan simpelweg
+  // wegvallen i.p.v. een kapotte/lege zin te tonen).
+  budgetLabel?: string | null;
+  locatieLabel?: string | null;
+  voorkeurenUrl?: string | null;
 }
 
 // -----------------------------------------------------------------------------
@@ -688,6 +696,20 @@ export interface StuurNieuweMatchesKoperEmailInput {
 // gedachte: de koper hoeft niets in te loggen om door te klikken), en de
 // afzendernaam in de tekst is de organisatie van de makelaar (branding), niet
 // "Kooprapport Zakelijk" -- de koper kent zijn makelaar, niet onze naam.
+//
+// HERONTWERP V2 (zie het Cowork-gesprek "veel mooier maken"): elke match is
+// nu een eigen kaart met een gekleurde accentrand en een echte "Bekijk →"-
+// knop i.p.v. een kale tekstlink, de merkbalk is nu accentkleur (was platte
+// navy), en er is een optionele personalisatieregel (budget/locatie) plus
+// een "Zoekopdracht aanpassen"-link naar de bestaande publieke
+// voorkeuren-pagina (zie app/koper-voorkeuren/[token]/page.tsx). Nog steeds
+// bewust TABEL-gebaseerde HTML (geen flexbox/gradients) -- Outlook en een
+// deel van de mobiele mailapps negeren beide, table-layout is de enige
+// betrouwbare manier om deze kaartjes overal hetzelfde te laten ogen. Enige
+// concessie t.o.v. de eerste mockup: geen icoonlettertype/SVG in het
+// iconvlak (wordt in te veel mailclients geblokkeerd of leeg getoond) --
+// een effen accentkleurvlak i.p.v. een huisicoon geeft hetzelfde
+// merkgevoel zonder dat risico.
 // -----------------------------------------------------------------------------
 export async function stuurNieuweMatchesKoperEmail(input: StuurNieuweMatchesKoperEmailInput): Promise<StuurRapportEmailResultaat> {
   const apiKey = process.env.RESEND_API_KEY;
@@ -700,13 +722,30 @@ export async function stuurNieuweMatchesKoperEmail(input: StuurNieuweMatchesKope
   const organisatieNaam = escapeHtml(input.organisatieNaam);
   const aantal = input.matches.length;
 
-  const matchRegels = input.matches
+  const contextDelen: string[] = [];
+  if (input.budgetLabel) contextDelen.push(`budget van ${escapeHtml(input.budgetLabel)}`);
+  if (input.locatieLabel) contextDelen.push(`in ${escapeHtml(input.locatieLabel)}`);
+  const contextRegel = contextDelen.length > 0 ? `Binnen je ${contextDelen.join(" ")}.` : null;
+
+  const aanpassenLink = input.voorkeurenUrl
+    ? ` <a href="${escapeHtml(input.voorkeurenUrl)}" style="color:#4F46E5;text-decoration:none;font-weight:600;">Zoekopdracht aanpassen</a>`
+    : "";
+
+  const matchKaarten = input.matches
     .map(
       (m) =>
-        `<tr><td style="padding:10px 0;border-top:1px solid #EEF0FF;">
-          <a href="${escapeHtml(m.url)}" style="font-size:14px;font-weight:600;color:#1F1F2E;text-decoration:none;">${escapeHtml(m.titel)}</a>
-          ${m.prijsLabel ? `<div style="margin-top:2px;font-size:13px;color:#6B7280;">${escapeHtml(m.prijsLabel)}</div>` : ""}
-        </td></tr>`
+        `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;margin-bottom:12px;border:1px solid #EEF0FF;border-radius:12px;">
+          <tr>
+            <td width="4" style="background-color:#4F46E5;border-radius:12px 0 0 12px;font-size:0;line-height:0;">&nbsp;</td>
+            <td style="padding:14px 4px 14px 16px;">
+              <a href="${escapeHtml(m.url)}" style="font-size:14px;font-weight:700;color:#1F1F2E;text-decoration:none;">${escapeHtml(m.titel)}</a>
+              ${m.prijsLabel ? `<div style="margin-top:2px;font-size:12.5px;color:#6B7280;">${escapeHtml(m.prijsLabel)}</div>` : ""}
+            </td>
+            <td width="88" align="right" style="padding:14px 16px 14px 4px;">
+              <a href="${escapeHtml(m.url)}" style="display:inline-block;padding:8px 14px;border-radius:8px;background-color:#EEF0FF;color:#4F46E5;font-size:11.5px;font-weight:700;text-decoration:none;white-space:nowrap;">Bekijk &rarr;</a>
+            </td>
+          </tr>
+        </table>`
     )
     .join("");
 
@@ -718,29 +757,28 @@ export async function stuurNieuweMatchesKoperEmail(input: StuurNieuweMatchesKope
         <td align="center">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background-color:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #EEF0FF;">
             <tr>
-              <td style="background-color:#1F1F2E;padding:22px 32px;">
-                <span style="font-size:18px;font-weight:700;color:#ffffff;letter-spacing:-0.01em;">${organisatieNaam}</span>
+              <td style="background-color:#4F46E5;padding:26px 32px;">
+                <span style="font-size:17px;font-weight:700;color:#ffffff;letter-spacing:-0.01em;">${organisatieNaam}</span>
               </td>
             </tr>
             <tr>
               <td style="padding:32px;">
-                <p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#4F46E5;">
+                <p style="margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#4F46E5;">
                   Nieuw voor jou gevonden
                 </p>
-                <p style="margin:0 0 18px;font-size:20px;line-height:1.4;font-weight:700;color:#1F1F2E;">
+                <p style="margin:0 0 6px;font-size:19px;line-height:1.35;font-weight:700;color:#1F1F2E;">
                   Hoi ${klantnaam}, ${aantal} ${aantal === 1 ? "nieuwe woning past" : "nieuwe woningen passen"} bij je wensen
                 </p>
-                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;">
-                  ${matchRegels}
-                </table>
-                <p style="margin:24px 0 0;font-size:12.5px;line-height:1.6;color:#9CA3AF;">
-                  Deze melding komt van ${organisatieNaam}, die jouw zoekopdracht voor je bijhoudt.
+                ${contextRegel ? `<p style="margin:0 0 20px;font-size:13px;color:#6B7280;">${contextRegel}</p>` : `<div style="height:20px;"></div>`}
+                ${matchKaarten}
+                <p style="margin:22px 0 0;font-size:11.5px;line-height:1.6;color:#9CA3AF;">
+                  Deze melding komt van ${organisatieNaam}, die jouw zoekopdracht voor je bijhoudt.${aanpassenLink}
                 </p>
               </td>
             </tr>
             <tr>
-              <td style="padding:20px 32px;background-color:#F5F5FA;border-top:1px solid #EEF0FF;">
-                <p style="margin:0;font-size:12px;line-height:1.6;color:#9CA3AF;">
+              <td style="padding:16px 32px;background-color:#F5F5FA;border-top:1px solid #EEF0FF;">
+                <p style="margin:0;font-size:11px;line-height:1.6;color:#9CA3AF;">
                   Verzonden via Kooprapport namens ${organisatieNaam}.
                 </p>
               </td>
