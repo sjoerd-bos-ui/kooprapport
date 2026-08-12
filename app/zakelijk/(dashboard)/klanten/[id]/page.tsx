@@ -11,7 +11,9 @@ import VerwijderDossierKnop from "@/components/zakelijk/VerwijderDossierKnop";
 import MatchesKaart from "@/components/zakelijk/MatchesKaart";
 import KlantdossierTabs, { type KlantdossierTab } from "@/components/zakelijk/KlantdossierTabs";
 import VerkoperspresentatieGenerator from "@/components/zakelijk/VerkoperspresentatieGenerator";
+import RapportKaartActies from "@/components/zakelijk/RapportKaartActies";
 import { FileCheckIcon, TrendingUpIcon, HomeIcon, ArrowRightIcon } from "@/components/report/icons";
+import { APP_BASE_URL } from "@/lib/config/payment";
 
 function euro(bedrag: number | null | undefined): string {
   if (bedrag == null) return "onbekend";
@@ -162,35 +164,50 @@ export default async function ZakelijkKlantDetailPagina({ params }: { params: Pr
                   rapporten.map((r) => {
                     const geschatteWaarde = r.report.market.data?.geschatteWaarde ?? null;
                     return (
-                      <Link
-                        key={r.id}
-                        href={`/zakelijk/rapporten/${r.id}`}
-                        className="flex items-center gap-4 rounded-2xl bg-white p-4 shadow-sm hover:bg-mist/40"
-                      >
-                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent text-white">
-                          <HomeIcon className="h-5 w-5" />
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-[13.5px] font-semibold text-ink">{r.adres.label}</p>
-                          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                            <span className="rounded-full bg-[#EEF0FF] px-2.5 py-0.5 text-[10px] font-semibold text-accent">
-                              {dossier.type === "aankoop" ? "Aankooprapport" : "Verkooprapport"}
-                            </span>
-                            {geschatteWaarde != null && (
-                              <span className="rounded-full bg-mist px-2.5 py-0.5 text-[10px] font-semibold text-ink/60">
-                                Geschatte waarde {euro(geschatteWaarde)}
+                      // Geen <Link> meer om de HELE kaart (was zo bij de vorige
+                      // versie) -- de download/deel-knoppen zijn echte <button>s
+                      // (zie RapportKaartActies.tsx) en die mogen niet genest
+                      // zitten in een <a>. De kaart-inhoud (icoon/titel/chips)
+                      // en "Bekijk rapport" zijn nu allebei losse Links naar
+                      // dezelfde rapportpagina, met de acties ertussenin.
+                      <div key={r.id} className="flex items-center gap-4 rounded-2xl bg-white p-4 shadow-sm">
+                        <Link href={`/zakelijk/rapporten/${r.id}`} className="flex min-w-0 flex-1 items-center gap-4">
+                          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent text-white">
+                            <HomeIcon className="h-5 w-5" />
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-[13.5px] font-semibold text-ink">{r.adres.label}</p>
+                            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                              <span className="rounded-full bg-[#EEF0FF] px-2.5 py-0.5 text-[10px] font-semibold text-accent">
+                                {dossier.type === "aankoop" ? "Aankooprapport" : "Verkooprapport"}
                               </span>
-                            )}
-                            <span className="rounded-full bg-mist px-2.5 py-0.5 text-[10px] font-semibold text-ink/60">
-                              {new Date(r.aangemaaktOp).toLocaleDateString("nl-NL")}
-                            </span>
+                              {geschatteWaarde != null && (
+                                <span className="rounded-full bg-mist px-2.5 py-0.5 text-[10px] font-semibold text-ink/60">
+                                  Geschatte waarde {euro(geschatteWaarde)}
+                                </span>
+                              )}
+                              <span className="rounded-full bg-mist px-2.5 py-0.5 text-[10px] font-semibold text-ink/60">
+                                {new Date(r.aangemaaktOp).toLocaleDateString("nl-NL")}
+                              </span>
+                            </div>
                           </div>
+                        </Link>
+                        <div className="flex shrink-0 items-center gap-1">
+                          <RapportKaartActies
+                            rapportId={r.id}
+                            report={r.report}
+                            slug={r.report.core.address.slug}
+                            initieleDeelUrl={r.deelToken ? `${APP_BASE_URL}/deelrapport/${r.deelToken}` : null}
+                          />
+                          <Link
+                            href={`/zakelijk/rapporten/${r.id}`}
+                            className="ml-1 flex items-center gap-1 rounded-lg bg-accent px-3.5 py-2 text-[11px] font-semibold text-white hover:bg-accent-dark"
+                          >
+                            Bekijk rapport
+                            <ArrowRightIcon className="h-3 w-3" />
+                          </Link>
                         </div>
-                        <span className="flex shrink-0 items-center gap-1 rounded-lg bg-accent px-3.5 py-2 text-[11px] font-semibold text-white">
-                          Bekijk rapport
-                          <ArrowRightIcon className="h-3 w-3" />
-                        </span>
-                      </Link>
+                      </div>
                     );
                   })
                 )}

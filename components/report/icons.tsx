@@ -404,6 +404,17 @@ export function ScaleIcon({ className }: { className?: string }) {
   );
 }
 
+// Voor de "Download PDF"-knop op de rapportkaart in het klantdossier (zie
+// RapportKaartActies.tsx).
+export function DownloadIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={className}>
+      <path d="M12 3.5v11.5M7.5 11 12 15.5 16.5 11" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M4.5 17v2.5a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5V17" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 // Voor het link-invoerveld van de biedadvies-tool (plak een listing-URL).
 export function LinkIcon({ className }: { className?: string }) {
   return (
