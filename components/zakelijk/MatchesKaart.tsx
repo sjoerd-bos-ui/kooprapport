@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import type { B2bWoningMatch, B2bRapportAanvraag, B2bZoekopdracht, B2bKoperVoorkeuren } from "@/types/b2b";
 import { B2B_WONINGTYPE_VOORKEUREN } from "@/types/b2b";
 import { vindGekoppeldRapport } from "@/lib/services/matchRapportKoppeling";
-import { BoltIcon, ArrowRightIcon, FileCheckIcon, LayersIcon, RulerIcon, ChevronDownIcon, AlertTriangleIcon, CheckIcon } from "@/components/report/icons";
+import { BoltIcon, ArrowRightIcon, FileCheckIcon, LayersIcon, RulerIcon, ChevronDownIcon, AlertTriangleIcon, CheckIcon, StarIcon } from "@/components/report/icons";
 
 // -----------------------------------------------------------------------------
 // Matches -- VEREENVOUDIGD (Sjoerd, na de visuele herontwerp-sessie van het
@@ -205,8 +205,36 @@ export default function MatchesKaart({
   const [ververst, setVerverst] = useState(false);
   const [zoekFout, setZoekFout] = useState(false);
   const [aantalZichtbaar, setAantalZichtbaar] = useState(INITIEEL_ZICHTBAAR);
+  // "Bewaar als interessant": optimistische override bovenop match.interessant
+  // (dat via de `matches`-prop van de server komt) -- zo reageert de
+  // ster-toggle meteen, zonder te wachten op de PATCH-respons of een volledige
+  // router.refresh(). Alleen ids die de gebruiker deze sessie heeft aangeraakt
+  // staan hierin; voor de rest valt de weergave terug op match.interessant.
+  const [interessantOverrides, setInteressantOverrides] = useState<Record<string, boolean>>({});
 
   const koperVoorkeuren = zoekopdracht?.koperVoorkeuren ?? null;
+
+  function isInteressant(match: B2bWoningMatch): boolean {
+    return interessantOverrides[match.id] ?? match.interessant === true;
+  }
+
+  async function toggleInteressant(match: B2bWoningMatch) {
+    const nieuweWaarde = !isInteressant(match);
+    setInteressantOverrides((o) => ({ ...o, [match.id]: nieuweWaarde }));
+    try {
+      const res = await fetch(`/api/zakelijk/klanten/${dossierId}/matches/${match.id}/interessant`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ interessant: nieuweWaarde }),
+      });
+      if (!res.ok) throw new Error("mislukt");
+      router.refresh();
+    } catch {
+      // Terugdraaien bij een mislukte aanvraag -- geen stille inconsistentie
+      // tussen wat de gebruiker ziet en wat er echt is opgeslagen.
+      setInteressantOverrides((o) => ({ ...o, [match.id]: !nieuweWaarde }));
+    }
+  }
 
   async function ververs() {
     setVerverst(true);
@@ -302,9 +330,24 @@ export default function MatchesKaart({
           <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {zichtbaar.map((m, i) => (
               <div key={m.id} className="flex flex-col overflow-hidden rounded-xl border border-ink/[0.06] hover:border-accent/30 hover:shadow-sm">
-                <button type="button" onClick={() => setActieveMatch(m)} className="relative block h-36 w-full bg-mist text-left">
-                  <MatchThumbnail fotoUrl={m.fotoUrl} index={i} />
-                </button>
+                <div className="relative h-36 w-full bg-mist">
+                  <button type="button" onClick={() => setActieveMatch(m)} className="block h-full w-full text-left">
+                    <MatchThumbnail fotoUrl={m.fotoUrl} index={i} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleInteressant(m);
+                    }}
+                    aria-label={isInteressant(m) ? "Niet meer interessant" : "Bewaar als interessant"}
+                    className={`absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full shadow-sm transition-colors ${
+                      isInteressant(m) ? "bg-[#FAC775] text-[#633806]" : "bg-white/90 text-ink/40 hover:text-ink/60"
+                    }`}
+                  >
+                    <StarIcon className="h-4 w-4" filled={isInteressant(m)} />
+                  </button>
+                </div>
                 <div className="flex flex-1 flex-col gap-1.5 p-3">
                   <div className="flex items-center justify-between gap-2">
                     <span className="rounded-md bg-[#EAF3DE] px-1.5 py-0.5 text-[9px] font-bold text-[#3B6D11]">

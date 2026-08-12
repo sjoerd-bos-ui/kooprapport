@@ -440,6 +440,13 @@ export interface B2bWoningMatch {
   // kandidaten die al aan de harde eisen voldoen.
   verificatie: B2bMatchVerificatie | null;
   gevondenOp: string; // ISO
+  // "Bewaar als interessant" (zie het Cowork-gesprek van hetzelfde nummer):
+  // een makelaar kan een match handmatig markeren zodat hij niet per ongeluk
+  // wordt opgeruimd door ruimVerouderdeMatchenOp() (harde eisen gewijzigd)
+  // of kapMatchenOpMax() (limiet van MAX_ZICHTBARE_MATCHEN) -- zie b2bStore.ts.
+  // Optioneel (i.p.v. verplicht false) zodat oude matches zonder migratie
+  // gewoon blijven werken; overal elders behandeld als `=== true`.
+  interessant?: boolean;
 }
 
 // Harde grens op het aantal getoonde matches (zie b2bStore.ts#kapMatchenOpMax)

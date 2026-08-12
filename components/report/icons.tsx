@@ -84,6 +84,17 @@ export function CheckIcon({ className }: { className?: string }) {
   );
 }
 
+// Gebruikt voor "Bewaar als interessant" op matches -- `fill` bepaalt of de
+// ster gevuld (aangevinkt) of alleen omlijnd (niet aangevinkt) wordt getoond,
+// zodat één component beide toestanden dekt i.p.v. twee losse SVG's.
+export function StarIcon({ className, filled }: { className?: string; filled?: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth={1.8} className={className}>
+      <path d="M12 3.5 14.9 9.4 21.4 10.3 16.7 14.9 17.8 21.4 12 18.3 6.2 21.4 7.3 14.9 2.6 10.3 9.1 9.4Z" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function MapPinIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} className={className}>

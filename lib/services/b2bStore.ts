@@ -347,6 +347,21 @@ export async function bijwerkenMatchVerificatie(match: B2bWoningMatch, verificat
   await kvSet(matchKey(match.id), JSON.stringify(bijgewerkt));
 }
 
+// "Bewaar als interessant" (zie het Cowork-gesprek "Bewaar als interessant"):
+// een handmatige markering zodat de makelaar een match kan vastzetten terwijl
+// hij meerdere kandidaten verzamelt, vóórdat hij kiest welke een volledig
+// rapport verdienen. Beschermt alleen tegen de WEERGAVELIMIET
+// (kapMatchenOpMax, zie hieronder) -- bewust NIET tegen ruimVerouderdeMatchenOp:
+// als een woning niet meer aan de harde eisen voldoet (bv. verkocht/onder
+// bod, of een gewijzigd budget/locatie), is de match zelf niet meer geldig en
+// heeft "interessant" markeren daar geen invloed op -- een favoriet die naar
+// een verkochte woning wijst helpt niemand.
+export async function zetMatchInteressant(match: B2bWoningMatch, interessant: boolean): Promise<B2bWoningMatch> {
+  const bijgewerkt: B2bWoningMatch = { ...match, interessant };
+  await kvSet(matchKey(match.id), JSON.stringify(bijgewerkt));
+  return bijgewerkt;
+}
+
 export async function listMatchenVoorKlant(klantId: string): Promise<B2bWoningMatch[]> {
   const ids = await kvZRangeByScore(klantMatchenIndexKey(klantId), VER_IN_DE_TOEKOMST);
   const matches = await Promise.all(ids.map(async (id) => {
@@ -461,6 +476,11 @@ export async function ruimVerouderdeMatchenOp(klantId: string, koperVoorkeuren: 
 // méér beschermde matches dan maxAantal, dan wordt de cap bewust niet
 // gehaald -- bescherming gaat voor de weergavelimiet.
 //
+// UITBREIDING ("Bewaar als interessant"): een match die de makelaar
+// handmatig heeft gemarkeerd (zetMatchInteressant, zie hierboven) is even
+// beschermd als een match met een gekoppeld rapport -- ook daar is al een
+// bewuste keuze in gestoken.
+//
 // Alle matches die hier binnenkomen, voldoen al aan de harde eisen (dat is
 // al gegarandeerd vóór het opslaan, zie matches-verversen/route.ts en
 // cron/matches-controleren/route.ts, en ruimVerouderdeMatchenOp() hierboven
@@ -471,7 +491,9 @@ export async function kapMatchenOpMax(klantId: string, maxAantal: number): Promi
   if (huidige.length <= maxAantal) return;
 
   const rapporten = await listRapportenVoorKlant(klantId);
-  const beschermdeIds = new Set(huidige.filter((m) => vindGekoppeldRapport(m.titel, rapporten) != null).map((m) => m.id));
+  const beschermdeIds = new Set(
+    huidige.filter((m) => m.interessant === true || vindGekoppeldRapport(m.titel, rapporten) != null).map((m) => m.id)
+  );
 
   const teVeel = huidige.length - maxAantal;
   const kandidaten = huidige.filter((m) => !beschermdeIds.has(m.id));
