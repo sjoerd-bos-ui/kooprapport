@@ -404,6 +404,16 @@ export function ScaleIcon({ className }: { className?: string }) {
   );
 }
 
+// Voor het "Rapport toevoegen"-slot in de vergelijkingstabel (zie
+// VergelijkTabel.tsx).
+export function PlusIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={className}>
+      <path d="M12 4.5v15M4.5 12h15" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 // Voor de "Download PDF"-knop op de rapportkaart in het klantdossier (zie
 // RapportKaartActies.tsx).
 export function DownloadIcon({ className }: { className?: string }) {

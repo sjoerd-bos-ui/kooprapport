@@ -62,7 +62,7 @@ export default function ZakelijkVergelijkenPagina() {
       <p className="font-display text-xl font-extrabold text-ink">Vergelijken</p>
       <p className="mt-1 text-[12px] text-ink/50">Kies tot 3 rapporten om naast elkaar te zetten voor een klant.</p>
 
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div id="rapport-kiezer" className="mt-4 flex flex-wrap gap-2">
         {rapporten.map((r) => {
           const actief = geselecteerd.includes(r.id);
           const uitgeschakeld = !actief && geselecteerd.length >= 3;
@@ -115,7 +115,7 @@ export default function ZakelijkVergelijkenPagina() {
 
       {!laden && details.length > 0 && (
         <div className="mt-6">
-          <VergelijkTabel details={details} />
+          <VergelijkTabel details={details} aantalMeerBeschikbaar={Math.max(0, rapporten.length - geselecteerd.length)} />
         </div>
       )}
     </div>

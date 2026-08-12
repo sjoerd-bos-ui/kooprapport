@@ -32,7 +32,7 @@ export default function DossierVergelijken({ rapporten }: { rapporten: B2bRappor
   return (
     <div>
       <p className="text-[11px] font-bold uppercase tracking-wide text-ink/40">Rapporten vergelijken</p>
-      <div className="mt-2.5 flex flex-wrap gap-2">
+      <div id="rapport-kiezer" className="mt-2.5 flex flex-wrap gap-2">
         {rapporten.map((r) => {
           const actief = geselecteerd.includes(r.id);
           const uitgeschakeld = !actief && geselecteerd.length >= 3;
@@ -54,7 +54,7 @@ export default function DossierVergelijken({ rapporten }: { rapporten: B2bRappor
       </div>
       {details.length > 0 ? (
         <div className="mt-3">
-          <VergelijkTabel details={details} />
+          <VergelijkTabel details={details} aantalMeerBeschikbaar={Math.max(0, rapporten.length - geselecteerd.length)} />
         </div>
       ) : (
         <p className="mt-3 text-[11.5px] text-ink/45">Selecteer hierboven tot 3 rapporten om te vergelijken.</p>
