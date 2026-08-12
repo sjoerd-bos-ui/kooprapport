@@ -48,6 +48,7 @@ function valideerLocatie(input: unknown): B2bLocatie | null {
     label: l.label.trim().slice(0, 120),
     plaatsSlug: l.plaatsSlug.trim().toLowerCase().slice(0, 80),
     wijkSlug: typeof l.wijkSlug === "string" && l.wijkSlug.trim() ? l.wijkSlug.trim().toLowerCase().slice(0, 80) : null,
+    straatSlug: typeof l.straatSlug === "string" && l.straatSlug.trim() ? l.straatSlug.trim().toLowerCase().slice(0, 80) : null,
   };
 }
 

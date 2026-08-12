@@ -103,6 +103,15 @@ export interface B2bLocatie {
   label: string; // weergavetekst, bv. "Kralingen, Rotterdam" of "Rotterdam"
   plaatsSlug: string; // exacte Funda-plaatsslug, bv. "rotterdam"
   wijkSlug: string | null; // exacte Funda-wijkslug indien een wijk gekozen is, anders null (= hele plaats)
+  // STRAAT-NIVEAU (zie het Cowork-gesprek "straat-niveau locatie wordt nog
+  // niet ondersteund"): exacte Funda-straatslug indien de koper een specifieke
+  // straat koos i.p.v. een wijk/buurt/plaats, anders null. Sluit elkaar uit
+  // met wijkSlug -- PDOK levert per suggestie precies één type (woonplaats/
+  // wijk/buurt/weg) terug, zie plaatsLookup.ts. Funda's URL-formaat hiervoor
+  // (`<plaats>/straat-<slug>`) is hetzelfde live-verificatiepatroon als het
+  // "wijk-"-voorvoegsel voor wijken, zie afgeleideGebiedSlugs() in
+  // lib/data-sources/fundaFeed.ts.
+  straatSlug: string | null;
 }
 
 // Energielabel als "X of beter"-classificatie i.p.v. losse per-label
@@ -263,6 +272,14 @@ export interface B2bMatchVerificatie {
   // leiden. Gebruikt voor de locatie-score (vergelijkLocatie() in
   // lib/services/gebiedIndeling.ts).
   gebiedRuw: string | null;
+  // De LAATSTE breadcrumb-entry (dezelfde bron als gebiedRuw hierboven, maar
+  // dan één positie verder): bij "Reserveboezemstraat 5" is dat letterlijk
+  // "Reserveboezemstraat 5" -- straat+huisnummer, geen apart geparste
+  // straatnaam. Dat is bewust genoeg: vergelijkLocatie() gebruikt dezelfde
+  // substring-vergelijking als voor wijk/buurt ("reserveboezemstraat 5"
+  // bevat "reserveboezemstraat"), dus geen extra parsing nodig om een
+  // straat-niveau voorkeur (B2bLocatie.straatSlug) te verifiëren.
+  straatRuw: string | null;
   plaatsnaam: string | null;
   // BUGFIX (Sjoerd: "de beschikbaar-fix werkt niet, ook niet op Vercel"):
   // de eerdere fix zette alleen een URL-filter op de ZOEKOPDRACHT

@@ -519,11 +519,19 @@ energielabel omgezet naar "X of hoger"-classificatie (incl. "geen voorkeur").
 
 ## 4. Bekende, nog niet opgepakte punten (geen actieve bugs, wel mogelijk vervolg)
 
-- **Straat-niveau locatie** (bv. exact "Leliegracht" i.p.v. de bredere buurt
-  "Leliegracht e.o.") wordt nog niet ondersteund — Funda's straat-URL-formaat
-  is al wel live geverifieerd (`selected_area=<plaats>/straat-<slug>`), maar
-  geen actieve klacht rechtvaardigt dit nu; alleen bouwen bij expliciete
-  behoefte.
+- ~~**Straat-niveau locatie**~~ — GEBOUWD (Cowork-sessie "top 10"-lijst,
+  punt 10): `B2bLocatie.straatSlug`, PDOK-type `weg` toegevoegd aan
+  plaatsLookup.ts, `afgeleideGebiedSlugs()` in fundaFeed.ts geeft nu
+  `<plaats>/straat-<slug>`, en `B2bMatchVerificatie.straatRuw` (laatste
+  BreadcrumbList-entry) wordt door `vergelijkLocatieUitgebreid()` vergeleken
+  bij een gekozen straat. Het zoek-URL-formaat is LIVE GEVERIFIEERD via
+  `web_fetch` tijdens het bouwen zelf (niet alleen aangenomen op basis van de
+  eerdere aantekening hierboven): `selected_area=rotterdam/straat-reserveboezemstraat`
+  gaf "1 koopwoningen in Reserveboezemstraat, Rotterdam" en precies het juiste
+  huis terug. De breadcrumb op de detailpagina (voor `straatRuw`) is NIET los
+  herverifieerd tegen de ruwe JSON-LD -- leunt op hetzelfde, al eerder
+  vertrouwde breadcrumbpatroon als `gebiedRuw` (bevestigd zichtbaar op de
+  pagina: "Nieuw Crooswijk" als tussenliggende breadcrumb-stap).
 - **Werkgebied "variant 2"** (vast paneel rechts) is destijds als mockup
   getoond maar niet gebouwd — variant 1 is de gekozen/gebouwde versie.
 - De precieze **oriëntatie** van een woningtype (bv. exact "vrijstaand" i.p.v.

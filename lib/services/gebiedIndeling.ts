@@ -33,16 +33,24 @@ function normaliseer(tekst: string): string {
     .trim();
 }
 
-// Een B2bLocatie.label is óf een plaatsnaam ("Rotterdam") óf "Wijk, Plaats"
-// (bv. "Kralingen, Rotterdam", zie plaatsLookup.ts) -- dit splitst dat weer
-// uit elkaar zodat de plaatsnaam en (indien aanwezig) de wijknaam apart
-// vergeleken kunnen worden tegen Funda's eigen `plaatsnaam`/`gebiedRuw`.
-function ontleedLocatieLabel(locatie: B2bLocatie): { plaats: string; wijk: string | null } {
+// Een B2bLocatie.label is óf een plaatsnaam ("Rotterdam") óf "Wijk/Straat,
+// Plaats" (bv. "Kralingen, Rotterdam" of "Reserveboezemstraat, Rotterdam",
+// zie plaatsLookup.ts) -- dit splitst dat weer uit elkaar zodat de
+// plaatsnaam en (indien aanwezig) de wijk- of straatnaam apart vergeleken
+// kunnen worden tegen Funda's eigen `plaatsnaam`/`gebiedRuw`/`straatRuw`.
+// STRAAT-NIVEAU (zie het Cowork-gesprek "straat-niveau locatie wordt nog
+// niet ondersteund"): `locatie.straatSlug` bepaalt of het subdeel vóór de
+// komma een wijk of een straat is -- het label zelf ziet er identiek uit,
+// alleen de aanwezigheid van straatSlug maakt het verschil (sluit elkaar
+// uit met wijkSlug, zie B2bLocatie in types/b2b.ts).
+function ontleedLocatieLabel(locatie: B2bLocatie): { plaats: string; wijk: string | null; straat: string | null } {
   const delen = locatie.label.split(",").map((d) => d.trim());
   if (delen.length > 1) {
-    return { plaats: normaliseer(delen[delen.length - 1]), wijk: normaliseer(delen[0]) };
+    const subNaam = normaliseer(delen[0]);
+    const plaats = normaliseer(delen[delen.length - 1]);
+    return locatie.straatSlug ? { plaats, wijk: null, straat: subNaam } : { plaats, wijk: subNaam, straat: null };
   }
-  return { plaats: normaliseer(delen[0]), wijk: null };
+  return { plaats: normaliseer(delen[0]), wijk: null, straat: null };
 }
 
 function komtOvereen(a: string, b: string): boolean {
@@ -68,14 +76,28 @@ export interface LocatieVergelijkResultaat {
 // matches (zou niet moeten voorkomen bij een normale locatiekeuze, maar
 // theoretisch mogelijk bij overlappende plaats/wijk-keuzes) telt de EERST
 // gekozen locatie in de lijst.
-export function vergelijkLocatieUitgebreid(voorkeurLocaties: B2bLocatie[], gebiedRuw: string | null, plaatsnaam: string | null): LocatieVergelijkResultaat {
+//
+// `straatRuw` (zie het Cowork-gesprek "straat-niveau locatie wordt nog niet
+// ondersteund"): optioneel, want de meeste aanroepers/kandidaten hebben dit
+// niet nodig -- alleen relevant voor een gekozen locatie met `straatSlug`.
+// Zelfde bron als `gebiedRuw` (BreadcrumbList op de detailpagina, zie
+// extractBreadcrumbStraat in lib/data-sources/fundaFeed.ts), en dezelfde
+// substring-vergelijking (komtOvereen): "reserveboezemstraat 5" bevat
+// "reserveboezemstraat", dus geen aparte parsing van het huisnummer nodig.
+export function vergelijkLocatieUitgebreid(
+  voorkeurLocaties: B2bLocatie[],
+  gebiedRuw: string | null,
+  plaatsnaam: string | null,
+  straatRuw: string | null = null
+): LocatieVergelijkResultaat {
   const candidaatPlaats = plaatsnaam ? normaliseer(plaatsnaam) : null;
   const candidaatWijk = gebiedRuw ? normaliseer(gebiedRuw) : null;
+  const candidaatStraat = straatRuw ? normaliseer(straatRuw) : null;
 
   let besteResultaat: LocatieMatchResultaat = "geen_match";
 
   for (let i = 0; i < voorkeurLocaties.length; i++) {
-    const { plaats: gekozenPlaats, wijk: gekozenWijk } = ontleedLocatieLabel(voorkeurLocaties[i]);
+    const { plaats: gekozenPlaats, wijk: gekozenWijk, straat: gekozenStraat } = ontleedLocatieLabel(voorkeurLocaties[i]);
     let resultaat: LocatieMatchResultaat;
 
     if (candidaatPlaats == null) {
@@ -88,6 +110,16 @@ export function vergelijkLocatieUitgebreid(voorkeurLocaties: B2bLocatie[], gebie
       // match voor DIT gekozen item (een ander gekozen item kan nog wel
       // matchen, vandaar de lus over alle locaties).
       resultaat = "geen_match";
+    } else if (gekozenStraat != null) {
+      // De koper koos een specifieke STRAAT -- fijnmaziger dan een wijk,
+      // dus eigen tak i.p.v. hergebruik van de wijk-vergelijking hieronder.
+      if (candidaatStraat == null) {
+        resultaat = "onbekend";
+      } else if (komtOvereen(candidaatStraat, gekozenStraat)) {
+        resultaat = "exact";
+      } else {
+        resultaat = "geen_match";
+      }
     } else if (gekozenWijk == null) {
       // De koper koos de hele plaats (geen specifieke wijk) -- plaats komt
       // overeen, dus exacte match, ongeacht de wijk van de kandidaat.
@@ -113,6 +145,11 @@ export function vergelijkLocatieUitgebreid(voorkeurLocaties: B2bLocatie[], gebie
 
 // Simpele variant voor aanroepers die alleen het resultaat nodig hebben
 // (bv. voldoetAanHardeEisen() in matchScore.ts), zonder de index.
-export function vergelijkLocatie(voorkeurLocaties: B2bLocatie[], gebiedRuw: string | null, plaatsnaam: string | null): LocatieMatchResultaat {
-  return vergelijkLocatieUitgebreid(voorkeurLocaties, gebiedRuw, plaatsnaam).resultaat;
+export function vergelijkLocatie(
+  voorkeurLocaties: B2bLocatie[],
+  gebiedRuw: string | null,
+  plaatsnaam: string | null,
+  straatRuw: string | null = null
+): LocatieMatchResultaat {
+  return vergelijkLocatieUitgebreid(voorkeurLocaties, gebiedRuw, plaatsnaam, straatRuw).resultaat;
 }

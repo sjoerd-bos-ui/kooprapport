@@ -444,6 +444,32 @@ function extractBreadcrumbGebied(html: string): string | null {
   return null;
 }
 
+// STRAAT-NIVEAU (zie het Cowork-gesprek "straat-niveau locatie wordt nog
+// niet ondersteund", en types/b2b.ts: B2bMatchVerificatie.straatRuw). Zelfde
+// BreadcrumbList-blok als extractBreadcrumbGebied hierboven, één positie
+// verder: de LAATSTE breadcrumb-entry is de listing zelf ("Reserveboezemstraat
+// 5") -- straat+huisnummer, geen apart geparste straatnaam nodig omdat
+// vergelijkLocatie() dit met dezelfde substring-vergelijking als wijk/buurt
+// toetst.
+function extractBreadcrumbStraat(html: string): string | null {
+  const matches = [...html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)];
+  for (const m of matches) {
+    try {
+      const data = JSON.parse(m[1]);
+      if (data?.["@type"] === "BreadcrumbList" && Array.isArray(data.itemListElement)) {
+        const items = data.itemListElement as { position?: number; item?: { name?: string } }[];
+        if (items.length >= 1) {
+          const naam = items[items.length - 1]?.item?.name;
+          return typeof naam === "string" && naam.trim() ? naam.trim() : null;
+        }
+      }
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
 // -----------------------------------------------------------------------------
 // Lokale verificatie ("vangnet" + scoregegevens) -- leest dezelfde
 // weergavegegevens die een bezoeker ook gewoon op de detailpagina ziet (live
@@ -627,6 +653,7 @@ function leesLokaleVerificatieData(html: string, ld: FundaJsonLd): LokaleVerific
     parkeerOmschrijving,
     woningsubtypeRuw: leesWoningsubtypeRuw(html),
     gebiedRuw: extractBreadcrumbGebied(html),
+    straatRuw: extractBreadcrumbStraat(html),
     plaatsnaam: ld.address?.addressLocality ?? null,
     // BUGFIX (zie de toelichting bij `status` in types/b2b.ts): live
     // geverifieerd dat dit gewoon een dt/dd-rij "Status" is, zelfde patroon
@@ -749,7 +776,15 @@ function afgeleidBudgetMax(voorkeuren: B2bKoperVoorkeuren): number | null {
 function afgeleideGebiedSlugs(voorkeuren: B2bKoperVoorkeuren): string[] {
   const slugs = new Set<string>();
   for (const locatie of voorkeuren.voorkeurLocaties) {
-    slugs.add(locatie.wijkSlug ? `${locatie.plaatsSlug}/${locatie.wijkSlug}` : locatie.plaatsSlug);
+    // STRAAT-NIVEAU (zie het Cowork-gesprek "straat-niveau locatie wordt nog
+    // niet ondersteund"): eigen "straat-"-voorvoegsel, live geverifieerd via
+    // Funda's eigen zoekbalk (net als het "wijk-"-voorvoegsel hieronder).
+    // Sluit elkaar uit met wijkSlug, zie de toelichting bij B2bLocatie zelf.
+    if (locatie.straatSlug) {
+      slugs.add(`${locatie.plaatsSlug}/straat-${locatie.straatSlug}`);
+    } else {
+      slugs.add(locatie.wijkSlug ? `${locatie.plaatsSlug}/${locatie.wijkSlug}` : locatie.plaatsSlug);
+    }
   }
   return [...slugs];
 }

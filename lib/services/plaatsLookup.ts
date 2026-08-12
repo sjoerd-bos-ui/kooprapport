@@ -68,7 +68,7 @@ function naarFundaSlug(naam: string): string {
 // suggestie in de autocomplete.
 function mapPdokDoc(doc: PdokLocatieDoc): B2bLocatie | null {
   if (doc.type === "woonplaats" && doc.woonplaatsnaam) {
-    return { label: doc.woonplaatsnaam, plaatsSlug: naarFundaSlug(doc.woonplaatsnaam), wijkSlug: null };
+    return { label: doc.woonplaatsnaam, plaatsSlug: naarFundaSlug(doc.woonplaatsnaam), wijkSlug: null, straatSlug: null };
   }
   if ((doc.type === "wijk" || doc.type === "buurt") && doc.weergavenaam) {
     const plaatsNaam = doc.gemeentenaam?.trim();
@@ -79,13 +79,35 @@ function mapPdokDoc(doc: PdokLocatieDoc): B2bLocatie | null {
     }
     if (!subNaam) return null;
     const wijkSlug = doc.type === "wijk" ? `wijk-${naarFundaSlug(subNaam)}` : naarFundaSlug(subNaam);
-    return { label: `${subNaam}, ${plaatsNaam}`, plaatsSlug: naarFundaSlug(plaatsNaam), wijkSlug };
+    return { label: `${subNaam}, ${plaatsNaam}`, plaatsSlug: naarFundaSlug(plaatsNaam), wijkSlug, straatSlug: null };
+  }
+  // STRAAT-NIVEAU ("weg" in PDOK's typering, zie het Cowork-gesprek
+  // "straat-niveau locatie wordt nog niet ondersteund") -- Funda's
+  // straat-URL-formaat (`<plaats>/straat-<slug>`) is een apart, eigen
+  // voorvoegsel, net als "wijk-" voor wijken (zie afgeleideGebiedSlugs() in
+  // lib/data-sources/fundaFeed.ts). Zelfde plaatsnaam-afknip-logica als
+  // wijk/buurt hierboven: PDOK geeft ook voor een straat een gemeentenaam
+  // en een weergavenaam die daarmee eindigt.
+  if (doc.type === "weg" && doc.weergavenaam) {
+    const plaatsNaam = doc.gemeentenaam?.trim();
+    if (!plaatsNaam) return null;
+    let straatNaam = doc.weergavenaam.trim();
+    if (straatNaam.endsWith(plaatsNaam)) {
+      straatNaam = straatNaam.slice(0, straatNaam.length - plaatsNaam.length).replace(/,\s*$/, "").trim();
+    }
+    if (!straatNaam) return null;
+    return {
+      label: `${straatNaam}, ${plaatsNaam}`,
+      plaatsSlug: naarFundaSlug(plaatsNaam),
+      wijkSlug: null,
+      straatSlug: naarFundaSlug(straatNaam),
+    };
   }
   return null;
 }
 
 export async function fetchLiveLocatieSuggesties(query: string, limit = 8): Promise<B2bLocatie[]> {
-  const url = `${PDOK_SUGGEST_URL}?q=${encodeURIComponent(query)}&fq=type:(woonplaats OR wijk OR buurt)&rows=${limit}&fl=${encodeURIComponent(PDOK_FIELDS)}`;
+  const url = `${PDOK_SUGGEST_URL}?q=${encodeURIComponent(query)}&fq=type:(woonplaats OR wijk OR buurt OR weg)&rows=${limit}&fl=${encodeURIComponent(PDOK_FIELDS)}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`PDOK suggest HTTP ${res.status}`);
   const data = await res.json();
@@ -96,7 +118,7 @@ export async function fetchLiveLocatieSuggesties(query: string, limit = 8): Prom
   // verschillende brondocumenten) -- dedupliceren op de uiteindelijke slug.
   const gezien = new Set<string>();
   return mapped.filter((l) => {
-    const key = `${l.plaatsSlug}/${l.wijkSlug ?? ""}`;
+    const key = `${l.plaatsSlug}/${l.wijkSlug ?? ""}/${l.straatSlug ?? ""}`;
     if (gezien.has(key)) return false;
     gezien.add(key);
     return true;
@@ -107,14 +129,14 @@ export async function fetchLiveLocatieSuggesties(query: string, limit = 8): Prom
 // bereikbaar is -- zelfde "nooit stil niets tonen"-patroon als
 // searchAddressSuggestions() in addressLookup.ts.
 const FALLBACK_LOCATIES: B2bLocatie[] = [
-  { label: "Amsterdam", plaatsSlug: "amsterdam", wijkSlug: null },
-  { label: "Rotterdam", plaatsSlug: "rotterdam", wijkSlug: null },
-  { label: "Den Haag", plaatsSlug: "den-haag", wijkSlug: null },
-  { label: "Utrecht", plaatsSlug: "utrecht", wijkSlug: null },
-  { label: "Eindhoven", plaatsSlug: "eindhoven", wijkSlug: null },
-  { label: "Groningen", plaatsSlug: "groningen", wijkSlug: null },
-  { label: "Tilburg", plaatsSlug: "tilburg", wijkSlug: null },
-  { label: "Almere", plaatsSlug: "almere", wijkSlug: null },
+  { label: "Amsterdam", plaatsSlug: "amsterdam", wijkSlug: null, straatSlug: null },
+  { label: "Rotterdam", plaatsSlug: "rotterdam", wijkSlug: null, straatSlug: null },
+  { label: "Den Haag", plaatsSlug: "den-haag", wijkSlug: null, straatSlug: null },
+  { label: "Utrecht", plaatsSlug: "utrecht", wijkSlug: null, straatSlug: null },
+  { label: "Eindhoven", plaatsSlug: "eindhoven", wijkSlug: null, straatSlug: null },
+  { label: "Groningen", plaatsSlug: "groningen", wijkSlug: null, straatSlug: null },
+  { label: "Tilburg", plaatsSlug: "tilburg", wijkSlug: null, straatSlug: null },
+  { label: "Almere", plaatsSlug: "almere", wijkSlug: null, straatSlug: null },
 ];
 
 export function zoekLocatieFallback(query: string, limit = 6): B2bLocatie[] {

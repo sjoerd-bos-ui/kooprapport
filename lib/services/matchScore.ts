@@ -67,7 +67,12 @@ function faaltBudget(prijs: number | null, voorkeuren: B2bKoperVoorkeuren): bool
 }
 
 function faaltLocatie(verificatie: B2bMatchVerificatie | null, voorkeuren: B2bKoperVoorkeuren): boolean {
-  const { resultaat } = vergelijkLocatieUitgebreid(voorkeuren.voorkeurLocaties, verificatie?.gebiedRuw ?? null, verificatie?.plaatsnaam ?? null);
+  const { resultaat } = vergelijkLocatieUitgebreid(
+    voorkeuren.voorkeurLocaties,
+    verificatie?.gebiedRuw ?? null,
+    verificatie?.plaatsnaam ?? null,
+    verificatie?.straatRuw ?? null
+  );
   return resultaat === "geen_match";
 }
 

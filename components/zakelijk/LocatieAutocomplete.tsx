@@ -114,7 +114,7 @@ export default function LocatieAutocomplete({
           onKeyDown={handleKeyDown}
           onFocus={() => setOpen(true)}
           onBlur={() => setTimeout(() => setOpen(false), 150)}
-          placeholder="Typ een plaats of wijk (bv. Rotterdam of Kralingen)"
+          placeholder="Typ een plaats, wijk of straat (bv. Rotterdam, Kralingen of Reserveboezemstraat)"
           className="w-full bg-transparent py-3 pl-2.5 pr-2 text-[13px] font-medium text-ink placeholder:font-normal placeholder:text-ink/35 focus:outline-none"
         />
         {gekozen && (
@@ -135,7 +135,7 @@ export default function LocatieAutocomplete({
       {open && suggesties.length > 0 && (
         <ul className="absolute z-20 mt-1.5 w-full overflow-hidden rounded-xl border border-ink/10 bg-white shadow-overlay">
           {suggesties.map((s, i) => (
-            <li key={`${s.plaatsSlug}/${s.wijkSlug ?? ""}`}>
+            <li key={`${s.plaatsSlug}/${s.wijkSlug ?? ""}/${s.straatSlug ?? ""}`}>
               <button
                 type="button"
                 onMouseDown={() => kies(s)}
@@ -148,10 +148,10 @@ export default function LocatieAutocomplete({
                 <span className="flex-1 font-medium">{s.label}</span>
                 <span
                   className={`shrink-0 rounded-full px-2 py-0.5 text-[9.5px] font-semibold ${
-                    s.wijkSlug ? "bg-[#EEF0FF] text-accent" : "bg-ink/5 text-ink/45"
+                    s.straatSlug || s.wijkSlug ? "bg-[#EEF0FF] text-accent" : "bg-ink/5 text-ink/45"
                   }`}
                 >
-                  {s.wijkSlug ? "Wijk" : "Plaats"}
+                  {s.straatSlug ? "Straat" : s.wijkSlug ? "Wijk" : "Plaats"}
                 </span>
               </button>
             </li>
