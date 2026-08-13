@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import type { AddressMeta } from "@/types/report";
 import type { B2bRapportAanvraag } from "@/types/b2b";
 import VergelijkTabel from "@/components/zakelijk/VergelijkTabel";
-import { TrendingUpIcon } from "@/components/report/icons";
+import { TrendingUpIcon, LinkIcon } from "@/components/report/icons";
 
 interface RapportListItem {
   id: string;
@@ -25,6 +25,8 @@ export default function ZakelijkVergelijkenPagina() {
   const [geselecteerd, setGeselecteerd] = useState<string[]>([]);
   const [details, setDetails] = useState<B2bRapportAanvraag[]>([]);
   const [laden, setLaden] = useState(false);
+  const [deelBezig, setDeelBezig] = useState(false);
+  const [gekopieerd, setGekopieerd] = useState(false);
 
   useEffect(() => {
     fetch("/api/zakelijk/rapporten")
@@ -57,10 +59,48 @@ export default function ZakelijkVergelijkenPagina() {
       .finally(() => setLaden(false));
   }, [geselecteerd]);
 
+  // Zelfde momentopname-patroon als DossierVergelijken.tsx: elke klik legt de
+  // huidige selectie vast in een nieuw token (zie maakVergelijkingDeelToken
+  // in b2bStore.ts), geen hergebruik van een eerder token.
+  async function deelVergelijking() {
+    setDeelBezig(true);
+    try {
+      const res = await fetch("/api/zakelijk/vergelijking-deel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rapportIds: geselecteerd }),
+      });
+      if (!res.ok) throw new Error("mislukt");
+      const body = await res.json();
+      await navigator.clipboard.writeText(body.deelUrl);
+      setGekopieerd(true);
+      setTimeout(() => setGekopieerd(false), 2000);
+    } catch {
+      alert("De deel-link kon nu niet worden aangemaakt. Probeer het straks opnieuw.");
+    } finally {
+      setDeelBezig(false);
+    }
+  }
+
   return (
     <div>
-      <p className="font-display text-xl font-extrabold text-ink">Vergelijken</p>
-      <p className="mt-1 text-[12px] text-ink/50">Kies tot 3 rapporten om naast elkaar te zetten voor een klant.</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="font-display text-xl font-extrabold text-ink">Vergelijken</p>
+          <p className="mt-1 text-[12px] text-ink/50">Kies tot 3 rapporten om naast elkaar te zetten voor een klant.</p>
+        </div>
+        {details.length >= 2 && (
+          <button
+            type="button"
+            onClick={deelVergelijking}
+            disabled={deelBezig}
+            className="flex items-center gap-1.5 rounded-lg bg-white px-3.5 py-2 text-[11.5px] font-semibold text-ink shadow-sm hover:bg-mist disabled:opacity-60"
+          >
+            <LinkIcon className="h-3.5 w-3.5" />
+            {deelBezig ? "Bezig…" : gekopieerd ? "Link gekopieerd!" : "Deel deze vergelijking"}
+          </button>
+        )}
+      </div>
 
       <div id="rapport-kiezer" className="mt-4 flex flex-wrap gap-2">
         {rapporten.map((r) => {

@@ -305,13 +305,22 @@ export default function MatchesKaart({
       )}
 
       {favorieten.length > 0 && (
-        <div className="mt-3 rounded-xl bg-mist/50 p-3.5">
-          <div className="flex items-center gap-1.5">
-            <StarIcon className="h-3.5 w-3.5 text-[#BA7517]" filled />
-            <p className="text-[11px] font-bold uppercase tracking-wide text-ink/40">Favorieten</p>
-            <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold text-white">{favorieten.length}</span>
+        // HERONTWERP (klacht "de favorieten zijn erg onduidelijk aangegeven"
+        // -- een klein sterretje in de kaarthoek viel te weinig op, en de
+        // vorige lichte bg-mist/50-tint week nauwelijks af van de rest van de
+        // pagina): favorieten staan nu in een eigen, warm amberkleurig
+        // bannervlak i.p.v. tussen de gewone matches te blenden -- het
+        // onderscheid "dit zijn de favorieten" / "dit is de rest" zit nu in
+        // de hele sectie, niet meer alleen in een klein icoontje.
+        <div className="mt-3 rounded-2xl bg-gradient-to-br from-[#FAEEDA] to-[#FAC775] p-4">
+          <div className="flex items-center gap-2">
+            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#BA7517]">
+              <StarIcon className="h-3.5 w-3.5 text-white" filled />
+            </span>
+            <p className="text-[13px] font-bold text-[#412402]">Favorieten van deze koper</p>
+            <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-[#412402]">{favorieten.length}</span>
           </div>
-          <div className="mt-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
             {favorieten.map((m, i) => {
               const gekoppeldRapport = vindGekoppeldRapport(m.titel, rapporten);
               return (
@@ -322,7 +331,7 @@ export default function MatchesKaart({
                       type="button"
                       onClick={() => toggleInteressant(m)}
                       aria-label="Niet meer interessant"
-                      className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-[#FAC775] text-[#633806] shadow-sm"
+                      className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-white text-[#BA7517] shadow-sm"
                     >
                       <StarIcon className="h-3.5 w-3.5" filled />
                     </button>

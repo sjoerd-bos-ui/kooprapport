@@ -75,32 +75,46 @@ export default function FavorietenVergelijkTabel({ favorieten }: { favorieten: B
 
   return (
     <div>
-      {/* Fotokaarten: prijs als badge over de foto, "Beste prijs"-lint op de goedkoopste */}
-      <div className="grid gap-2.5" style={{ gridTemplateColumns: `repeat(${kolomAantal}, minmax(0, 1fr))` }}>
-        {favorieten.map((m) => (
-          <div key={`foto-${m.id}`} className="overflow-hidden rounded-2xl border border-ink/[0.06] bg-white shadow-sm">
-            <div className="relative h-28 w-full">
-              <MatchFoto fotoUrl={m.fotoUrl} />
-              {m.prijs != null && m.prijs === bestePrijs && (
-                <span className="absolute left-2 top-2 rounded-full bg-accent px-2.5 py-1 text-[9px] font-bold text-white">Beste prijs</span>
-              )}
-              <span className="absolute bottom-2 left-2 rounded-lg bg-ink/75 px-2.5 py-1 text-[11.5px] font-bold text-white">
-                {m.prijsLabel ?? euro(m.prijs)}
-              </span>
+      {/*
+        Fotokaarten: prijs als badge over de foto, "Beste prijs"-lint op de
+        goedkoopste. BUGFIX (klacht "de afbeelding staat er niet loodrecht
+        boven"): dit grid gebruikte eerst `repeat(kolomAantal, minmax(0,1fr))`
+        over de VOLLE breedte, terwijl de tabel eronder een extra 152px-
+        labelkolom links heeft ("Vraagprijs", "Woonoppervlak" e.d.) -- daardoor
+        vielen de kolombreedtes niet samen en schoof elke foto één kolom op
+        t.o.v. zijn eigen data-kolom. Nu EXACT hetzelfde grid-sjabloon
+        (152px + dezelfde minmax(150px,1fr)-kolommen, dezelfde min-w-[560px]
+        scrolcontainer) met een lege eerste cel, zodat foto en kenmerken
+        gegarandeerd in dezelfde kolom staan, ook bij horizontaal scrollen.
+      */}
+      <div className="overflow-x-auto">
+        <div className="grid min-w-[560px] gap-2.5" style={{ gridTemplateColumns: `152px repeat(${kolomAantal}, minmax(150px, 1fr))` }}>
+          <div />
+          {favorieten.map((m) => (
+            <div key={`foto-${m.id}`} className="overflow-hidden rounded-2xl border border-ink/[0.06] bg-white shadow-sm">
+              <div className="relative h-28 w-full">
+                <MatchFoto fotoUrl={m.fotoUrl} />
+                {m.prijs != null && m.prijs === bestePrijs && (
+                  <span className="absolute left-2 top-2 rounded-full bg-accent px-2.5 py-1 text-[9px] font-bold text-white">Beste prijs</span>
+                )}
+                <span className="absolute bottom-2 left-2 rounded-lg bg-ink/75 px-2.5 py-1 text-[11.5px] font-bold text-white">
+                  {m.prijsLabel ?? euro(m.prijs)}
+                </span>
+              </div>
+              <div className="p-3">
+                <p className="truncate text-[12px] font-extrabold text-ink">{m.titel}</p>
+                <a
+                  href={m.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1.5 inline-flex items-center gap-1 text-[10.5px] font-semibold text-ink/45 hover:text-accent"
+                >
+                  Advertentie <ArrowRightIcon className="h-2.5 w-2.5" />
+                </a>
+              </div>
             </div>
-            <div className="p-3">
-              <p className="truncate text-[12px] font-extrabold text-ink">{m.titel}</p>
-              <a
-                href={m.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-1.5 inline-flex items-center gap-1 text-[10.5px] font-semibold text-ink/45 hover:text-accent"
-              >
-                Advertentie <ArrowRightIcon className="h-2.5 w-2.5" />
-              </a>
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       {/* Kenmerkentabel: zelfde grid-patroon als VergelijkTabel.tsx */}
