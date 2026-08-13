@@ -153,12 +153,12 @@ export default async function ZakelijkDashboardHome() {
       )}
 
       <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="rounded-2xl bg-white p-4 shadow-sm">
-          <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-mist text-accent">
+        <div className="rounded-2xl bg-mist p-4">
+          <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-white text-accent">
             <FileCheckIcon className="h-4 w-4" />
           </span>
-          <p className="mt-2.5 font-display text-xl font-extrabold text-ink">{verbruikt}</p>
-          <p className="mt-0.5 text-[10.5px] text-ink/50">rapporten deze maand</p>
+          <p className="mt-2.5 font-display text-xl font-extrabold text-accent">{verbruikt}</p>
+          <p className="mt-0.5 text-[10.5px] text-accent/70">rapporten deze maand</p>
         </div>
         <div className="rounded-2xl bg-[#EAF3DE] p-4">
           <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-white text-[#3B6D11]">
@@ -167,8 +167,8 @@ export default async function ZakelijkDashboardHome() {
           <p className="mt-2.5 font-display text-xl font-extrabold text-[#3B6D11]">{nieuweMatchesDezeWeek}</p>
           <p className="mt-0.5 text-[10.5px] text-[#3B6D11]/70">nieuwe matches deze week</p>
         </div>
-        <div className="rounded-2xl bg-white p-4 shadow-sm">
-          <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-ink/5 text-ink">
+        <div className="rounded-2xl bg-ink/5 p-4">
+          <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-white text-ink">
             <UsersIcon className="h-4 w-4" />
           </span>
           <p className="mt-2.5 font-display text-xl font-extrabold text-ink">{lopendeDossiers}</p>
