@@ -243,6 +243,78 @@ export async function zetKlantdossierZoekopdracht(
   return bijgewerkt;
 }
 
+// --- Deel-link "Favorieten vergelijken" ---------------------------------------
+// Zelfde tokenpatroon als maakOfVernieuwDeelToken (rapporten) verderop in dit
+// bestand, maar dan dossier-niveau en idempotent herbruikt zoals
+// maakOfVernieuwKoperVoorkeurenToken hierboven -- zie de toelichting bij
+// favorietenDeelToken in types/b2b.ts voor waarom dit BEWUST geen bevroren
+// momentopname is.
+function favorietenDeelTokenKey(token: string): string {
+  return `deel-favorieten:${token}`;
+}
+
+export async function maakOfVernieuwFavorietenDeelToken(dossierId: string): Promise<string> {
+  const dossier = await getKlantdossier(dossierId);
+  if (!dossier) throw new Error("Klantdossier niet gevonden.");
+  if (dossier.favorietenDeelToken) return dossier.favorietenDeelToken;
+  const token = randomBytes(24).toString("base64url");
+  await kvSet(favorietenDeelTokenKey(token), dossierId);
+  await kvSet(klantKey(dossierId), JSON.stringify({ ...dossier, favorietenDeelToken: token }));
+  return token;
+}
+
+export async function verwijderFavorietenDeelToken(dossierId: string): Promise<void> {
+  const dossier = await getKlantdossier(dossierId);
+  if (!dossier?.favorietenDeelToken) return;
+  await kvSet(favorietenDeelTokenKey(dossier.favorietenDeelToken), "", 1);
+  await kvSet(klantKey(dossierId), JSON.stringify({ ...dossier, favorietenDeelToken: null }));
+}
+
+export async function getKlantdossierDoorFavorietenDeelToken(token: string): Promise<B2bKlantdossier | null> {
+  const dossierId = await kvGet(favorietenDeelTokenKey(token));
+  if (!dossierId) return null;
+  return getKlantdossier(dossierId);
+}
+
+// --- Deel-link "Vergelijken" (volledige rapporten) ----------------------------
+// In tegenstelling tot de favorieten-deellink hierboven IS dit wel een vaste
+// momentopname: de makelaar kiest in DossierVergelijken.tsx een specifieke
+// selectie van 2-3 rapporten en deelt PRECIES die vergelijking -- rapporten
+// zijn bovendien al onveranderlijk (eenmaal gegenereerd), dus een snapshot
+// van rapport-id's is hier zonder risico, in tegenstelling tot een
+// momentopname van (wél muterende) favorieten. Geen idempotente hergebruik
+// zoals hierboven: elke "delen"-klik legt de op dat moment geselecteerde
+// combinatie vast, ook als die per selectie verschilt.
+interface VergelijkingDeel {
+  orgId: string;
+  rapportIds: string[];
+}
+
+function vergelijkingDeelTokenKey(token: string): string {
+  return `deel-vergelijking:${token}`;
+}
+
+export async function maakVergelijkingDeelToken(orgId: string, rapportIds: string[]): Promise<string> {
+  const token = randomBytes(24).toString("base64url");
+  const data: VergelijkingDeel = { orgId, rapportIds };
+  await kvSet(vergelijkingDeelTokenKey(token), JSON.stringify(data));
+  return token;
+}
+
+export async function getVergelijkingDoorDeelToken(token: string): Promise<B2bRapportAanvraag[] | null> {
+  const raw = await kvGet(vergelijkingDeelTokenKey(token));
+  if (!raw) return null;
+  let data: VergelijkingDeel;
+  try {
+    data = JSON.parse(raw) as VergelijkingDeel;
+  } catch {
+    return null;
+  }
+  const rapporten = await Promise.all(data.rapportIds.map((id) => getRapportAanvraag(id)));
+  const geldig = rapporten.filter((r): r is B2bRapportAanvraag => r != null && r.orgId === data.orgId);
+  return geldig.length >= 2 ? geldig : null;
+}
+
 // --- Koper-voorkeuren (matching-model) ----------------------------------------
 // Publieke, niet-ingelogde vragenlijst-link voor de koper (zie het Cowork-
 // gesprek hierover) -- zelfde tokenpatroon als maakOfVernieuwDeelToken

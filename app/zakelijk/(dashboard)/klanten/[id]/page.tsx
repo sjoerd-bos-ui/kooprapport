@@ -39,6 +39,7 @@ export default async function ZakelijkKlantDetailPagina({ params }: { params: Pr
 
   const [rapporten, matches] = await Promise.all([listRapportenVoorKlant(id), listMatchenVoorKlant(id)]);
   const favorieteMatches = matches.filter((m) => m.interessant === true);
+  const favorietenDeelUrl = dossier.favorietenDeelToken ? `${APP_BASE_URL}/deelfavorieten/${dossier.favorietenDeelToken}` : null;
   // Nieuwste rapport in dit dossier -- meest relevante bandbreedte om te tonen
   // zolang er geen apart per-dossier "huidig bod"-veld bestaat.
   const laatsteBiedadvies = rapporten[0]
@@ -226,7 +227,9 @@ export default async function ZakelijkKlantDetailPagina({ params }: { params: Pr
           {
             key: "favorieten-vergelijken",
             label: `Favorieten vergelijken${favorieteMatches.length > 0 ? ` (${favorieteMatches.length})` : ""}`,
-            content: <FavorietenVergelijken favorieten={favorieteMatches} rapporten={rapporten} dossierId={dossier.id} />,
+            content: (
+              <FavorietenVergelijken favorieten={favorieteMatches} rapporten={rapporten} dossierId={dossier.id} initieleDeelUrl={favorietenDeelUrl} />
+            ),
           },
           {
             key: "vergelijken",
@@ -235,7 +238,7 @@ export default async function ZakelijkKlantDetailPagina({ params }: { params: Pr
               rapporten.length < 2 ? (
                 <p className="text-[12.5px] text-ink/40">Voeg minstens twee rapporten toe aan dit dossier om ze te kunnen vergelijken.</p>
               ) : (
-                <DossierVergelijken rapporten={rapporten} />
+                <DossierVergelijken rapporten={rapporten} dossierId={dossier.id} />
               ),
           },
           {

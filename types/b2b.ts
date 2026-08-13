@@ -180,6 +180,16 @@ export interface B2bKlantdossier {
   aangemaaktOp: string; // ISO
   aangemaaktDoorUserId: string;
   zoekopdracht?: B2bZoekopdracht;
+  // Deel-link voor de "Favorieten vergelijken"-tab (zie het Cowork-gesprek
+  // "maak de deellink"), zelfde tokenpatroon als B2bRapportAanvraag.deelToken
+  // hierboven. BEWUST op dossier-niveau (niet op een vaste momentopname van
+  // matches): de publieke pagina (app/deelfavorieten/[token]) toont bij elk
+  // bezoek de op dat moment actuele favorieten van dit dossier, want een
+  // shortlist die de makelaar met een koper deelt hoort "live" te blijven
+  // meebewegen als er favorieten bij komen of af gaan -- in tegenstelling tot
+  // een afgerond rapport (dat IS een vaste momentopname, vandaar dat
+  // deelToken daar wel een bevroren rapport-id aanwijst).
+  favorietenDeelToken?: string | null;
 }
 
 // Eén gevonden woningadvertentie die aan de zoekopdracht van een klant

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { B2bRapportAanvraag } from "@/types/b2b";
 import VergelijkTabel from "@/components/zakelijk/VergelijkTabel";
+import { LinkIcon } from "@/components/report/icons";
 
 // -----------------------------------------------------------------------------
 // Vergelijken binnen een klantdossier (#2, tweede deel) -- alle rapporten van
@@ -14,8 +15,10 @@ import VergelijkTabel from "@/components/zakelijk/VergelijkTabel";
 // openen van een dossier direct een vergelijking ziet i.p.v. eerst zelf te
 // moeten selecteren.
 // -----------------------------------------------------------------------------
-export default function DossierVergelijken({ rapporten }: { rapporten: B2bRapportAanvraag[] }) {
+export default function DossierVergelijken({ rapporten, dossierId }: { rapporten: B2bRapportAanvraag[]; dossierId: string }) {
   const [geselecteerd, setGeselecteerd] = useState<string[]>(rapporten.slice(0, 3).map((r) => r.id));
+  const [deelBezig, setDeelBezig] = useState(false);
+  const [gekopieerd, setGekopieerd] = useState(false);
 
   if (rapporten.length < 2) return null;
 
@@ -29,9 +32,46 @@ export default function DossierVergelijken({ rapporten }: { rapporten: B2bRappor
 
   const details = rapporten.filter((r) => geselecteerd.includes(r.id));
 
+  // Elke klik legt een NIEUWE momentopname van de huidige selectie vast (zie
+  // de toelichting bij maakVergelijkingDeelToken in b2bStore.ts) -- geen
+  // hergebruik van een eerder token, want de selectie kan intussen gewijzigd
+  // zijn.
+  async function deelVergelijking() {
+    setDeelBezig(true);
+    try {
+      const res = await fetch(`/api/zakelijk/klanten/${dossierId}/vergelijking-deel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rapportIds: geselecteerd }),
+      });
+      if (!res.ok) throw new Error("mislukt");
+      const body = await res.json();
+      await navigator.clipboard.writeText(body.deelUrl);
+      setGekopieerd(true);
+      setTimeout(() => setGekopieerd(false), 2000);
+    } catch {
+      alert("De deel-link kon nu niet worden aangemaakt. Probeer het straks opnieuw.");
+    } finally {
+      setDeelBezig(false);
+    }
+  }
+
   return (
     <div>
-      <p className="text-[11px] font-bold uppercase tracking-wide text-ink/40">Rapporten vergelijken</p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[11px] font-bold uppercase tracking-wide text-ink/40">Rapporten vergelijken</p>
+        {details.length >= 2 && (
+          <button
+            type="button"
+            onClick={deelVergelijking}
+            disabled={deelBezig}
+            className="flex items-center gap-1.5 rounded-lg bg-white px-3.5 py-2 text-[11.5px] font-semibold text-ink shadow-sm hover:bg-mist disabled:opacity-60"
+          >
+            <LinkIcon className="h-3.5 w-3.5" />
+            {deelBezig ? "Bezig…" : gekopieerd ? "Link gekopieerd!" : "Deel deze vergelijking"}
+          </button>
+        )}
+      </div>
       <div id="rapport-kiezer" className="mt-2.5 flex flex-wrap gap-2">
         {rapporten.map((r) => {
           const actief = geselecteerd.includes(r.id);

@@ -79,7 +79,22 @@ const RIJEN: RijConfig[] = [
   { label: "Buurtprofiel", icoon: MapPinIcon },
 ];
 
-export default function VergelijkTabel({ details, aantalMeerBeschikbaar = 0 }: { details: B2bRapportAanvraag[]; aantalMeerBeschikbaar?: number }) {
+export default function VergelijkTabel({
+  details,
+  aantalMeerBeschikbaar = 0,
+  publiek = false,
+}: {
+  details: B2bRapportAanvraag[];
+  aantalMeerBeschikbaar?: number;
+  // Publieke, niet-ingelogde weergave (zie app/deelvergelijking/[token]) --
+  // de voetregel-link naar het volledige rapport mag dan NOOIT naar de
+  // interne, login-vereisende /zakelijk/rapporten/[id] wijzen (een koper zou
+  // daar alleen tegen een loginscherm aanlopen). Gebruikt in plaats daarvan
+  // het bestaande per-rapport deelToken (zie B2bRapportAanvraag.deelToken)
+  // als dat er is, en laat de link anders gewoon weg i.p.v. een dode/foute
+  // link te tonen.
+  publiek?: boolean;
+}) {
   if (details.length === 0) return null;
 
   const waardes = details.map((d) => d.report.market.data?.geschatteWaarde ?? d.report.market.data?.bandbreedteMin ?? null);
@@ -192,16 +207,18 @@ export default function VergelijkTabel({ details, aantalMeerBeschikbaar = 0 }: {
 
         {/* Voetregel: link naar volledig rapport */}
         <div className="px-4 py-3" />
-        {details.map((d) => (
-          <div key={`voet-${d.id}`} className="border-l border-ink/[0.06] px-4 py-3">
-            <Link
-              href={`/zakelijk/rapporten/${d.id}`}
-              className="flex items-center gap-1 text-[10.5px] font-semibold text-accent hover:underline"
-            >
-              Volledig rapport <ArrowRightIcon className="h-2.5 w-2.5" />
-            </Link>
-          </div>
-        ))}
+        {details.map((d) => {
+          const voetHref = publiek ? (d.deelToken ? `/deelrapport/${d.deelToken}` : null) : `/zakelijk/rapporten/${d.id}`;
+          return (
+            <div key={`voet-${d.id}`} className="border-l border-ink/[0.06] px-4 py-3">
+              {voetHref && (
+                <Link href={voetHref} className="flex items-center gap-1 text-[10.5px] font-semibold text-accent hover:underline">
+                  Volledig rapport <ArrowRightIcon className="h-2.5 w-2.5" />
+                </Link>
+              )}
+            </div>
+          );
+        })}
         {toonToevoegSlot && <div className="border-l border-ink/[0.06] px-4 py-3" />}
       </div>
     </div>
