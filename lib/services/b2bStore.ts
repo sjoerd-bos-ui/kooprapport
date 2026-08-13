@@ -482,12 +482,15 @@ export async function bijwerkenMatchVerificatie(match: B2bWoningMatch, verificat
 // "Bewaar als interessant" (zie het Cowork-gesprek "Bewaar als interessant"):
 // een handmatige markering zodat de makelaar een match kan vastzetten terwijl
 // hij meerdere kandidaten verzamelt, vóórdat hij kiest welke een volledig
-// rapport verdienen. Beschermt alleen tegen de WEERGAVELIMIET
-// (kapMatchenOpMax, zie hieronder) -- bewust NIET tegen ruimVerouderdeMatchenOp:
-// als een woning niet meer aan de harde eisen voldoet (bv. verkocht/onder
-// bod, of een gewijzigd budget/locatie), is de match zelf niet meer geldig en
-// heeft "interessant" markeren daar geen invloed op -- een favoriet die naar
-// een verkochte woning wijst helpt niemand.
+// rapport verdienen. Beschermt tegen de WEERGAVELIMIET (kapMatchenOpMax, zie
+// hieronder) ÉN tegen automatisch opruimen bij een gewijzigde zoekopdracht of
+// gewijzigde beschikbaarheid (zie ruimVerouderdeMatchenOp hieronder) -- zie
+// het latere Cowork-gesprek "favoriet alleen verwijderen als de koper
+// daarop klikt": een favoriet verdwijnt alleen nog als de makelaar 'm zelf
+// weer uitvinkt (interessant: false), nooit meer stilzwijgend door een
+// achtergrondtaak. De UI toont wel een status-badge als een favoriet niet
+// meer aan de huidige zoekopdracht voldoet of niet meer beschikbaar is (zie
+// MatchesKaart.tsx), zodat dat nooit onopgemerkt blijft.
 export async function zetMatchInteressant(match: B2bWoningMatch, interessant: boolean): Promise<B2bWoningMatch> {
   const bijgewerkt: B2bWoningMatch = { ...match, interessant };
   await kvSet(matchKey(match.id), JSON.stringify(bijgewerkt));
@@ -560,13 +563,28 @@ function heeftOnvolledigeVerificatie(v: B2bMatchVerificatie | null): boolean {
 // bij de volgende aanroep.
 const MAX_HERVERIFICATIES_PER_AANROEP = 5;
 
+// BEWUSTE UITZONDERING (zie het Cowork-gesprek "favoriet alleen verwijderen
+// als de koper daarop klikt"): favorieten (match.interessant === true)
+// worden hieronder NOOIT automatisch opgeruimd, ook niet als ze niet meer
+// aan de (inmiddels gewijzigde) harde eisen voldoen of niet meer
+// "beschikbaar" zijn. Dit is een bewuste omkering van het eerdere gedrag
+// (zie de oudere versie van deze functie in de git-geschiedenis, "een
+// favoriet die naar een verkochte woning wijst helpt niemand") -- de
+// makelaar wil zelf bepalen wanneer een favoriet verdwijnt, niet dat de
+// achtergrondtaak dat stilzwijgend voor hem doet. De verificatie-snapshot
+// wordt voor favorieten wel gewoon ververst (zie de herverificatiestap
+// hieronder) zodat de weergave (bv. de status-badge in MatchesKaart.tsx)
+// actueel blijft, alleen VERWIJDEREN gebeurt niet meer automatisch.
 export async function ruimVerouderdeMatchenOp(klantId: string, koperVoorkeuren: B2bKoperVoorkeuren | null): Promise<B2bWoningMatch[]> {
   const bestaande = await listMatchenVoorKlant(klantId);
   if (!koperVoorkeuren) {
-    // Geen voorkeurenlijst (meer) ingevuld -- er is dan niets om tegen te
-    // toetsen, dus geen enkele bestaande match blijft relevant.
-    for (const match of bestaande) await verwijderMatch(match);
-    return [];
+    // Geen voorkeurenlijst (meer) ingevuld -- er is dan niets om niet-
+    // favoriete matches tegen te toetsen, die gaan eruit. Favorieten
+    // blijven staan (zie de toelichting hierboven).
+    for (const match of bestaande) {
+      if (!match.interessant) await verwijderMatch(match);
+    }
+    return bestaande.filter((m) => m.interessant === true);
   }
   const passend: B2bWoningMatch[] = [];
   let herverificaties = 0;
@@ -579,6 +597,10 @@ export async function ruimVerouderdeMatchenOp(klantId: string, koperVoorkeuren: 
         teToetsen = { ...match, verificatie: verse.verificatie };
         await bijwerkenMatchVerificatie(match, verse.verificatie);
       }
+    }
+    if (match.interessant === true) {
+      passend.push(teToetsen);
+      continue;
     }
     const { voldoet } = voldoetAanHardeEisen(teToetsen, koperVoorkeuren);
     if (voldoet) {

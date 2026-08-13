@@ -193,12 +193,25 @@ export default function MatchesKaart({
   dossierId,
   matchenActief,
   zoekopdracht,
+  favorietWaarschuwingen = {},
 }: {
   matches: B2bWoningMatch[];
   rapporten: B2bRapportAanvraag[];
   dossierId: string;
   matchenActief: boolean;
   zoekopdracht?: B2bZoekopdracht;
+  // Sinds favorieten niet meer automatisch worden opgeruimd (zie
+  // ruimVerouderdeMatchenOp in b2bStore.ts, "favoriet alleen verwijderen als
+  // de koper daarop klikt") kan een favoriet blijven staan terwijl hij niet
+  // meer aan de zoekopdracht voldoet of niet meer beschikbaar is -- dat mag
+  // nooit onopgemerkt blijven. match.id -> waarschuwingstekst, BEWUST
+  // server-side berekend in page.tsx (via voldoetAanHardeEisen uit
+  // matchScore.ts) en hier als kant-en-klare prop doorgegeven, i.p.v.
+  // matchScore.ts hier client-side te importeren -- dat bestand hangt via
+  // fundaFeed.ts aan server-only env-secrets (BRIGHTDATA_API_TOKEN e.d.),
+  // exact het CORS/bundel-probleem dat de voorzieningenscore al eens
+  // veroorzaakte (zie de bugfix daarvoor in de git-geschiedenis).
+  favorietWaarschuwingen?: Record<string, string>;
 }) {
   const router = useRouter();
   const [actieveMatch, setActieveMatch] = useState<B2bWoningMatch | null>(null);
@@ -323,6 +336,7 @@ export default function MatchesKaart({
           <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
             {favorieten.map((m, i) => {
               const gekoppeldRapport = vindGekoppeldRapport(m.titel, rapporten);
+              const waarschuwing = favorietWaarschuwingen[m.id];
               return (
                 <div key={m.id} className="overflow-hidden rounded-xl border border-ink/[0.06] bg-white">
                   <div className="relative h-24 w-full bg-mist">
@@ -339,6 +353,11 @@ export default function MatchesKaart({
                   <div className="p-3">
                     <p className="truncate text-[12px] font-semibold text-ink">{m.titel}</p>
                     {m.prijsLabel && <p className="text-[11px] text-ink/50">{m.prijsLabel}</p>}
+                    {waarschuwing && (
+                      <p className="mt-1.5 flex items-center gap-1 text-[10.5px] font-semibold text-rust">
+                        <AlertTriangleIcon className="h-3 w-3 shrink-0" /> {waarschuwing}
+                      </p>
+                    )}
                     <div className="mt-2 flex gap-1.5">
                       <a
                         href={m.url}

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getB2bSessieUitCookies } from "@/lib/services/b2bAuth";
 import { getKlantdossier, listRapportenVoorKlant, listMatchenVoorKlant } from "@/lib/services/b2bStore";
+import { voldoetAanHardeEisen } from "@/lib/services/matchScore";
 import { berekenBiedadvies } from "@/lib/services/biedadvies";
 import { heeftNieuweMarktcijfersSinds, laatsteMarktupdateSlug } from "@/lib/services/marktAlert";
 import DossierStatusKnop from "@/components/zakelijk/DossierStatusKnop";
@@ -40,6 +41,23 @@ export default async function ZakelijkKlantDetailPagina({ params }: { params: Pr
   const [rapporten, matches] = await Promise.all([listRapportenVoorKlant(id), listMatchenVoorKlant(id)]);
   const favorieteMatches = matches.filter((m) => m.interessant === true);
   const favorietenDeelUrl = dossier.favorietenDeelToken ? `${APP_BASE_URL}/deelfavorieten/${dossier.favorietenDeelToken}` : null;
+
+  // Sinds favorieten niet meer automatisch worden opgeruimd (zie
+  // ruimVerouderdeMatchenOp in b2bStore.ts, "favoriet alleen verwijderen als
+  // de koper daarop klikt") kan een favoriet blijven staan terwijl hij niet
+  // meer voldoet of niet meer beschikbaar is -- BEWUST hier, server-side,
+  // berekend (voldoetAanHardeEisen hangt via matchScore.ts aan fundaFeed.ts,
+  // dat server-only env-secrets uitleest) en als kant-en-klare tekst
+  // doorgegeven aan MatchesKaart.tsx, i.p.v. dat client-side te berekenen.
+  const favorietWaarschuwingen: Record<string, string> = {};
+  if (dossier.zoekopdracht?.koperVoorkeuren) {
+    for (const m of favorieteMatches) {
+      const { voldoet, afgewezenOp } = voldoetAanHardeEisen(m, dossier.zoekopdracht.koperVoorkeuren);
+      if (!voldoet) {
+        favorietWaarschuwingen[m.id] = afgewezenOp.includes("beschikbaarheid") ? "Niet meer beschikbaar" : "Voldoet niet meer aan de zoekopdracht";
+      }
+    }
+  }
   // Nieuwste rapport in dit dossier -- meest relevante bandbreedte om te tonen
   // zolang er geen apart per-dossier "huidig bod"-veld bestaat.
   const laatsteBiedadvies = rapporten[0]
@@ -127,6 +145,7 @@ export default async function ZakelijkKlantDetailPagina({ params }: { params: Pr
                   dossierId={dossier.id}
                   matchenActief={dossier.zoekopdracht?.matchenActief ?? false}
                   zoekopdracht={dossier.zoekopdracht}
+                  favorietWaarschuwingen={favorietWaarschuwingen}
                 />
                 {laatsteBiedadvies && (
                   <div className="rounded-2xl bg-gradient-to-br from-accent to-accent-dark p-4">
