@@ -554,6 +554,27 @@ function leesKamers(html: string): number | null {
   return match ? Number(match[1]) : null;
 }
 
+// VERVOLG (Sjoerd, na de vorige slaapkamers-fix: "nog steeds op onbekend"):
+// de vorige fix zorgde er wel voor dat een match met slaapkamers: null vaker
+// een verse detailpagina-fetch kreeg, maar loste de eigenlijke oorzaak niet
+// op -- leesLokaleVerificatieData las slaapkamers UITSLUITEND uit de
+// iconenrij bovenaan de pagina (dezelfde fragiele, class-naam-afhankelijke
+// match als woonoppervlak vroeger, zie de uitgebreide toelichting bij
+// leesWoonoppervlak hierboven), zonder terugval. Diezelfde dt/dd-rij "Aantal
+// kamers" die leesKamers hierboven al betrouwbaar gebruikt, bevat het getal
+// alleen al: "4 kamers (3 slaapkamers)" (zie de toelichting bovenaan dit
+// bestand bij "Matchingmodel v2"). leesKamers gebruikte tot nu toe alleen
+// het EERSTE getal (totaal) en negeerde het tweede (tussen haakjes) volledig
+// -- dat wordt hieronder alsnog gelezen, als PRIMAIRE bron (dt/dd-tabel is
+// bewezen betrouwbaarder dan de iconenrij, zelfde les als bij
+// leesWoonoppervlak), met de iconenrij als terugval voor het zeldzame geval
+// dat Funda die haakjes-vermelding een keer weglaat.
+function leesSlaapkamersUitAantalKamers(html: string): number | null {
+  const tekst = leesDtWaarde(html, "Aantal kamers");
+  const match = tekst?.match(/\((\d+)\s*slaapkamers?\)/i);
+  return match ? Number(match[1]) : null;
+}
+
 function leesLift(html: string): boolean {
   const tekst = leesDtWaarde(html, "Voorzieningen");
   return tekst ? /\blift\b/i.test(tekst) : false;
@@ -630,6 +651,7 @@ function leesLokaleVerificatieData(html: string, ld: FundaJsonLd): LokaleVerific
       ? "appartement"
       : null;
 
+  const slaapkamersUitTabel = leesSlaapkamersUitAantalKamers(html);
   const slaapMatch = html.match(
     /<span class="md:font-semibold">(\d+)<\/span><span class="ml-1 hidden text-neutral-50 md:inline-block">slaapkamers<\/span>/i
   );
@@ -641,7 +663,7 @@ function leesLokaleVerificatieData(html: string, ld: FundaJsonLd): LokaleVerific
 
   return {
     woningtypeFamilie,
-    slaapkamers: slaapMatch ? Number(slaapMatch[1]) : null,
+    slaapkamers: slaapkamersUitTabel ?? (slaapMatch ? Number(slaapMatch[1]) : null),
     woonoppervlak: leesWoonoppervlak(html),
     energielabel: labelMatch ? labelMatch[1].trim() : null,
     ...leesBuitenruimte(html),
