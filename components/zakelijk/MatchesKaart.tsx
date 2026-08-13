@@ -308,17 +308,17 @@ export default function MatchesKaart({
         // HERONTWERP (klacht "de favorieten zijn erg onduidelijk aangegeven"
         // -- een klein sterretje in de kaarthoek viel te weinig op, en de
         // vorige lichte bg-mist/50-tint week nauwelijks af van de rest van de
-        // pagina): favorieten staan nu in een eigen, warm amberkleurig
-        // bannervlak i.p.v. tussen de gewone matches te blenden -- het
-        // onderscheid "dit zijn de favorieten" / "dit is de rest" zit nu in
-        // de hele sectie, niet meer alleen in een klein icoontje.
-        <div className="mt-3 rounded-2xl bg-gradient-to-br from-[#FAEEDA] to-[#FAC775] p-4">
+        // pagina) -- EN meteen weer getemperd na de klacht "dat gouden blok
+        // is wel heel heftig": geen fel verloop naar donker amber meer, maar
+        // een vlakke, lichte was (bg-sun/10, dezelfde amber-tint die het
+        // dashboard al gebruikt voor "wachten op koper") -- nog steeds een
+        // duidelijk eigen sectie t.o.v. de rest van de pagina, maar rustig
+        // genoeg om niet te schreeuwen.
+        <div className="mt-3 rounded-2xl bg-sun/10 p-4">
           <div className="flex items-center gap-2">
-            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#BA7517]">
-              <StarIcon className="h-3.5 w-3.5 text-white" filled />
-            </span>
-            <p className="text-[13px] font-bold text-[#412402]">Favorieten van deze koper</p>
-            <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-[#412402]">{favorieten.length}</span>
+            <StarIcon className="h-4 w-4 text-sun" filled />
+            <p className="text-[13px] font-bold text-ink">Favorieten van deze koper</p>
+            <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-sun">{favorieten.length}</span>
           </div>
           <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
             {favorieten.map((m, i) => {
