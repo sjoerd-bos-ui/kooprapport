@@ -9,6 +9,7 @@ import DossierVergelijken from "@/components/zakelijk/DossierVergelijken";
 import ZoekopdrachtForm from "@/components/zakelijk/ZoekopdrachtForm";
 import VerwijderDossierKnop from "@/components/zakelijk/VerwijderDossierKnop";
 import MatchesKaart from "@/components/zakelijk/MatchesKaart";
+import FavorietenVergelijken from "@/components/zakelijk/FavorietenVergelijken";
 import KlantdossierTabs, { type KlantdossierTab } from "@/components/zakelijk/KlantdossierTabs";
 import VerkoperspresentatieGenerator from "@/components/zakelijk/VerkoperspresentatieGenerator";
 import RapportKaartActies from "@/components/zakelijk/RapportKaartActies";
@@ -37,6 +38,7 @@ export default async function ZakelijkKlantDetailPagina({ params }: { params: Pr
   if (!dossier || dossier.orgId !== context.organisatie.id) notFound();
 
   const [rapporten, matches] = await Promise.all([listRapportenVoorKlant(id), listMatchenVoorKlant(id)]);
+  const favorieteMatches = matches.filter((m) => m.interessant === true);
   // Nieuwste rapport in dit dossier -- meest relevante bandbreedte om te tonen
   // zolang er geen apart per-dossier "huidig bod"-veld bestaat.
   const laatsteBiedadvies = rapporten[0]
@@ -221,6 +223,11 @@ export default async function ZakelijkKlantDetailPagina({ params }: { params: Pr
             ),
           },
           ...presentatieTab,
+          {
+            key: "favorieten-vergelijken",
+            label: `Favorieten vergelijken${favorieteMatches.length > 0 ? ` (${favorieteMatches.length})` : ""}`,
+            content: <FavorietenVergelijken favorieten={favorieteMatches} rapporten={rapporten} dossierId={dossier.id} />,
+          },
           {
             key: "vergelijken",
             label: "Vergelijken",
