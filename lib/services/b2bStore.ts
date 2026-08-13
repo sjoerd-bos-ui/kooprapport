@@ -549,9 +549,27 @@ export async function verwijderMatch(match: Pick<B2bWoningMatch, "id" | "klantId
 // Funda-detailpagina altijd behoren te bestaan (in tegenstelling tot bv.
 // perceeloppervlak, dat bij appartementen legitiem altijd null is) -- zie
 // bijwerkenMatchVerificatie hierboven voor de bug die dit oplost.
+//
+// UITBREIDING (klacht "slaapkamers onbekend in de favorieten-vergelijking,
+// die zijn niet onbekend, gewoon opzoeken"): slaapkamers staat NIET in
+// voldoetAanHardeEisen() (geen harde eis), dus stond hier eerder niet in de
+// lijst -- maar Funda scrapet dat veld wél altijd apart (zie de losse
+// slaapkamers-regex in leesLokaleVerificatieData, fundaFeed.ts, dezelfde
+// icoonrij als m²/energielabel), dus een `null` hier is een scrape-gat, geen
+// legitiem "bestaat niet" zoals bij perceeloppervlak. Zonder dit hier mee te
+// toetsen bleef zo'n gat voor altijd null staan (nooit een aanleiding voor
+// herverificatie), en dat is precies wat de favorieten-vergelijktabel als
+// "onbekend" liet zien terwijl Funda het gewoon toont.
 function heeftOnvolledigeVerificatie(v: B2bMatchVerificatie | null): boolean {
   if (!v) return true;
-  return v.woonoppervlak == null || v.kamers == null || v.energielabel == null || v.status == null || v.woningtypeFamilie == null;
+  return (
+    v.woonoppervlak == null ||
+    v.kamers == null ||
+    v.slaapkamers == null ||
+    v.energielabel == null ||
+    v.status == null ||
+    v.woningtypeFamilie == null
+  );
 }
 
 // Bovengrens op het aantal her-verificatie-fetches per aanroep: dit voegt
