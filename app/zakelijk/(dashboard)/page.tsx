@@ -15,6 +15,17 @@ export const metadata = { title: "Dashboard · Kooprapport Zakelijk", robots: { 
 
 const ZEVEN_DAGEN_MS = 7 * 24 * 60 * 60 * 1000;
 
+function relatieveTijd(iso: string): string {
+  const ms = Date.now() - new Date(iso).getTime();
+  const minuten = Math.floor(ms / 60000);
+  if (minuten < 60) return `${Math.max(1, minuten)} min. geleden`;
+  const uren = Math.floor(minuten / 60);
+  if (uren < 24) return `${uren} uur geleden`;
+  const dagen = Math.floor(uren / 24);
+  if (dagen === 1) return "gisteren";
+  return `${dagen} dagen geleden`;
+}
+
 export default async function ZakelijkDashboardHome() {
   const context = await getB2bSessieUitCookies();
   if (!context) redirect("/zakelijk/login");
@@ -58,7 +69,7 @@ export default async function ZakelijkDashboardHome() {
 
   const aandachtItems = [
     ...wachtOpKoperbevestiging.map((klant) => ({ soort: "koper" as const, klant })),
-    ...dossiersMetNieuweMatches.map(({ klant, aantal }) => ({ soort: "match" as const, klant, aantal })),
+    ...dossiersMetNieuweMatches.map(({ klant, aantal, laatste }) => ({ soort: "match" as const, klant, aantal, laatste })),
   ].slice(0, 4);
 
   // Werkgebied-ranglijst: gebaseerd op de plaatsen van daadwerkelijk
@@ -154,28 +165,28 @@ export default async function ZakelijkDashboardHome() {
 
       <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="rounded-2xl bg-mist p-4">
-          <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-white text-accent">
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-accent">
             <FileCheckIcon className="h-4 w-4" />
           </span>
           <p className="mt-2.5 font-display text-xl font-extrabold text-accent">{verbruikt}</p>
           <p className="mt-0.5 text-[10.5px] text-accent/70">rapporten deze maand</p>
         </div>
         <div className="rounded-2xl bg-[#EAF3DE] p-4">
-          <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-white text-[#3B6D11]">
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-[#3B6D11]">
             <SparklesIcon className="h-4 w-4" />
           </span>
           <p className="mt-2.5 font-display text-xl font-extrabold text-[#3B6D11]">{nieuweMatchesDezeWeek}</p>
           <p className="mt-0.5 text-[10.5px] text-[#3B6D11]/70">nieuwe matches deze week</p>
         </div>
         <div className="rounded-2xl bg-ink/5 p-4">
-          <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-white text-ink">
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-ink">
             <UsersIcon className="h-4 w-4" />
           </span>
           <p className="mt-2.5 font-display text-xl font-extrabold text-ink">{lopendeDossiers}</p>
           <p className="mt-0.5 text-[10.5px] text-ink/50">actieve klantdossiers</p>
         </div>
         <div className="rounded-2xl bg-sun/10 p-4">
-          <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-white text-sun">
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-sun">
             <MailIcon className="h-4 w-4" />
           </span>
           <p className="mt-2.5 font-display text-xl font-extrabold text-sun">{wachtOpKoperbevestiging.length}</p>
@@ -192,22 +203,34 @@ export default async function ZakelijkDashboardHome() {
         ) : (
           aandachtItems.map((item) =>
             item.soort === "koper" ? (
-              <div key={`koper-${item.klant.id}`} className="flex items-center gap-3 rounded-2xl border-l-[3px] border-sun bg-white py-3 pl-4 pr-3.5 shadow-sm">
-                <MailIcon className="h-4 w-4 flex-shrink-0 text-sun" />
-                <p className="flex-1 text-[12.5px] font-semibold text-ink">
-                  Koperbevestiging nog niet ontvangen — dossier {item.klant.klantnaam}
-                </p>
-                <Link href={`/zakelijk/klanten/${item.klant.id}`} className="flex-shrink-0 rounded-lg bg-mist px-3 py-1.5 text-[11px] font-semibold text-accent hover:bg-accent hover:text-white">
+              <div key={`koper-${item.klant.id}`} className="flex items-start gap-3 rounded-2xl border-l-[3px] border-sun bg-white py-3 pl-4 pr-3.5 shadow-sm">
+                <MailIcon className="mt-0.5 h-4 w-4 flex-shrink-0 text-sun" />
+                <div className="flex-1">
+                  <p className="text-[12.5px] font-semibold text-ink">
+                    Koperbevestiging nog niet ontvangen — dossier {item.klant.klantnaam}
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-ink/40">Wacht nog op een reactie van de koper</p>
+                </div>
+                <Link
+                  href={`/zakelijk/klanten/${item.klant.id}`}
+                  className="mt-0.5 flex-shrink-0 rounded-lg bg-mist px-3 py-1.5 text-[11px] font-semibold text-accent hover:bg-accent hover:text-white"
+                >
                   Openen
                 </Link>
               </div>
             ) : (
-              <div key={`match-${item.klant.id}`} className="flex items-center gap-3 rounded-2xl border-l-[3px] border-[#3B6D11] bg-white py-3 pl-4 pr-3.5 shadow-sm">
-                <SparklesIcon className="h-4 w-4 flex-shrink-0 text-[#3B6D11]" />
-                <p className="flex-1 text-[12.5px] font-semibold text-ink">
-                  {item.aantal} nieuwe {item.aantal === 1 ? "match" : "matches"} voor dossier {item.klant.klantnaam}
-                </p>
-                <Link href={`/zakelijk/klanten/${item.klant.id}`} className="flex-shrink-0 rounded-lg bg-mist px-3 py-1.5 text-[11px] font-semibold text-accent hover:bg-accent hover:text-white">
+              <div key={`match-${item.klant.id}`} className="flex items-start gap-3 rounded-2xl border-l-[3px] border-[#3B6D11] bg-white py-3 pl-4 pr-3.5 shadow-sm">
+                <SparklesIcon className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#3B6D11]" />
+                <div className="flex-1">
+                  <p className="text-[12.5px] font-semibold text-ink">
+                    {item.aantal} nieuwe {item.aantal === 1 ? "match" : "matches"} voor dossier {item.klant.klantnaam}
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-ink/40">Laatste match: {relatieveTijd(item.laatste)}</p>
+                </div>
+                <Link
+                  href={`/zakelijk/klanten/${item.klant.id}`}
+                  className="mt-0.5 flex-shrink-0 rounded-lg bg-mist px-3 py-1.5 text-[11px] font-semibold text-accent hover:bg-accent hover:text-white"
+                >
                   Bekijken
                 </Link>
               </div>
