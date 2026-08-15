@@ -10,6 +10,7 @@ import {
 import { haalFundaMatches } from "@/lib/data-sources/fundaFeed";
 import { voldoetAanHardeEisen } from "@/lib/services/matchScore";
 import { stuurNieuweMatchesEmail, stuurNieuweMatchesKoperEmail } from "@/lib/services/email";
+import { stuurNieuweMatchesKoperWhatsapp } from "@/lib/services/whatsapp";
 import { APP_BASE_URL } from "@/lib/config/payment";
 import { MAX_ZICHTBARE_MATCHEN } from "@/types/b2b";
 import type { B2bWoningMatch } from "@/types/b2b";
@@ -84,6 +85,12 @@ export async function GET(req: NextRequest) {
   let mailsMislukt = 0;
   let mailsKoperVerstuurd = 0;
   let mailsKoperMislukt = 0;
+  // WhatsApp-alerts ("eerste zijn", zie het Cowork-gesprek "de grootste
+  // functionaliteiten waar we echt de markt mee opschudden"): aparte tellers,
+  // los van de e-mailtellers hierboven -- een dossier kan beide, één van
+  // beide, of geen van beide kanalen aan hebben staan.
+  let whatsappVerstuurd = 0;
+  let whatsappMislukt = 0;
   // BUGFIX: telt hoe vaak de zoekaanvraag zelf mislukte (netwerk/timeout,
   // zie fundaFeed.ts) i.p.v. gewoon 0 nieuwe matches op te leveren -- zichtbaar
   // in de cron-response, zodat dit niet verborgen blijft achter "nieuweMatches: 0".
@@ -206,6 +213,26 @@ export async function GET(req: NextRequest) {
           if (resultaat.ok) mailsKoperVerstuurd++;
           else mailsKoperMislukt++;
         }
+
+        // WhatsApp-alerts (zie types/b2b.ts: whatsappBijNieuweMatches/
+        // telefoonKoperBevestigd) -- zelfde dubbele-opt-in-voorwaarde als
+        // hierboven bij de koper-mail, los kanaal met eigen aan/uit-toggle:
+        // een dossier kan de koper via mail EN WhatsApp informeren, via maar
+        // één van de twee, of via geen van beide.
+        if (
+          dossier.zoekopdracht?.whatsappBijNieuweMatches &&
+          dossier.zoekopdracht.telefoonKoper &&
+          dossier.zoekopdracht.telefoonKoperBevestigd
+        ) {
+          const resultaat = await stuurNieuweMatchesKoperWhatsapp({
+            naar: dossier.zoekopdracht.telefoonKoper,
+            klantnaam: dossier.klantnaam,
+            organisatieNaam: org.branding?.weergaveNaam ?? org.naam,
+            matches: nieuwOpgeslagen.map((item) => ({ titel: item.titel, url: item.url, prijsLabel: item.prijsLabel })),
+          });
+          if (resultaat.ok) whatsappVerstuurd++;
+          else whatsappMislukt++;
+        }
       } catch (err) {
         console.error(`[cron/matches-controleren] mislukt voor dossier ${dossier.id}:`, err);
       }
@@ -221,6 +248,8 @@ export async function GET(req: NextRequest) {
     mailsMislukt,
     mailsKoperVerstuurd,
     mailsKoperMislukt,
+    whatsappVerstuurd,
+    whatsappMislukt,
     zoekFouten,
   });
 }

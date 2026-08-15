@@ -338,6 +338,9 @@ export async function maakOfVernieuwKoperVoorkeurenToken(dossierId: string): Pro
     emailKoper: null,
     mailBijNieuweMatches: false,
     emailKoperBevestigd: false,
+    telefoonKoper: null,
+    whatsappBijNieuweMatches: false,
+    telefoonKoperBevestigd: false,
   };
   await kvSet(koperVoorkeurenTokenKey(token), dossierId);
   await zetKlantdossierZoekopdracht(dossierId, { ...basisZoekopdracht, koperVoorkeurenToken: token });
@@ -414,6 +417,54 @@ export async function bevestigKoperMail(token: string): Promise<B2bKlantdossier 
   if ((dossier.zoekopdracht.emailKoper ?? "").trim().toLowerCase() !== pending.email) return null;
 
   return zetKlantdossierZoekopdracht(pending.dossierId, { ...dossier.zoekopdracht, emailKoperBevestigd: true });
+}
+
+// --- Dubbele opt-in koper-WhatsApp (zie types/b2b.ts: telefoonKoper/
+// whatsappBijNieuweMatches/telefoonKoperBevestigd, en het Cowork-gesprek "de
+// grootste functionaliteiten waar we echt de markt mee opschudden") ----------
+// Exact hetzelfde patroon als de dubbele-opt-in koper-e-mail hierboven, met
+// een telefoonnummer (E.164) i.p.v. een e-mailadres.
+
+const KOPER_WHATSAPP_PENDING_TTL_SECONDEN = 7 * 24 * 60 * 60; // 7 dagen geldig, zelfde als koper-mail hierboven
+
+function koperWhatsappPendingKey(token: string): string {
+  return `koper-whatsapp-pending:${token}`;
+}
+
+interface KoperWhatsappPending {
+  dossierId: string;
+  telefoon: string; // al genormaliseerd naar E.164, zie lib/services/whatsapp.ts
+}
+
+// Stap 1: aanvragen. Geeft het token terug zodat de aanroepende route er een
+// bevestigingsbericht (stuurKoperWhatsappBevestiging) mee kan versturen.
+export async function vraagKoperWhatsappBevestigingAan(dossierId: string, telefoon: string): Promise<string> {
+  const token = randomBytes(24).toString("base64url");
+  const pending: KoperWhatsappPending = { dossierId, telefoon };
+  await kvSet(koperWhatsappPendingKey(token), JSON.stringify(pending), KOPER_WHATSAPP_PENDING_TTL_SECONDEN);
+  return token;
+}
+
+// Stap 2: bevestiging via de link in het WhatsApp-bericht (zie app/api/
+// koper-whatsapp/bevestigen/route.ts). Zelfde match-check als bevestigKoperMail:
+// zet telefoonKoperBevestigd pas op `true` als het huidige telefoonKoper nog
+// exact overeenkomt met het nummer waar het bevestigingsbericht destijds
+// naartoe ging.
+export async function bevestigKoperWhatsapp(token: string): Promise<B2bKlantdossier | null> {
+  const raw = await kvGet(koperWhatsappPendingKey(token));
+  if (!raw) return null;
+  let pending: KoperWhatsappPending;
+  try {
+    pending = JSON.parse(raw) as KoperWhatsappPending;
+  } catch {
+    return null;
+  }
+
+  const dossier = await getKlantdossier(pending.dossierId);
+  if (!dossier || !dossier.zoekopdracht) return null;
+  if ((dossier.zoekopdracht.telefoonKoper ?? "") !== pending.telefoon) return null;
+
+  return zetKlantdossierZoekopdracht(pending.dossierId, { ...dossier.zoekopdracht, telefoonKoperBevestigd: true });
 }
 
 // Verwijdert een klantdossier (#3). Rapportdata wordt NOOIT weggegooid (dat

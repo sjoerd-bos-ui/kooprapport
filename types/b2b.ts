@@ -169,6 +169,27 @@ export interface B2bZoekopdracht {
   // automatisch weer `false` zodra emailKoper verandert (nieuwe bevestiging
   // nodig voor een nieuw adres).
   emailKoperBevestigd: boolean;
+
+  // WHATSAPP-ALERTS ("eerste zijn", zie het Cowork-gesprek "de grootste
+  // functionaliteiten waar we echt de markt mee opschudden"): zelfde
+  // drieledige patroon als emailKoper/mailBijNieuweMatches/
+  // emailKoperBevestigd hierboven -- telefoonnummer los van koperVoorkeuren
+  // (contactgegeven, geen zoekcriterium), een eigen aan/uit-toggle, en
+  // dubbele opt-in vóór er daadwerkelijk berichten uitgaan (zie
+  // lib/services/b2bStore.ts: vraagKoperWhatsappBevestigingAan/
+  // bevestigKoperWhatsapp). Altijd genormaliseerd naar E.164 (bv.
+  // "+31612345678") vóórdat het hier wordt opgeslagen -- zie
+  // lib/services/whatsapp.ts: naarE164Telefoonnummer.
+  telefoonKoper: string | null;
+  // Analoog aan mailBijNieuweMatches: bewust een apart aan/uit-veld, niet
+  // "stuur zodra telefoonKoper gevuld is" -- de makelaar kan een nummer
+  // vastleggen zonder dat er meteen een bericht uitgaat.
+  whatsappBijNieuweMatches: boolean;
+  // Zelfde dubbele-opt-in-principe als emailKoperBevestigd: de cron
+  // (matches-controleren) stuurt nooit WhatsApp-berichten bij `false`, ook
+  // niet als whatsappBijNieuweMatches al aan staat. Wordt automatisch weer
+  // `false` zodra telefoonKoper verandert.
+  telefoonKoperBevestigd: boolean;
 }
 
 export interface B2bKlantdossier {

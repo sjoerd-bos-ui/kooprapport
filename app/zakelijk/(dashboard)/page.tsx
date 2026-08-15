@@ -63,8 +63,14 @@ export default async function ZakelijkDashboardHome() {
   }
   dossiersMetNieuweMatches.sort((a, b) => b.laatste.localeCompare(a.laatste));
 
+  // WhatsApp-alerts (zie het Cowork-gesprek "de grootste functionaliteiten
+  // waar we echt de markt mee opschudden"): dezelfde "wacht op koper"-situatie
+  // als bij e-mail hierboven, nu ook voor het WhatsApp-kanaal -- een dossier
+  // telt hier mee zodra ÉÉN van beide kanalen nog op bevestiging wacht.
   const wachtOpKoperbevestiging = lopendeKlanten.filter(
-    (k) => k.zoekopdracht?.emailKoper && k.zoekopdracht.mailBijNieuweMatches && !k.zoekopdracht.emailKoperBevestigd,
+    (k) =>
+      (k.zoekopdracht?.emailKoper && k.zoekopdracht.mailBijNieuweMatches && !k.zoekopdracht.emailKoperBevestigd) ||
+      (k.zoekopdracht?.telefoonKoper && k.zoekopdracht.whatsappBijNieuweMatches && !k.zoekopdracht.telefoonKoperBevestigd),
   );
 
   const aandachtItems = [

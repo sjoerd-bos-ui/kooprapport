@@ -1,6 +1,53 @@
 # Voortgang Kooprapport Zakelijk — overdracht naar nieuwe chat
 
-## -6. Nieuwste sessie: matchingmodel-v3 — twee fasen i.p.v. één optelsom
+## -7. Nieuwste sessie: WhatsApp-alerts ("eerste zijn")
+
+Sjoerd vroeg om de 5 grootste, markt-opschuddende functionaliteiten voor
+Zakelijk; koos optie 1: realtime eerste-reactie-alerts. Twee expliciete
+keuzes via AskUserQuestion: kanaal = WhatsApp (i.p.v. SMS), frequentie =
+elke 15 minuten (i.p.v. 5 min of elk uur).
+
+**Gebouwd, zelfde dubbele-opt-in-patroon als de bestaande koper-e-mail:**
+
+- `types/b2b.ts`: `B2bZoekopdracht` uitgebreid met `telefoonKoper`,
+  `whatsappBijNieuweMatches`, `telefoonKoperBevestigd`.
+- `lib/services/whatsapp.ts` (nieuw): Twilio WhatsApp-API via kale fetch
+  (geen SDK, zelfde stijl als email.ts/Resend). `naarE164Telefoonnummer()`
+  normaliseert NL-notaties. **Belangrijke beperking (WhatsApp Business
+  Policy, geen technische keuze van ons)**: business-initiated berichten
+  buiten een 24-uurs sessievenster moeten via een door Meta goedgekeurd
+  sjabloon (Twilio Content API, `TWILIO_CONTENT_SID_*`) — Sjoerd moet dit
+  ÉÉNMALIG zelf aanmaken/goedkeuren in de Twilio Console, kan niet vanuit
+  deze codebase. Zonder sjabloon-SID valt het terug op vrije tekst (werkt
+  alleen in de Sandbox of binnen het sessievenster).
+- `lib/services/b2bStore.ts`: `vraagKoperWhatsappBevestigingAan`/
+  `bevestigKoperWhatsapp`, exact analoog aan de e-mail-tegenhangers.
+- Nieuwe routes: `api/zakelijk/klanten/[id]/koper-whatsapp-bevestiging`
+  (opnieuw versturen), `api/koper-whatsapp/bevestigen` (klik-link),
+  `koper-whatsapp-bevestigd` (landingspagina).
+- `api/zakelijk/klanten/[id]/route.ts` PATCH: telefoonnummer opslaan/
+  valideren, opt-in-reset bij wijziging, bevestigingsbericht versturen.
+- `ZoekopdrachtForm.tsx`: telefoonveld + WhatsApp-toggle naast het
+  bestaande e-mailblok, zelfde bevestigd/wacht-op-bevestiging-badges.
+- `cron/matches-controleren/route.ts`: verstuurt WhatsApp naast (niet i.p.v.)
+  de koper-mail, eigen tellers in de response.
+- `vercel.json`: matches-controleren van 1x/dag naar `*/15 * * * *`.
+  **Vereist een Vercel Pro-abonnement** — Hobby staat alleen dagelijkse
+  cronjobs toe. Dit verhoogt ook de Funda-proxykosten (Scrape.do) fors
+  t.o.v. de oude dagelijkse frequentie — bewust akkoord via
+  AskUserQuestion.
+- Dashboard "wachten op koper"-tegel telt nu ook onbevestigde
+  WhatsApp-nummers mee (niet alleen e-mail).
+
+**Nog te doen door Sjoerd zelf, buiten deze codebase:**
+1. Twilio-account + WhatsApp-afzender (Sandbox om te testen, eigen
+   goedgekeurd nummer voor productie), env vars invullen (zie
+   `.env.example`).
+2. Content-templates aanmaken/laten goedkeuren in Twilio Console voor
+   productiegebruik buiten het sessievenster.
+3. Vercel-abonnement controleren/upgraden naar Pro voor de 15-minuten-cron.
+
+## -6. Vorige sessie: matchingmodel-v3 — twee fasen i.p.v. één optelsom
 
 Sjoerd, na testen van v2: "Ik twijfel nu over ons filtersysteem met punten;
 we scoren matches, maar een match kan 90 punten krijgen die in een heel

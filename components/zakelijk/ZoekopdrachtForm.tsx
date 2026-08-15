@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import type { B2bZoekopdracht, B2bKoperVoorkeuren } from "@/types/b2b";
 import { B2B_WONINGTYPE_VOORKEUREN } from "@/types/b2b";
 import VoorkeurenVragenlijst from "@/components/zakelijk/VoorkeurenVragenlijst";
-import { MapPinIcon, CheckIcon, BoltIcon, MailIcon } from "@/components/report/icons";
+import { MapPinIcon, CheckIcon, BoltIcon, MailIcon, ChatIcon } from "@/components/report/icons";
 
 function labelVoor<T extends string>(opties: { waarde: T; label: string }[], waarde: T): string {
   return opties.find((o) => o.waarde === waarde)?.label ?? waarde;
@@ -61,6 +61,13 @@ export default function ZoekopdrachtForm({ dossierId, huidig }: { dossierId: str
   const [mailBezig, setMailBezig] = useState(false);
   const [mailMelding, setMailMelding] = useState<string | null>(null);
   const [bevestigingBezig, setBevestigingBezig] = useState(false);
+  // WhatsApp-alerts ("eerste zijn", zie het Cowork-gesprek "de grootste
+  // functionaliteiten waar we echt de markt mee opschudden") -- exact
+  // dezelfde lokale-invoer-tot-opslaan-opzet als het e-mailveld hierboven.
+  const [telefoonKoperInput, setTelefoonKoperInput] = useState(huidig?.telefoonKoper ?? "");
+  const [whatsappBezig, setWhatsappBezig] = useState(false);
+  const [whatsappMelding, setWhatsappMelding] = useState<string | null>(null);
+  const [whatsappBevestigingBezig, setWhatsappBevestigingBezig] = useState(false);
 
   const koperVoorkeuren = huidig?.koperVoorkeuren ?? null;
   const matchenActief = huidig?.matchenActief ?? false;
@@ -70,6 +77,9 @@ export default function ZoekopdrachtForm({ dossierId, huidig }: { dossierId: str
   // zelf op de link in de bevestigingsmail klikken vóór er daadwerkelijk
   // mailmeldingen uitgaan, ook als de toggle hieronder al "aan" staat.
   const emailKoperBevestigd = huidig?.emailKoperBevestigd ?? false;
+  const telefoonKoperOpgeslagen = huidig?.telefoonKoper ?? null;
+  const whatsappBijNieuweMatches = huidig?.whatsappBijNieuweMatches ?? false;
+  const telefoonKoperBevestigd = huidig?.telefoonKoperBevestigd ?? false;
 
   async function kopieerVoorkeurenLink() {
     setLinkBezig(true);
@@ -169,6 +179,61 @@ export default function ZoekopdrachtForm({ dossierId, huidig }: { dossierId: str
       setMailMelding("Versturen is niet gelukt.");
     } finally {
       setBevestigingBezig(false);
+    }
+  }
+
+  // WhatsApp-tegenhangers van opslaanKoperMail/opslaanEmailKoper/
+  // toggleMailBijNieuweMatches/opnieuwBevestigingVersturen hierboven -- zelfde
+  // reden voor het altijd expliciet meesturen van matchenActief/koperVoorkeuren.
+  async function opslaanKoperWhatsapp(telefoon: string, whatsappAan: boolean, telefoonIsGewijzigd: boolean) {
+    setWhatsappBezig(true);
+    setWhatsappMelding(null);
+    try {
+      const res = await fetch(`/api/zakelijk/klanten/${dossierId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          zoekopdracht: { matchenActief, koperVoorkeuren, telefoonKoper: telefoon, whatsappBijNieuweMatches: whatsappAan },
+        }),
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        setWhatsappMelding(body.error ?? "Opslaan is niet gelukt.");
+        return;
+      }
+      setWhatsappMelding(
+        telefoonIsGewijzigd && telefoon ? "Opgeslagen -- we hebben een bevestigingsbericht naar de koper gestuurd." : "Opgeslagen."
+      );
+      router.refresh();
+    } catch {
+      setWhatsappMelding("Opslaan is niet gelukt.");
+    } finally {
+      setWhatsappBezig(false);
+    }
+  }
+
+  function opslaanTelefoonKoper() {
+    const telefoon = telefoonKoperInput.trim();
+    const gewijzigd = telefoon !== (telefoonKoperOpgeslagen ?? "");
+    opslaanKoperWhatsapp(telefoon, telefoon ? whatsappBijNieuweMatches : false, gewijzigd);
+  }
+
+  function toggleWhatsappBijNieuweMatches() {
+    if (!telefoonKoperOpgeslagen) return;
+    opslaanKoperWhatsapp(telefoonKoperOpgeslagen, !whatsappBijNieuweMatches, false);
+  }
+
+  async function opnieuwWhatsappBevestigingVersturen() {
+    setWhatsappBevestigingBezig(true);
+    setWhatsappMelding(null);
+    try {
+      const res = await fetch(`/api/zakelijk/klanten/${dossierId}/koper-whatsapp-bevestiging`, { method: "POST" });
+      const body = await res.json();
+      setWhatsappMelding(res.ok ? "Bevestigingsbericht opnieuw verstuurd." : body.error ?? "Versturen is niet gelukt.");
+    } catch {
+      setWhatsappMelding("Versturen is niet gelukt.");
+    } finally {
+      setWhatsappBevestigingBezig(false);
     }
   }
 
@@ -327,6 +392,59 @@ export default function ZoekopdrachtForm({ dossierId, huidig }: { dossierId: str
               </span>
             ))}
           {mailMelding && <p className="w-full text-[10.5px] font-semibold text-accent">{mailMelding}</p>}
+        </div>
+
+        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-ink/[0.06] pt-3">
+          <ChatIcon className="h-3.5 w-3.5 shrink-0 text-ink/30" />
+          <input
+            type="tel"
+            value={telefoonKoperInput}
+            onChange={(e) => setTelefoonKoperInput(e.target.value)}
+            placeholder="telefoonnummer van de koper (WhatsApp)"
+            className="min-w-[200px] flex-1 rounded-lg border border-ink/15 px-2.5 py-1.5 text-[11.5px] text-ink focus:border-accent focus:outline-none"
+          />
+          <button
+            type="button"
+            onClick={opslaanTelefoonKoper}
+            disabled={whatsappBezig || telefoonKoperInput.trim() === (telefoonKoperOpgeslagen ?? "")}
+            className="rounded-lg border border-ink/15 px-3 py-1.5 text-[10.5px] font-semibold text-ink/60 hover:bg-mist disabled:opacity-50"
+          >
+            {whatsappBezig ? "Bezig…" : "Opslaan"}
+          </button>
+          <button
+            type="button"
+            onClick={toggleWhatsappBijNieuweMatches}
+            disabled={whatsappBezig || !telefoonKoperOpgeslagen}
+            title={!telefoonKoperOpgeslagen ? "Vul en bewaar eerst een telefoonnummer" : undefined}
+            className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors disabled:opacity-50 ${
+              whatsappBijNieuweMatches ? "bg-[#EAF3DE] text-[#3B6D11]" : "bg-ink/5 text-ink/40"
+            }`}
+          >
+            <ChatIcon className="h-3 w-3" />
+            WhatsApp bij nieuwe matches {whatsappBijNieuweMatches ? "aan" : "uit"}
+          </button>
+          {/* Dubbele opt-in-status (zie types/b2b.ts: telefoonKoperBevestigd)
+              -- zelfde opzet als de e-mailbevestiging hierboven. */}
+          {telefoonKoperOpgeslagen &&
+            (telefoonKoperBevestigd ? (
+              <span className="flex items-center gap-1 rounded-full bg-[#EAF3DE] px-2.5 py-1 text-[11px] font-semibold text-[#3B6D11]">
+                <CheckIcon className="h-3 w-3" />
+                Bevestigd door koper
+              </span>
+            ) : (
+              <span className="flex items-center gap-2 rounded-full bg-[#FDF3E0] px-2.5 py-1 text-[11px] font-semibold text-[#8A5A00]">
+                Wacht op bevestiging van de koper
+                <button
+                  type="button"
+                  onClick={opnieuwWhatsappBevestigingVersturen}
+                  disabled={whatsappBevestigingBezig || whatsappBezig}
+                  className="font-semibold text-accent underline decoration-dotted hover:no-underline disabled:opacity-50"
+                >
+                  {whatsappBevestigingBezig ? "Bezig…" : "opnieuw versturen"}
+                </button>
+              </span>
+            ))}
+          {whatsappMelding && <p className="w-full text-[10.5px] font-semibold text-accent">{whatsappMelding}</p>}
         </div>
       </div>
     );

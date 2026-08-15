@@ -6,9 +6,11 @@ import {
   zetKlantdossierZoekopdracht,
   verwijderKlantdossier,
   vraagKoperMailBevestigingAan,
+  vraagKoperWhatsappBevestigingAan,
 } from "@/lib/services/b2bStore";
 import { valideerKoperVoorkeuren } from "@/lib/services/koperVoorkeurenValidatie";
 import { isGeldigEmailadres, stuurKoperMailBevestigingsEmail } from "@/lib/services/email";
+import { naarE164Telefoonnummer, stuurKoperWhatsappBevestiging } from "@/lib/services/whatsapp";
 import { APP_BASE_URL } from "@/lib/config/payment";
 import type { B2bDossierStatus, B2bZoekopdracht } from "@/types/b2b";
 
@@ -109,6 +111,34 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const emailWerkelijkGewijzigd = "emailKoper" in z && (emailKoper?.trim().toLowerCase() ?? "") !== emailKoperWasVoor;
     const emailKoperBevestigd = emailWerkelijkGewijzigd ? false : dossier.zoekopdracht?.emailKoperBevestigd ?? false;
 
+    // WhatsApp-alerts (zie types/b2b.ts: telefoonKoper/whatsappBijNieuweMatches/
+    // telefoonKoperBevestigd) -- exact hetzelfde "ontbreekt in body =
+    // ongewijzigd laten"-patroon en dezelfde dubbele-opt-in-logica als
+    // emailKoper hierboven, met naarE164Telefoonnummer i.p.v. isGeldigEmailadres
+    // voor de validatie/normalisatie.
+    const telefoonKoperWasVoor = dossier.zoekopdracht?.telefoonKoper ?? "";
+    let telefoonKoper = dossier.zoekopdracht?.telefoonKoper ?? null;
+    if ("telefoonKoper" in z) {
+      const ruw = z.telefoonKoper?.trim() || null;
+      if (ruw) {
+        const genormaliseerd = naarE164Telefoonnummer(ruw);
+        if (!genormaliseerd) {
+          return NextResponse.json({ error: "Vul een geldig telefoonnummer in (bv. 06 12345678)." }, { status: 400 });
+        }
+        telefoonKoper = genormaliseerd;
+      } else {
+        telefoonKoper = null;
+      }
+    }
+
+    const whatsappBijNieuweMatches = Boolean(z.whatsappBijNieuweMatches);
+    if (whatsappBijNieuweMatches && !telefoonKoper) {
+      return NextResponse.json({ error: "Vul eerst een telefoonnummer van de koper in om WhatsApp-meldingen aan te zetten." }, { status: 400 });
+    }
+
+    const telefoonWerkelijkGewijzigd = "telefoonKoper" in z && (telefoonKoper ?? "") !== telefoonKoperWasVoor;
+    const telefoonKoperBevestigd = telefoonWerkelijkGewijzigd ? false : dossier.zoekopdracht?.telefoonKoperBevestigd ?? false;
+
     const bijgewerkt = await zetKlantdossierZoekopdracht(id, {
       matchenActief,
       koperVoorkeuren,
@@ -116,6 +146,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       emailKoper,
       mailBijNieuweMatches,
       emailKoperBevestigd,
+      telefoonKoper,
+      whatsappBijNieuweMatches,
+      telefoonKoperBevestigd,
     });
 
     if (emailWerkelijkGewijzigd && emailKoper) {
@@ -127,6 +160,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       // kan de bevestigingsmail hierna alsnog opnieuw laten versturen.
       await stuurKoperMailBevestigingsEmail({
         naar: emailKoper,
+        klantnaam: dossier.klantnaam,
+        organisatieNaam: context.organisatie.branding?.weergaveNaam ?? context.organisatie.naam,
+        bevestigUrl,
+      });
+    }
+
+    if (telefoonWerkelijkGewijzigd && telefoonKoper) {
+      const token = await vraagKoperWhatsappBevestigingAan(id, telefoonKoper);
+      const bevestigUrl = new URL(`/api/koper-whatsapp/bevestigen?token=${token}`, APP_BASE_URL).toString();
+      await stuurKoperWhatsappBevestiging({
+        naar: telefoonKoper,
         klantnaam: dossier.klantnaam,
         organisatieNaam: context.organisatie.branding?.weergaveNaam ?? context.organisatie.naam,
         bevestigUrl,
