@@ -1,6 +1,60 @@
 # Voortgang Kooprapport Zakelijk — overdracht naar nieuwe chat
 
-## -7. Nieuwste sessie: WhatsApp-alerts ("eerste zijn")
+## -8. Nieuwste sessie: B2C-accountmodel ("Mijn rapporten")
+
+Sjoerd: "laten we eerst een dashboard bouwen voor b2c... visualize eerst
+goed." Na een visualize-ronde (eerst magic-link-only geschiedenisoverzicht,
+toen een Rabo "Bepaal je Bod"-screenshot als concreet voorbeeld: "Nee ik wil
+na het kopen direct zo iets. We gaan dus wel naar een account model") volgde
+een expliciete afweging in de chat (magic link vs. wachtwoord vs. beide) —
+Sjoerd koos magic link, "accountmoment" bleef "geen voorkeur" dus het
+aanbevolen automatisch-bij-aankoop-moment is aangehouden.
+
+**Uitgangspositie (onderzocht vóór het bouwen):** er bestond helemaal geen
+consumentenaccount — alles puur anoniem/adres-gebonden, een `Bestelling`
+had geen e-mailveld en verviel na 24 uur.
+
+**Gebouwd:**
+
+- `types/report.ts`/`lib/payments/bestellingen.ts`: `Bestelling` uitgebreid
+  met `address` (volledig `AddressMeta`, nodig om vanuit het dashboard direct
+  naar het juiste rapport te linken via `buildReportHref`), `email`,
+  `favoriet`, `gearchiveerd`. TTL wordt automatisch 5 jaar zodra een
+  bestelling aan een e-mailadres gekoppeld is (was altijd 24 uur).
+  `koppelEmailAanBestelling`/`listBestellingenVoorEmail` (sorted-set-index,
+  zelfde patroon als b2bStore.ts) / `zetFavoriet`/`zetGearchiveerd`.
+- `lib/services/consumentAuth.ts` (nieuw): zelfde eenvoudige
+  random-token-in-KV-sessiepatroon als `b2bAuth.ts`, met een TWEEDE
+  tokentype ervoor (kortlevend, eenmalig inlogtoken/magic link — een
+  consument heeft immers geen wachtwoord). Cookie `consument_session`, 365
+  dagen.
+- `stuurAccountInlogEmail` in `email.ts`.
+- Routes: `api/account/koppel-bestelling` (nieuw account bij eerste keer
+  "Bewaar in account" op een ontgrendeld rapport), `api/account/inlog-link`
+  (terugkerend, altijd hetzelfde succesbericht — geen adres-enumeratie),
+  `api/account/bevestigen` (verzilvert token, zet sessiecookie),
+  `api/account/uitloggen`, `api/account/rapporten/[id]` PATCH
+  (favoriet/gearchiveerd, met ownership-check tegen de sessie-e-mail).
+- `app/account/inloggen` + `app/account` (dashboard, naar het
+  goedgekeurde Rabo-geïnspireerde ontwerp: adres-toevoegen bovenaan,
+  tabbladen Recent/Favoriet/Gearchiveerd, kaartgrid met "+"-kaart).
+  `noindex` — persoonlijk overzicht, geen publieke content.
+  `AccountDashboard.tsx`/`AccountInlogForm.tsx` nieuw.
+- `ReportView.tsx`: nieuwe, LOSSE "Bewaar in account"-knop/formulier naast
+  (niet in) de bestaande "Verstuur naar mail" — die laatste belooft
+  expliciet het adres niet te bewaren, dus bewust twee gescheiden acties met
+  eigen state/copy i.p.v. hergebruik.
+- `api/betaling/aanmaken`: slaat nu het volledige adres op de bestelling op,
+  en koppelt 'm automatisch aan een al ingelogde koper (geen nieuwe
+  e-mailinvoer nodig bij een 2e/3e aankoop).
+- "Mijn rapporten"-link toegevoegd aan SiteHeader + MobileNavMenu.
+- Nieuw `SearchIcon` toegevoegd aan `components/report/icons.tsx` (ontbrak).
+
+**Bewust simpel gehouden (v1):** geen "waarde-indicatie" op de dashboardkaart
+(zou een nieuwe Altum-aanroep per kaart vereisen) — toont in plaats daarvan
+het betaalde bedrag + datum, wat al beschikbaar is zonder extra kosten.
+
+## -7. WhatsApp-alerts ("eerste zijn")
 
 Sjoerd vroeg om de 5 grootste, markt-opschuddende functionaliteiten voor
 Zakelijk; koos optie 1: realtime eerste-reactie-alerts. Twee expliciete

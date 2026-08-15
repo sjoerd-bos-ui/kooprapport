@@ -847,6 +847,110 @@ export async function stuurTierWijzigingsverzoekEmail(input: {
   return { ok: true };
 }
 
+export interface StuurAccountInlogEmailInput {
+  naar: string;
+  inlogUrl: string;
+}
+
+// -----------------------------------------------------------------------------
+// Magic-link-inlogmail voor het B2C-"Mijn rapporten"-dashboard (zie het
+// Cowork-gesprek "zelfstandig koperportaal" / "b2c-dashboard",
+// lib/services/consumentAuth.ts). Verstuurd vanuit twee plekken: bij het
+// eerste keer koppelen van een e-mailadres aan een bestelling (nieuw
+// account, zie app/api/account/koppel-bestelling/route.ts) én bij een latere
+// terugkerende inlogaanvraag (app/api/account/inlog-link/route.ts) -- zelfde
+// tekst voor beide, het verschil zit 'm alleen in wélke bestellingen er al
+// aan dat adres hangen op het moment dat de koper de link volgt.
+// -----------------------------------------------------------------------------
+export async function stuurAccountInlogEmail(input: StuurAccountInlogEmailInput): Promise<StuurRapportEmailResultaat> {
+  const apiKey = process.env.RESEND_API_KEY;
+  const van = process.env.RESEND_FROM_EMAIL;
+  if (!apiKey || !van) {
+    return { ok: false, error: "E-mailverzending is nog niet geconfigureerd." };
+  }
+
+  const link = escapeHtml(input.inlogUrl);
+  const logoUrl = `${APP_BASE_URL}/logo-email.png`;
+
+  const html = `<!DOCTYPE html>
+<html lang="nl">
+  <body style="margin:0;padding:0;background-color:#F5F5FA;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F5F5FA;padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background-color:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #EEF0FF;">
+            <tr>
+              <td style="background-color:#1F1F2E;padding:22px 32px;">
+                <table role="presentation" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td style="padding-right:10px;">
+                      <img src="${logoUrl}" width="32" height="32" alt="" style="display:block;border-radius:9px;" />
+                    </td>
+                    <td>
+                      <span style="font-size:18px;font-weight:700;color:#ffffff;letter-spacing:-0.01em;">Kooprapport</span>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:32px;">
+                <p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#4F46E5;">
+                  Inloglink
+                </p>
+                <p style="margin:0 0 18px;font-size:20px;line-height:1.4;font-weight:700;color:#1F1F2E;">
+                  Bekijk je rapporten
+                </p>
+                <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#1F1F2E;">
+                  Klik op onderstaande knop om in te loggen bij "Mijn rapporten" — al je gekochte kooprapporten staan
+                  daar bij elkaar. Deze link is 15 minuten geldig en kan maar één keer gebruikt worden.
+                </p>
+                <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;">
+                  <tr>
+                    <td align="center" style="border-radius:10px;background-color:#4F46E5;">
+                      <a href="${link}" style="display:inline-block;padding:14px 28px;font-size:14px;font-weight:700;color:#ffffff;text-decoration:none;">
+                        Inloggen bij Mijn rapporten
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin:24px 0 0;font-size:13px;line-height:1.6;color:#6B7280;">
+                  Niet zelf aangevraagd? Dan kunt u deze e-mail gewoon negeren, er verandert dan niets.
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:20px 32px;background-color:#F5F5FA;border-top:1px solid #EEF0FF;">
+                <p style="margin:0 0 4px;font-size:12px;line-height:1.6;color:#9CA3AF;">
+                  Kooprapport · KvK 87451387 · Pleinweg 66D, 3083 EH Rotterdam
+                </p>
+                <p style="margin:0;font-size:12px;line-height:1.6;color:#9CA3AF;">
+                  <a href="mailto:info@kooprapport.nl" style="color:#4F46E5;text-decoration:none;">info@kooprapport.nl</a> ·
+                  <a href="https://kooprapport.nl" style="color:#4F46E5;text-decoration:none;">kooprapport.nl</a>
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+
+  const res = await fetch(RESEND_API_URL, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ from: van, to: [input.naar], subject: "Je inloglink voor Mijn rapporten", html }),
+  });
+
+  if (!res.ok) {
+    const tekst = await res.text().catch(() => "");
+    console.error(`[email] Resend gaf status ${res.status} (account-inlog):`, tekst);
+    return { ok: false, error: "Versturen is niet gelukt. Probeer het later opnieuw." };
+  }
+  return { ok: true };
+}
+
 function escapeHtml(input: string): string {
   return input
     .replace(/&/g, "&amp;")

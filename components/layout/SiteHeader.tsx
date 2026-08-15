@@ -40,6 +40,7 @@ export default function SiteHeader() {
             <SiteNavLink href="/werkwijze" label="Werkwijze" />
             <SiteNavLink href="/marktupdates" label="Marktupdates" />
             <SiteNavLink href="/biedadvies" label="Biedadvies" />
+            <SiteNavLink href="/account" label="Mijn rapporten" />
           </div>
           <MobileNavMenu />
           <Link

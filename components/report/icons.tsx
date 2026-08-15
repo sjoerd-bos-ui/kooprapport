@@ -476,6 +476,15 @@ export function EuroIcon({ className }: { className?: string }) {
 // Verkoperspresentatie-generator ("Genereer presentatie met AI"-knop, zie
 // VerkoperspresentatieGenerator.tsx) -- nieuw, geen bestaand icoon in deze set
 // dekte "AI-gegenereerd" al.
+export function SearchIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} className={className}>
+      <circle cx="10.5" cy="10.5" r="6.5" />
+      <path d="m20 20-4.8-4.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function SparklesIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} className={className}>

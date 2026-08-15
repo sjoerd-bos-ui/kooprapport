@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { CompassIcon, FileCheckIcon, TrendingUpIcon, ShieldCheckIcon, ScaleIcon } from "@/components/report/icons";
+import { CompassIcon, FileCheckIcon, TrendingUpIcon, ShieldCheckIcon, ScaleIcon, HomeIcon } from "@/components/report/icons";
 
 const LINKS = [
   { href: "/waarom-kooprapport", label: "Waarom Kooprapport", icoon: ShieldCheckIcon },
@@ -10,6 +10,7 @@ const LINKS = [
   { href: "/werkwijze", label: "Werkwijze", icoon: CompassIcon },
   { href: "/marktupdates", label: "Marktupdates", icoon: TrendingUpIcon },
   { href: "/biedadvies", label: "Biedadvies", icoon: ScaleIcon },
+  { href: "/account", label: "Mijn rapporten", icoon: HomeIcon },
 ];
 
 // Mobiel hamburgermenu.

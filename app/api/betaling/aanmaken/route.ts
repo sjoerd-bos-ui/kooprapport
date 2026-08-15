@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { AddressMeta } from "@/types/report";
-import { maakBestelling, haalBestelling, zetStatus } from "@/lib/payments/bestellingen";
+import { maakBestelling, haalBestelling, zetStatus, koppelEmailAanBestelling } from "@/lib/payments/bestellingen";
+import { getIngelogdeEmailUitRequest } from "@/lib/services/consumentAuth";
 import { maakBetaling } from "@/lib/payments/mollie";
 import { RAPPORT_PRIJS_CENTEN } from "@/lib/utils/prijs";
 import { checkRateLimit } from "@/lib/services/rateLimit";
@@ -82,7 +83,17 @@ export async function POST(req: NextRequest) {
   }
   const bedragCenten = korting.geldig && korting.bedragCenten != null ? korting.bedragCenten : RAPPORT_PRIJS_CENTEN;
 
-  const bestelling = await maakBestelling(addressKey, bedragCenten);
+  const bestelling = await maakBestelling(addressKey, bedragCenten, address);
+
+  // "Mijn rapporten" (zie het Cowork-gesprek "zelfstandig koperportaal" /
+  // "b2c-dashboard"): een koper die al eerder een account heeft (dus al
+  // ingelogd is via de consument_session-cookie) hoeft na DEZE aankoop niet
+  // opnieuw zijn e-mailadres in te vullen op de rapportpagina -- de nieuwe
+  // bestelling wordt meteen aan zijn bestaande account gekoppeld. Voor een
+  // nieuwe koper (geen sessie) verandert er niets: die ziet straks gewoon de
+  // "Bewaar dit rapport in je account"-kaart op de ontgrendelde rapportpagina.
+  const ingelogdeEmail = await getIngelogdeEmailUitRequest(req);
+  if (ingelogdeEmail) await koppelEmailAanBestelling(bestelling.id, ingelogdeEmail);
 
   // BUGFIX: een 100%-kortingscode (of een andere korting die tot vrijwel
   // niets herleidt) levert een bedrag van 0 (of vrijwel 0) op -- en Mollie
