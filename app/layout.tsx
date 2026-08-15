@@ -44,7 +44,14 @@ const inter = Inter({
 export const metadata: Metadata = {
   metadataBase: new URL(APP_BASE_URL),
   title: {
-    default: "Kooprapport · Premium woningdata per adres",
+    // SEO-audit (Cowork-gesprek "check de SEO"): "Premium woningdata" is
+    // interne merktaal, geen zoekvraag -- niemand typt dat. Reële intentie
+    // rond dit product is "woningwaarde checken"/"wat is mijn huis waard",
+    // aangevuld met de bredere rapportinhoud die dit onderscheidt van pure
+    // waardecheckers (biedadvies, funderingsrisico). Titel als template
+    // (title.template hieronder) geeft dit automatisch mee aan elke pagina
+    // die zelf geen title zet.
+    default: "Wat is dit huis waard? Woningwaarde, biedadvies en funderingsrisico per adres · Kooprapport",
     template: "%s · Kooprapport",
   },
   description:

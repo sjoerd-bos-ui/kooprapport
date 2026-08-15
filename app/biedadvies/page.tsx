@@ -17,16 +17,22 @@ import { APP_BASE_URL } from "@/lib/config/payment";
 // -----------------------------------------------------------------------------
 
 const CANONICAL_PATH = "/biedadvies";
+// SEO-audit (Cowork-gesprek "check de SEO"): "Biedadvies" alleen is een
+// productnaam, geen zoekvraag -- reële zoektermen zijn "hoeveel bieden op
+// een huis"/"hoeveel overbieden"/"overbieden huis 2026" (geverifieerd via
+// live zoekresultaten: concurrenten als Hypotheek.nl en SlimBieden titelen
+// exact zo, vaak met jaartal voor actualiteit). Title/description hieronder
+// leiden nu met die vraag i.p.v. met de UI-instructie ("plak de link").
 const PAGINA_OMSCHRIJVING =
-  "Plak de link naar een woning of zoek zelf een adres en zie in drie scenario's wat een goed bod is, op basis van het echte NVM-overbiedcijfer voor die regio.";
+  "Bereken direct hoeveel je moet bieden op een huis, op basis van het actuele NVM-overbiedcijfer voor jouw regio. Plak de Funda-link of typ het adres en zie drie scenario's.";
 
 export const metadata: Metadata = {
-  title: "Biedadvies",
+  title: "Hoeveel bieden op een huis? Bereken je bod (2026)",
   description: PAGINA_OMSCHRIJVING,
   alternates: { canonical: CANONICAL_PATH },
   robots: { index: true, follow: true },
   openGraph: {
-    title: "Biedadvies · Kooprapport",
+    title: "Hoeveel bieden op een huis? Bereken je bod (2026) · Kooprapport",
     description: PAGINA_OMSCHRIJVING,
     url: `${APP_BASE_URL}${CANONICAL_PATH}`,
     type: "website",
@@ -86,7 +92,7 @@ export default function BiedadviesPagina() {
                 Biedadvies
               </span>
               <h1 className="mt-4 font-display text-3xl font-extrabold leading-tight text-ink sm:text-4xl">
-                Wat is hier een slim bod?
+                Hoeveel moet je bieden op dit huis?
               </h1>
               <p className="mt-4 max-w-md text-[15px] leading-relaxed text-ink/65">
                 Plak de link van een huis (Funda mag) of typ een adres. Wij zoeken uit wat er in die regio
@@ -119,6 +125,25 @@ export default function BiedadviesPagina() {
             <div className="lg:sticky lg:top-24">
               <BiedadviesTool />
             </div>
+          </div>
+
+          {/* SEO-audit: feitelijke alinea die de "hoeveel wordt er gemiddeld
+              overboden in Nederland"-zoekvraag direct beantwoordt, met de
+              eigen NVM-regiocijfers (lib/content/regioOverbieden.ts) i.p.v.
+              een verzonnen landelijk gemiddelde -- dat bestaat niet als veld
+              in de data, dus citeren we de geverifieerde regionale uitersten
+              uit de NVM-persrapportage 2e kwartaal 2026 zelf. */}
+          <div className="mt-16 max-w-2xl border-t border-ink/10 pt-10">
+            <h2 className="font-display text-xl font-extrabold text-ink">
+              Hoeveel wordt er gemiddeld overboden in Nederland?
+            </h2>
+            <p className="mt-3 text-[14.5px] leading-relaxed text-ink/65">
+              Dat verschilt sterk per regio. Volgens de NVM-marktcijfers over het tweede kwartaal van 2026 ging
+              in de duurste regio&apos;s -- Overig Groningen, Flevoland, Utrecht en Oost-Zuid-Holland -- meer dan
+              80% van de verkochte woningen boven de vraagprijs weg. In Zeeuws-Vlaanderen was dat nog geen 30%.
+              Die spreiding is precies waarom een landelijk gemiddelde weinig zegt: het overbiedpercentage voor
+              jouw eigen regio, hierboven ingevuld, geeft een veel eerlijker beeld dan een nationaal cijfer.
+            </p>
           </div>
         </Container>
       </main>

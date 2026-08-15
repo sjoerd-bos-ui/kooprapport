@@ -1,6 +1,67 @@
 # Voortgang Kooprapport Zakelijk — overdracht naar nieuwe chat
 
-## -8. Nieuwste sessie: B2C-accountmodel ("Mijn rapporten")
+## -9. Nieuwste sessie: slaapkamers-fix + site-brede SEO-herschrijving
+
+**Slaapkamers "nog steeds op onbekend":** de vorige sessie had alleen de
+re-fetch-frequentie verhoogd (slaapkamers toegevoegd aan
+`heeftOnvolledigeVerificatie`), niet de eigenlijke extractie gefixt. Root
+cause: `leesLokaleVerificatieData` in `fundaFeed.ts` las slaapkamers ALLEEN
+uit de fragiele iconenrij op de detailpagina, zonder fallback. Fix:
+`leesSlaapkamersUitAantalKamers(html)` toegevoegd, die het betrouwbare
+"Aantal kamers"-dt/dd-blok parsed (bv. "4 kamers (3 slaapkamers)") als
+PRIMAIRE bron; de oude iconenrij-regex is nu fallback. Commit `6d0f2bb`.
+
+**SEO-audit (Sjoerd: "Check de SEO... wees kritisch, maar zorg voor maximaal
+vindbaarheid!", n.a.v. een screenshot van het `/biedadvies`-zoekresultaat
+dat niet aansloot bij echte zoekintentie):** eerst een voorstel voor
+`/biedadvies` alleen, daarna op Sjoerds verzoek ("belangrijk is dat je dit
+bij alle beschikbare pagina's aanpast") een volledige pagina-voor-pagina
+audit in de chat gepresenteerd (incl. expliciete "geen wijziging nodig"-
+oordelen voor juridische/vertrouwenspagina's als Contact/Privacy/
+Voorwaarden/Werkwijze) — goedgekeurd met "oke doe het beste". Alle
+title/description-herschrijvingen zijn gegrond in live zoekresultaten-
+onderzoek (concurrenten, echte zoekvraag-formulering), niet geraden.
+
+**Doorgevoerd:**
+
+- `app/layout.tsx`: site-brede default `<title>` template van interne
+  merktaal ("Premium woningdata per adres") naar de echte zoekvraag ("Wat is
+  dit huis waard? Woningwaarde, biedadvies en funderingsrisico per adres").
+- `app/page.tsx`: homepage-description herschreven, H1 bewust ongewijzigd
+  gelaten.
+- `app/biedadvies/page.tsx`: title/description/H1 herschreven rond "hoeveel
+  bieden op een huis" i.p.v. de productnaam "Biedadvies"; BreadcrumbList
+  JSON-LD toegevoegd (ontbrak als enige hoofdnavigatiepagina); nieuwe
+  feitelijke alinea onder de tool die "hoeveel wordt er gemiddeld overboden
+  in Nederland" beantwoordt met de eigen NVM-regiocijfers (regionale
+  uitersten uit `regioOverbieden.ts`/de NVM-persrapportage Q2 2026 — bewust
+  GEEN verzonnen landelijk gemiddelde, dat veld bestaat niet).
+- `app/koopgids/page.tsx`: hub-title naar "Huis kopen: complete koopgids met
+  checklist".
+- `app/marktupdates/page.tsx`: hub-title naar "Woningmarktcijfers:
+  huizenprijzen en overbieden per kwartaal".
+- `lib/content/marktupdates.ts`: nieuw optioneel `metaTitel`-veld per
+  artikel (los van de narratieve H1/`titel`) + ingevuld voor Q1/Q2 2026;
+  `app/marktupdates/[slug]/page.tsx` se `generateMetadata` gebruikt nu
+  `metaTitel ?? titel` voor `<title>`/OG-title, H1 blijft `titel`.
+- `app/woningmarkt/page.tsx`: hub-title naar "Huizenprijzen per stad en
+  regio (NVM-cijfers)".
+- `app/woningmarkt/[stad]/page.tsx` + `app/woningmarkt/regio/[regio]/page.tsx`:
+  nieuwste `periodeLabel` (bv. "2e kwartaal 2026") toegevoegd aan de title,
+  zodat een cijfer-pagina in Google niet tijdloos/verouderd oogt.
+
+**Bewust NIET aangepast:** Contact/Privacy/Voorwaarden/Werkwijze/Waarom
+Kooprapport — geen generieke zoektermen om op te ranken, herschrijven zou
+alleen ruis toevoegen.
+
+**Nog open (niet door Sjoerd beantwoord):** Vercel build-fout
+(`next/font/google` module-not-found) tijdens deze sessie gesignaleerd —
+gediagnosticeerd als omgevings-/CDN-gerelateerd (niet veroorzaakt door eigen
+commits, `layout.tsx` stond al sinds `a40c010` ongewijzigd). Twee opties
+voorgelegd (handmatige redeploy vs. overstappen naar self-hosted
+`next/font/local`) — Sjoerd heeft hier nog niet op gereageerd.
+
+## -8. Vorige sessie: B2C-accountmodel ("Mijn rapporten")
 
 Sjoerd: "laten we eerst een dashboard bouwen voor b2c... visualize eerst
 goed." Na een visualize-ronde (eerst magic-link-only geschiedenisoverzicht,

@@ -35,7 +35,10 @@ export async function generateMetadata({ params }: { params: Promise<{ regio: st
   if (!regio) return {};
   const naam = regioWeergaveNaam(regio.regio);
   const canonicalPath = `/woningmarkt/regio/${regioWeergaveSlug(regio.regio)}`;
-  const title = `Huizenprijzen in ${naam}`;
+  // SEO-audit: periodeLabel in de title, zelfde reden als bij de stadspagina
+  // -- laat direct zien hoe actueel het cijfer is i.p.v. een tijdloos
+  // ogende titel voor iets dat elk kwartaal verandert.
+  const title = `Huizenprijzen in ${naam} — ${regio.periodeLabel}`;
   const gemeentenLabel = regio.gemeenten.slice(0, 4).join(", ") + (regio.gemeenten.length > 4 ? " en omgeving" : "");
   const description = `Overbiedpercentage en vraag-verkoopprijsverschil voor ${gemeentenLabel}, uit het officiële NVM Marktoverzicht ${regio.periodeLabel}.`;
   return {

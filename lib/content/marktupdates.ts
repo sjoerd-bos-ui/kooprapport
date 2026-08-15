@@ -31,6 +31,12 @@ export interface MarktupdateArtikel {
   slug: string; // bv. "q2-2026"
   periodeLabel: string; // bv. "Q2 2026"
   titel: string;
+  // SEO-audit: optioneel apart veld voor <title>/OG-title, los van de H1
+  // (titel). De H1 mag narratief blijven ("...meer aanbod en toch weer
+  // harder overboden" leest lekker op de pagina zelf), maar niemand zoekt
+  // letterlijk op die zin -- reële zoekintentie is "huizenprijzen [kwartaal]"
+  // met de kernstats erin. Valt terug op titel als niet gezet.
+  metaTitel?: string;
   metaBeschrijving: string;
   samenvatting: string; // kort excerpt voor de hub-kaart
   gepubliceerd: string; // weergavedatum, bv. "18 juli 2026"
@@ -81,6 +87,7 @@ export const MARKTUPDATES: MarktupdateArtikel[] = [
     slug: "q1-2026",
     periodeLabel: "Q1 2026",
     titel: "Marktupdate Q1 2026: de markt haalt even adem",
+    metaTitel: "Huizenprijzen Q1 2026: gemiddelde verkoopprijs en overbieden",
     metaBeschrijving:
       "Meer aanbod, minder overbieden en een gemiddelde prijs die weer onder de €500.000 duikt: de woningmarkt in het eerste kwartaal van 2026.",
     samenvatting:
@@ -144,6 +151,7 @@ export const MARKTUPDATES: MarktupdateArtikel[] = [
     slug: "q2-2026",
     periodeLabel: "Q2 2026",
     titel: "Marktupdate Q2 2026: meer aanbod en toch weer harder overboden",
+    metaTitel: "Huizenprijzen Q2 2026: recordaanbod en 4,6% overboden",
     metaBeschrijving:
       "Recordaanbod, meer verkopen en toch een hoger overbiedingspercentage: de Nederlandse woningmarkt in het tweede kwartaal van 2026, landelijk en per regio.",
     samenvatting:

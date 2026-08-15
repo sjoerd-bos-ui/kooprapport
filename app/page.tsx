@@ -153,8 +153,12 @@ const VEELGESTELDE_VRAGEN = [
 // want elke title-string die een pagina zelf teruggeeft loopt automatisch
 // door het title.template in layout.tsx heen ("%s · Kooprapport"), wat een
 // dubbele/omgekeerde merknaam zou opleveren.
+// SEO-audit (Cowork-gesprek "check de SEO"): leidt nu met de waardevraag
+// ("Bekijk gratis wat een huis waard is") i.p.v. direct met de UI-instructie
+// ("Vul een adres in") -- zelfde les als bij /biedadvies: mensen zoeken op
+// de vraag, niet op de knop.
 const HOMEPAGE_OMSCHRIJVING =
-  "Vul een adres in en bekijk een gratis preview. Ontgrendel het volledige rapport met woningwaarde, biedadvies, energielabel, funderingsrisico en buurtverkopen.";
+  "Bekijk gratis wat een huis waard is. Ontgrendel het volledige rapport met woningwaarde, biedadvies, energielabel, funderingsrisico en buurtverkopen -- per adres.";
 
 export const metadata: Metadata = {
   description: HOMEPAGE_OMSCHRIJVING,

@@ -19,17 +19,22 @@ import { APP_BASE_URL } from "@/lib/config/payment";
 // -----------------------------------------------------------------------------
 
 const CANONICAL_PATH = "/koopgids";
+// SEO-audit: "Koopgids" alleen is interne productnaam, geen zoekvraag.
+// Reële zoekintentie is "huis kopen stappenplan/checklist" (geverifieerd
+// via live zoekresultaten -- Vereniging Eigen Huis en Hypotheker titelen
+// hun vergelijkbare hubs exact zo). Title/description leiden nu met die
+// vraag i.p.v. met de productnaam.
+const PAGINA_OMSCHRIJVING =
+  "Huis kopen? Complete checklist van bod tot sleuteloverdracht: woningwaarde, energielabel, funderingsrisico en overbieden, stap voor stap uitgelegd.";
 
 export const metadata: Metadata = {
-  title: "Koopgids",
-  description:
-    "Alles wat u moet weten voordat u een woning koopt: woningwaarde, energielabel, funderingsrisico en meer, per onderdeel uitgelegd.",
+  title: "Huis kopen: complete koopgids met checklist",
+  description: PAGINA_OMSCHRIJVING,
   alternates: { canonical: CANONICAL_PATH },
   robots: { index: true, follow: true },
   openGraph: {
-    title: "Koopgids · Kooprapport",
-    description:
-      "Alles wat u moet weten voordat u een woning koopt: woningwaarde, energielabel, funderingsrisico en meer, per onderdeel uitgelegd.",
+    title: "Huis kopen: complete koopgids met checklist · Kooprapport",
+    description: PAGINA_OMSCHRIJVING,
     url: `${APP_BASE_URL}${CANONICAL_PATH}`,
     type: "website",
   },

@@ -19,11 +19,16 @@ import AddressSearchBar from "@/components/address/AddressSearchBar";
 // -----------------------------------------------------------------------------
 
 const CANONICAL_PATH = "/marktupdates";
+// SEO-audit: "Marktupdates" alleen is interne productnaam. Reële zoekintentie
+// is "huizenprijzen"/"woningmarkt cijfers"/"overbieden" per kwartaal
+// (geverifieerd via live zoekresultaten -- CBS en NVM zelf, en concurrenten
+// als Calcasa, titelen hun cijferoverzichten zo).
+const PAGINA_OMSCHRIJVING =
+  "Actuele huizenprijzen, verkooptijd en overbiedpercentages per regio, elk kwartaal bijgewerkt met de nieuwste cijfers van NVM, Kadaster en CBS.";
 
 export const metadata: Metadata = {
-  title: "Marktupdates",
-  description:
-    "Elk kwartaal de belangrijkste cijfers over de Nederlandse woningmarkt: verkoopprijzen, overbieden en verschillen per regio.",
+  title: "Woningmarktcijfers: huizenprijzen en overbieden per kwartaal",
+  description: PAGINA_OMSCHRIJVING,
   alternates: {
     canonical: CANONICAL_PATH,
     // RSS-feed (zie app/marktupdates/feed.xml/route.ts) -- laat feedlezers
@@ -32,9 +37,8 @@ export const metadata: Metadata = {
   },
   robots: { index: true, follow: true },
   openGraph: {
-    title: "Marktupdates · Kooprapport",
-    description:
-      "Elk kwartaal de belangrijkste cijfers over de Nederlandse woningmarkt: verkoopprijzen, overbieden en verschillen per regio.",
+    title: "Woningmarktcijfers: huizenprijzen en overbieden per kwartaal · Kooprapport",
+    description: PAGINA_OMSCHRIJVING,
     url: `${APP_BASE_URL}${CANONICAL_PATH}`,
     type: "website",
   },

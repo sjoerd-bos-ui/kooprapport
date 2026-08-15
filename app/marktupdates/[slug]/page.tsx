@@ -28,13 +28,17 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const update = getMarktupdateBySlug(slug);
   if (!update) return {};
   const canonicalPath = `/marktupdates/${update.slug}`;
+  // SEO-audit: <title>/OG-title gebruiken metaTitel (zoekgerichte formulering
+  // met kernstat) als die gezet is, los van de narratieve H1 (update.titel)
+  // die op de pagina zelf blijft staan -- zie lib/content/marktupdates.ts.
+  const seoTitel = update.metaTitel ?? update.titel;
   return {
-    title: update.titel,
+    title: seoTitel,
     description: update.metaBeschrijving,
     alternates: { canonical: canonicalPath },
     robots: { index: true, follow: true },
     openGraph: {
-      title: update.titel,
+      title: `${seoTitel} · Kooprapport`,
       description: update.metaBeschrijving,
       url: `${APP_BASE_URL}${canonicalPath}`,
       type: "article",

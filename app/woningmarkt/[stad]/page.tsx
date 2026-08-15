@@ -38,7 +38,14 @@ export async function generateMetadata({ params }: { params: Promise<{ stad: str
   const stad = getStadBySlug(stadSlug);
   if (!stad) return {};
   const canonicalPath = `/woningmarkt/${stad.slug}`;
-  const title = `Huizenprijzen in ${stad.naam}`;
+  // SEO-audit: periodeLabel van het nieuwste kwartaal in de title -- zonder
+  // dat oogt een "actuele cijfers"-pagina in Google al snel verouderd, met
+  // een kwartaallabel erbij is voor de zoeker meteen duidelijk hoe vers de
+  // cijfers zijn (zelfde reden als bij de Marktupdates-artikelen zelf).
+  const nieuwsteCijfer = getStadCijfers(stad.naam)[0];
+  const title = nieuwsteCijfer
+    ? `Huizenprijzen in ${stad.naam} — ${nieuwsteCijfer.periodeLabel}`
+    : `Huizenprijzen in ${stad.naam}`;
   const description = `Actuele prijsontwikkeling en overbiedpercentage in ${stad.naam}, per kwartaal, gebaseerd op de NVM-cijfers uit onze Marktupdates.`;
   return {
     title,

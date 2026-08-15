@@ -17,17 +17,22 @@ import { APP_BASE_URL } from "@/lib/config/payment";
 // -----------------------------------------------------------------------------
 
 const CANONICAL_PATH = "/woningmarkt";
+// SEO-audit: "Woningmarkt per stad" is beschrijvend maar mist het woord
+// waarop mensen daadwerkelijk zoeken ("huizenprijzen"). Reële zoekintentie
+// is "huizenprijzen [stad]"/"huizenprijzen per regio" (geverifieerd via live
+// zoekresultaten -- Funda, Calcasa en CBS titelen hun vergelijkbare
+// overzichten allemaal met "huizenprijzen" voorop).
+const PAGINA_OMSCHRIJVING =
+  "Huizenprijzen en overbiedpercentage per stad en regio, gebaseerd op NVM-cijfers: Amsterdam, Rotterdam, Den Haag, Utrecht en 11 andere regio's.";
 
 export const metadata: Metadata = {
-  title: "Woningmarkt per stad",
-  description:
-    "Huizenprijzen en overbiedpercentage per stad en regio, gebaseerd op NVM-cijfers: Amsterdam, Rotterdam, Den Haag, Utrecht en 11 andere regio's.",
+  title: "Huizenprijzen per stad en regio (NVM-cijfers)",
+  description: PAGINA_OMSCHRIJVING,
   alternates: { canonical: CANONICAL_PATH },
   robots: { index: true, follow: true },
   openGraph: {
-    title: "Woningmarkt per stad · Kooprapport",
-    description:
-      "Huizenprijzen en overbiedpercentage per stad en regio, gebaseerd op NVM-cijfers: Amsterdam, Rotterdam, Den Haag, Utrecht en 11 andere regio's.",
+    title: "Huizenprijzen per stad en regio (NVM-cijfers) · Kooprapport",
+    description: PAGINA_OMSCHRIJVING,
     url: `${APP_BASE_URL}${CANONICAL_PATH}`,
     type: "website",
   },
