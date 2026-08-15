@@ -1,31 +1,34 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { Bricolage_Grotesque, Inter } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import CookieConsent from "@/components/analytics/CookieConsent";
 import WhatsAppFloatingButton from "@/components/support/WhatsAppFloatingButton";
 import { APP_BASE_URL } from "@/lib/config/payment";
-import "./globals.css";
-
 // Bricolage Grotesque draagt de volledige visuele identiteit (koppen,
 // cijfers, kickers, wordmark) — een uitgesproken, architectonische grotesk
 // i.p.v. een brave systeemserif of generieke SaaS-sans. Inter blijft puur
-// voor lopende tekst/UI, bewust op de achtergrond. Beide via next/font
-// (self-hosted, geen render-blocking <link>, geen layout shift) en als
-// CSS-variabele doorgezet naar tailwind.config.ts.
-const display = Bricolage_Grotesque({
-  subsets: ["latin"],
-  weight: ["500", "600", "700", "800"],
-  variable: "--font-display",
-  display: "swap",
-});
-
-const inter = Inter({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-sans",
-  display: "swap",
-});
+// voor lopende tekst/UI, bewust op de achtergrond.
+//
+// Self-hosted via @fontsource i.p.v. next/font/google: next/font/google
+// haalt de font-bestanden tijdens de Vercel-build live op bij
+// fonts.googleapis.com/fonts.gstatic.com, en dat faalde meerdere keren met
+// "Module not found: Can't resolve ... next/font/google" -- een transiënte
+// netwerk-/CDN-fout tijdens het bouwen zelf, niet een codefout. @fontsource
+// bundelt de .woff2-bestanden gewoon als npm-package (opgehaald via de
+// package-registry, waar Vercel's build sowieso al van afhankelijk is voor
+// elke andere dependency), dus geen aparte, extra netwerkafhankelijkheid
+// meer tijdens het bouwen. De CSS-variabelen --font-display/--font-sans die
+// tailwind.config.ts verwacht, staan nu handmatig in globals.css (:root)
+// (next/font/google deed dat automatisch via de `variable`-optie).
+import "@fontsource/bricolage-grotesque/latin-500.css";
+import "@fontsource/bricolage-grotesque/latin-600.css";
+import "@fontsource/bricolage-grotesque/latin-700.css";
+import "@fontsource/bricolage-grotesque/latin-800.css";
+import "@fontsource/inter/latin-400.css";
+import "@fontsource/inter/latin-500.css";
+import "@fontsource/inter/latin-600.css";
+import "@fontsource/inter/latin-700.css";
+import "./globals.css";
 
 // metadataBase hergebruikt bewust dezelfde APP_BASE_URL als de betaalflow
 // (lib/config/payment.ts, o.a. voor Mollie's redirect/webhook-URL) i.p.v.
@@ -81,7 +84,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="nl" className={`${display.variable} ${inter.variable}`}>
+    <html lang="nl">
       <body className="min-h-screen bg-parchment font-sans text-ink antialiased">
         {children}
         {/* Vercel Web Analytics — géén cookies, blijft altijd actief als

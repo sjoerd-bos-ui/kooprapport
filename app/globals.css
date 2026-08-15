@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* --font-display/--font-sans: gekoppeld aan de @fontsource-imports in
+   app/layout.tsx (self-hosted Bricolage Grotesque + Inter, i.p.v. de
+   variable-optie die next/font/google automatisch zette). Fallback-stack
+   staat al in tailwind.config.ts (fontFamily.display/sans). */
+:root {
+  --font-display: "Bricolage Grotesque";
+  --font-sans: "Inter";
+}
+
 html,
 body {
   height: 100%;
