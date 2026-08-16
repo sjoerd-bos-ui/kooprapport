@@ -11,7 +11,8 @@
     "zakelijk:account": "node scripts/maak-zakelijk-account.js",
     "zakelijk:wachtwoord": "node scripts/reset-zakelijk-wachtwoord.js",
     "zakelijk:demo": "node scripts/vul-zakelijk-demo.js",
-    "zakelijk:herindexeren": "node scripts/herindexeer-organisatie.js"
+    "zakelijk:herindexeren": "node scripts/herindexeer-organisatie.js",
+    "account:demo": "node scripts/vul-account-demo.js"
   },
   "dependencies": {
     "@fontsource/bricolage-grotesque": "^5.3.0",
