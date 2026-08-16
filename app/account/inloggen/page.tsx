@@ -4,8 +4,13 @@ import SiteFooter from "@/components/layout/SiteFooter";
 import Container from "@/components/ui/Container";
 import AccountInlogForm from "@/components/account/AccountInlogForm";
 
+// SEO-audit: had geen eigen robots-directive, erfde dus de site-brede default
+// (index: true) -- exact hetzelfde soort gat als /account zelf al had
+// afgedekt (zie de noindex daar). Een kaal inlogformulier zonder inhoud heeft
+// niets te zoeken in de zoekresultaten.
 export const metadata: Metadata = {
   title: "Inloggen · Mijn rapporten",
+  robots: { index: false, follow: true },
 };
 
 export default async function AccountInloggenPagina({
