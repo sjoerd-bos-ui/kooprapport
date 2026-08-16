@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { haalBestelling, zetStatus } from "@/lib/payments/bestellingen";
 import { verifieerBetalingBijMollie } from "@/lib/payments/mollie";
 import { BETAAL_MODE } from "@/lib/config/payment";
+import { zetConsumentSessieCookie } from "@/lib/services/consumentAuth";
 
 // -----------------------------------------------------------------------------
 // Statuscontrole — gebruikt op twee momenten:
@@ -59,5 +60,16 @@ export async function GET(req: NextRequest) {
   }
 
   const actueel = (await haalBestelling(bestellingId))!;
-  return NextResponse.json({ bestellingId: actueel.id, status: actueel.status });
+  const respons = NextResponse.json({ bestellingId: actueel.id, status: actueel.status });
+  // Procesaudit-vervolg: dit is het punt waar de ECHTE (live-Mollie-
+  // redirect) betaalflow voor het eerst "paid" ziet -- de synchrone paden
+  // (mock-modus, 100%-korting) zetten de sessie al direct in
+  // /api/betaling/aanmaken, dit dekt de asynchrone rest. email hoort er
+  // altijd bij sinds e-mail verplicht is bij het aanmaken van de bestelling
+  // (zie aanmaken/route.ts) -- de `actueel.email`-check is puur defensief
+  // voor de handvol oudere bestellingen van vóór die wijziging.
+  if (actueel.status === "paid" && actueel.email) {
+    await zetConsumentSessieCookie(respons, actueel.email);
+  }
+  return respons;
 }

@@ -79,6 +79,19 @@ export default function PaywallModal({
   const [codeStatus, setCodeStatus] = useState<"idle" | "controleren" | "geldig" | "ongeldig">("idle");
   const [codeBedragCenten, setCodeBedragCenten] = useState<number | null>(null);
 
+  // Procesaudit-vervolg ("mensen maken een account aan of magic link, maar
+  // we hebben wel een mail nodig en wat basisgegevens... voorwaarde om
+  // uiteindelijk het rapport in te zien na betaling"): e-mail + naam nu
+  // VERPLICHT hier, vóór er naar Mollie/mock-betaling wordt doorgestuurd --
+  // niet meer pas achteraf via de losse "Bewaar in account"-knop op de
+  // rapportpagina (die is hiermee vervallen, zie ReportView.tsx). Na
+  // geslaagde betaling zet de server (zie app/api/betaling/aanmaken/
+  // route.ts en /api/betaling/status/route.ts) hiermee automatisch een
+  // sessie, dus zonder extra stap is de koper meteen ingelogd bij "Mijn
+  // rapporten".
+  const [naamInvoer, setNaamInvoer] = useState("");
+  const [emailInvoer, setEmailInvoer] = useState("");
+
   useEffect(() => {
     if (!kortingToken) return;
     let cancelled = false;
@@ -146,7 +159,8 @@ export default function PaywallModal({
   if (!open) return null;
 
   async function handlePay() {
-    if (!akkoord) return; // defensief: de knop hieronder is al disabled zonder akkoord
+    // defensief: de knop hieronder is al disabled zonder akkoord/naam/e-mail
+    if (!akkoord || naamInvoer.trim().length < 2 || !emailInvoer.trim()) return;
     setPaying(true);
     setFout(null);
     try {
@@ -157,6 +171,8 @@ export default function PaywallModal({
           address,
           kortingToken,
           kortingscode: codeStatus === "geldig" ? codeInvoer : undefined,
+          email: emailInvoer.trim(),
+          naam: naamInvoer.trim(),
         }),
       });
       if (!res.ok) {
@@ -303,7 +319,44 @@ export default function PaywallModal({
           </div>
         </div>
 
-        <label className="relative mt-6 flex cursor-pointer items-start gap-2.5 text-xs text-ink/60">
+        {/* Naam + e-mail -- verplicht sinds de procesaudit ("we hebben wel
+            een mail nodig en wat basisgegevens... voorwaarde om uiteindelijk
+            het rapport in te zien na betaling"): vóór het afrekenen zelf,
+            i.p.v. pas achteraf optioneel. Na betalen wordt hiermee meteen
+            (zonder magic-linkklik) een "Mijn rapporten"-account gezet, zie
+            app/api/betaling/aanmaken/route.ts. */}
+        <div className="relative mt-6 border-t border-ink/10 pt-5">
+          <p className="mb-2.5 text-[11px] font-semibold text-ink/45">Uw gegevens</p>
+          <div className="flex flex-col gap-2">
+            <input
+              type="text"
+              required
+              value={naamInvoer}
+              onChange={(e) => setNaamInvoer(e.target.value)}
+              placeholder="Voor- en achternaam"
+              autoComplete="name"
+              // BUGFIX (mobiel): tekst onder 16px op een <input> triggert
+              // Safari's automatische inzoom-op-focus op iPhone (zie dezelfde
+              // fix in AddressSearchBar.tsx).
+              className="min-w-0 rounded-xl border border-line bg-white px-3.5 py-2.5 text-base text-ink placeholder:text-ink/35 focus:outline-none focus:ring-2 focus:ring-accent/30 sm:text-sm"
+            />
+            <input
+              type="email"
+              required
+              value={emailInvoer}
+              onChange={(e) => setEmailInvoer(e.target.value)}
+              placeholder="naam@voorbeeld.nl"
+              autoComplete="email"
+              className="min-w-0 rounded-xl border border-line bg-white px-3.5 py-2.5 text-base text-ink placeholder:text-ink/35 focus:outline-none focus:ring-2 focus:ring-accent/30 sm:text-sm"
+            />
+          </div>
+          <p className="mt-2 text-xs text-ink/40">
+            Nodig om het rapport te leveren en straks terug te vinden bij "Mijn rapporten" -- daar loggen we u
+            automatisch voor in, geen wachtwoord nodig.
+          </p>
+        </div>
+
+        <label className="relative mt-4 flex cursor-pointer items-start gap-2.5 text-xs text-ink/60">
           <input
             type="checkbox"
             checked={akkoord}
@@ -319,7 +372,12 @@ export default function PaywallModal({
           </span>
         </label>
 
-        <Button variant="primary" className="relative mt-3 w-full" onClick={handlePay} disabled={paying || !akkoord}>
+        <Button
+          variant="primary"
+          className="relative mt-3 w-full"
+          onClick={handlePay}
+          disabled={paying || !akkoord || naamInvoer.trim().length < 2 || !emailInvoer.trim()}
+        >
           {paying ? "Bezig met betalen…" : "Betaal met iDEAL"}
         </Button>
         {fout && <p className="relative mt-3 text-center text-xs text-rust">{fout}</p>}

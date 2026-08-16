@@ -494,19 +494,11 @@ export default function ReportView({
   const [emailInput, setEmailInput] = useState("");
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailStatus, setEmailStatus] = useState<{ kind: "success" | "error"; message: string } | null>(null);
-  // "Bewaar in je account" -- LOS van "Verstuur naar mail" hierboven (die
-  // belooft expliciet het adres niet te bewaren, zie de tekst onder dat
-  // formulier): dit koppelt de bestelling juist bewust aan een e-mailadres
-  // voor het "Mijn rapporten"-dashboard (zie het Cowork-gesprek "zelfstandig
-  // koperportaal" / "b2c-dashboard", app/api/account/koppel-bestelling/
-  // route.ts). Twee losse formulieren i.p.v. één gecombineerd veld: de koper
-  // moet expliciet kiezen voor "bewaren" (en de bijbehorende belofte lezen),
-  // niet impliciet een account krijgen omdat hij toevallig de PDF liet
-  // mailen.
-  const [showAccountForm, setShowAccountForm] = useState(false);
-  const [accountEmailInput, setAccountEmailInput] = useState("");
-  const [savingAccount, setSavingAccount] = useState(false);
-  const [accountStatus, setAccountStatus] = useState<{ kind: "success" | "error"; message: string } | null>(null);
+  // "Bewaar in account"-knop/formulier is hier komen te vervallen
+  // (procesaudit-vervolg): e-mail is sinds die wijziging al verplicht bij
+  // het afrekenen zelf (zie PaywallModal.tsx) en de koper krijgt na betalen
+  // automatisch een sessie -- er is dus niets meer om hier achteraf nog
+  // "te bewaren", iedere koper heeft al een account.
   // "Verken je eigen bod" op het Biedadvies-blok (Waarde-indicatie-tabblad) --
   // null zolang niemand aan de schuif heeft gezeten, dan valt de weergave
   // terug op het "gemiddeld risico"-scenario als startpunt.
@@ -590,30 +582,6 @@ export default function ReportView({
       setEmailStatus({ kind: "error", message: "Versturen is niet gelukt. Probeer het opnieuw." });
     } finally {
       setSendingEmail(false);
-    }
-  }
-
-  async function handleSaveAccount(e: FormEvent) {
-    e.preventDefault();
-    if (!bestellingId) return;
-    setSavingAccount(true);
-    setAccountStatus(null);
-    try {
-      const res = await fetch("/api/account/koppel-bestelling", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bestellingId, email: accountEmailInput.trim() }),
-      });
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
-      if (!res.ok) {
-        setAccountStatus({ kind: "error", message: data.error ?? "Opslaan is niet gelukt. Probeer het opnieuw." });
-        return;
-      }
-      setAccountStatus({ kind: "success", message: `Check je mail op ${accountEmailInput.trim()} om in te loggen.` });
-    } catch {
-      setAccountStatus({ kind: "error", message: "Opslaan is niet gelukt. Probeer het opnieuw." });
-    } finally {
-      setSavingAccount(false);
     }
   }
 
@@ -1801,20 +1769,6 @@ export default function ReportView({
                     {downloadingBon ? "Aankoopbewijs wordt gemaakt…" : "Download aankoopbewijs"}
                   </Button>
                 )}
-                {bestellingId && (
-                  <Button
-                    variant="secondary"
-                    onClick={() => {
-                      setShowAccountForm((v) => !v);
-                      setAccountStatus(null);
-                    }}
-                  >
-                    <span className="flex items-center gap-1.5">
-                      <HomeIcon className="h-3.5 w-3.5" />
-                      Bewaar in account
-                    </span>
-                  </Button>
-                )}
               </div>
             </div>
 
@@ -1849,32 +1803,6 @@ export default function ReportView({
               </form>
             )}
 
-            {showAccountForm && (
-              <form onSubmit={handleSaveAccount} className="mt-5 border-t border-ink/10 pt-5">
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <input
-                    type="email"
-                    required
-                    value={accountEmailInput}
-                    onChange={(e) => setAccountEmailInput(e.target.value)}
-                    placeholder="naam@voorbeeld.nl"
-                    className="min-w-0 flex-1 rounded-xl border border-line bg-white px-3.5 py-2.5 text-base text-ink placeholder:text-ink/35 focus:outline-none focus:ring-2 focus:ring-accent/30 sm:text-sm"
-                  />
-                  <Button type="submit" disabled={savingAccount || accountEmailInput.trim().length === 0}>
-                    {savingAccount ? "Bezig…" : "Bewaar"}
-                  </Button>
-                </div>
-                {accountStatus && (
-                  <p className={`mt-2 text-xs ${accountStatus.kind === "success" ? "text-[#0F766E]" : "text-rust"}`}>
-                    {accountStatus.message}
-                  </p>
-                )}
-                <p className="mt-2 text-xs text-ink/40">
-                  We sturen een eenmalige inloglink naar dit adres. Klik erop om al je rapporten voortaan op één
-                  plek terug te vinden bij "Mijn rapporten" — geen wachtwoord nodig.
-                </p>
-              </form>
-            )}
           </div>
         )}
 

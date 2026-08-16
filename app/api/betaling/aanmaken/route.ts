@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { AddressMeta } from "@/types/report";
-import { maakBestelling, haalBestelling, zetStatus, koppelEmailAanBestelling } from "@/lib/payments/bestellingen";
-import { getIngelogdeEmailUitRequest } from "@/lib/services/consumentAuth";
+import { maakBestelling, haalBestelling, zetStatus } from "@/lib/payments/bestellingen";
+import { zetConsumentSessieCookie } from "@/lib/services/consumentAuth";
+import { isGeldigEmailadres } from "@/lib/services/email";
 import { maakBetaling } from "@/lib/payments/mollie";
 import { RAPPORT_PRIJS_CENTEN } from "@/lib/utils/prijs";
 import { checkRateLimit } from "@/lib/services/rateLimit";
@@ -20,6 +21,17 @@ import { verifieerEnVerbruikKortingscode } from "@/lib/utils/kortingscode";
 // live-modus blijft de status "open" totdat Mollie's webhook (of de
 // fallback-verificatie in /api/betaling/status) bevestigt dat er echt is
 // betaald.
+//
+// Procesaudit-vervolg: e-mail (en naam) zijn hier nu VERPLICHT, vóór er
+// uberhaupt naar Mollie wordt doorgestuurd -- niet meer pas achteraf via de
+// optionele "Bewaar in account"-knop op de rapportpagina (die knop is
+// hiermee vervallen, zie ReportView.tsx). Zodra de betaling bevestigd
+// "paid" is (hieronder óf in /api/betaling/status voor de echte-Mollie-
+// redirect-omweg), wordt meteen ook de consumentensessie gezet
+// (zetConsumentSessieCookie) — geen magic-linkklik nodig, een geslaagde
+// betaling met dit e-mailadres is verificatie genoeg voor dit lage-drempel-
+// account. Magic link blijft bestaan voor een latere/nieuwe sessie op een
+// ander device (app/api/account/inlog-link/route.ts).
 // -----------------------------------------------------------------------------
 
 export async function POST(req: NextRequest) {
@@ -37,11 +49,15 @@ export async function POST(req: NextRequest) {
   let address: AddressMeta;
   let kortingToken: string | undefined;
   let kortingscode: string | undefined;
+  let email: string | undefined;
+  let naam: string | undefined;
   try {
-    ({ address, kortingToken, kortingscode } = (await req.json()) as {
+    ({ address, kortingToken, kortingscode, email, naam } = (await req.json()) as {
       address: AddressMeta;
       kortingToken?: string;
       kortingscode?: string;
+      email?: string;
+      naam?: string;
     });
   } catch {
     return NextResponse.json({ error: "Ongeldige aanvraag: geen geldige JSON-body." }, { status: 400 });
@@ -49,6 +65,18 @@ export async function POST(req: NextRequest) {
 
   if (!address?.slug || !address.label) {
     return NextResponse.json({ error: "Ongeldige aanvraag: adres ontbreekt of is onvolledig." }, { status: 400 });
+  }
+
+  // Procesaudit-vervolg: e-mail + naam zijn nu verplicht bij het afrekenen
+  // zelf, server-side gevalideerd (nooit alleen op de `required`-attributen
+  // van het formulier vertrouwen, zie PaywallModal.tsx).
+  const emailTrimmed = email?.trim() ?? "";
+  const naamTrimmed = naam?.trim() ?? "";
+  if (!emailTrimmed || !isGeldigEmailadres(emailTrimmed)) {
+    return NextResponse.json({ error: "Vul een geldig e-mailadres in." }, { status: 400 });
+  }
+  if (naamTrimmed.length < 2) {
+    return NextResponse.json({ error: "Vul uw naam in." }, { status: 400 });
   }
 
   // BEVEILIGING: de bestelling wordt gekoppeld aan een sleutel die WIJ hier
@@ -83,17 +111,7 @@ export async function POST(req: NextRequest) {
   }
   const bedragCenten = korting.geldig && korting.bedragCenten != null ? korting.bedragCenten : RAPPORT_PRIJS_CENTEN;
 
-  const bestelling = await maakBestelling(addressKey, bedragCenten, address);
-
-  // "Mijn rapporten" (zie het Cowork-gesprek "zelfstandig koperportaal" /
-  // "b2c-dashboard"): een koper die al eerder een account heeft (dus al
-  // ingelogd is via de consument_session-cookie) hoeft na DEZE aankoop niet
-  // opnieuw zijn e-mailadres in te vullen op de rapportpagina -- de nieuwe
-  // bestelling wordt meteen aan zijn bestaande account gekoppeld. Voor een
-  // nieuwe koper (geen sessie) verandert er niets: die ziet straks gewoon de
-  // "Bewaar dit rapport in je account"-kaart op de ontgrendelde rapportpagina.
-  const ingelogdeEmail = await getIngelogdeEmailUitRequest(req);
-  if (ingelogdeEmail) await koppelEmailAanBestelling(bestelling.id, ingelogdeEmail);
+  const bestelling = await maakBestelling(addressKey, bedragCenten, address, emailTrimmed, naamTrimmed);
 
   // BUGFIX: een 100%-kortingscode (of een andere korting die tot vrijwel
   // niets herleidt) levert een bedrag van 0 (of vrijwel 0) op -- en Mollie
@@ -106,12 +124,14 @@ export async function POST(req: NextRequest) {
   if (bedragCenten <= 0) {
     await zetStatus(bestelling.id, "paid");
     const actueel = (await haalBestelling(bestelling.id)) ?? bestelling;
-    return NextResponse.json({
+    const respons = NextResponse.json({
       bestellingId: actueel.id,
       status: actueel.status,
       checkoutUrl: null,
       bedragCenten,
     });
+    await zetConsumentSessieCookie(respons, emailTrimmed);
+    return respons;
   }
 
   try {
@@ -142,12 +162,19 @@ export async function POST(req: NextRequest) {
     // hierboven terug te sturen.
     const actueel = (await haalBestelling(bestelling.id)) ?? bestelling;
 
-    return NextResponse.json({
+    const respons = NextResponse.json({
       bestellingId: actueel.id,
       status: actueel.status,
       checkoutUrl,
       bedragCenten,
     });
+    // Mock-modus: hier al "paid", dus sessie meteen zetten (zelfde als de
+    // 100%-kortingstak hierboven). Live-modus: status blijft hier nog
+    // "open" (checkoutUrl is dan gezet, de klant navigeert weg naar Mollie)
+    // -- de sessie wordt dan pas gezet zodra /api/betaling/status straks
+    // "paid" teruggeeft, na terugkomst van Mollie's checkout.
+    if (actueel.status === "paid") await zetConsumentSessieCookie(respons, emailTrimmed);
+    return respons;
   } catch (err) {
     const message = err instanceof Error ? err.message : "Onbekende fout bij het aanmaken van de betaling.";
     return NextResponse.json({ error: message }, { status: 502 });

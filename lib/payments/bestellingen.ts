@@ -52,12 +52,16 @@ export interface Bestelling {
   // naar het juiste rapport te kunnen linken (buildReportHref vereist het
   // volledige adres, niet alleen de slug — zie lib/utils/slug.ts).
   address?: AddressMeta;
-  // Koppeling aan een consumentenaccount (zie lib/services/consumentAuth.ts)
-  // -- `null`/afwezig totdat de koper zelf een e-mailadres invult op de
-  // ontgrendelde rapportpagina (of al ingelogd was bij het afrekenen). Zonder
-  // e-mailadres is een bestelling puur anoniem/adres-gebonden, exact het
-  // gedrag van vóór dit account-model.
+  // Koppeling aan een consumentenaccount (zie lib/services/consumentAuth.ts).
+  // SEO/procesaudit-vervolg ("mensen maken een account aan of magic link,
+  // maar we hebben wel een mail nodig en wat basisgegevens"): e-mail (en
+  // naam) zijn sinds die wijziging VERPLICHT bij het afrekenen zelf (zie
+  // app/api/betaling/aanmaken/route.ts) i.p.v. optioneel achteraf via een
+  // "Bewaar in account"-knop -- elke betaalde bestelling heeft dus altijd
+  // een email. Blijft optioneel getypeerd voor de handvol oudere, vóór deze
+  // wijziging aangemaakte bestellingen die nog geen e-mailadres hebben.
   email?: string;
+  naam?: string;
   favoriet?: boolean;
   gearchiveerd?: boolean;
 }
@@ -107,7 +111,18 @@ async function opslaan(bestelling: Bestelling): Promise<void> {
   await kvSet(bestellingKey(bestelling.id), JSON.stringify(bestelling), ttl);
 }
 
-export async function maakBestelling(addressSlug: string, bedragCenten: number, address?: AddressMeta): Promise<Bestelling> {
+// email/naam optioneel in de signatuur gehouden (i.p.v. verplicht) zodat
+// interne/toekomstige aanroepers die zonder koperklant werken (denkbeeldig,
+// nu niet het geval) niet breken -- de ECHTE verplichting zit in de
+// aanroepende route (app/api/betaling/aanmaken/route.ts), die valideert
+// vóórdat dit hier aangeroepen wordt.
+export async function maakBestelling(
+  addressSlug: string,
+  bedragCenten: number,
+  address?: AddressMeta,
+  email?: string,
+  naam?: string
+): Promise<Bestelling> {
   const bestelling: Bestelling = {
     id: crypto.randomUUID(),
     addressSlug,
@@ -116,6 +131,16 @@ export async function maakBestelling(addressSlug: string, bedragCenten: number, 
     aangemaaktOp: new Date().toISOString(),
     address,
   };
+  if (email) {
+    bestelling.email = email.trim().toLowerCase();
+    if (naam?.trim()) bestelling.naam = naam.trim();
+    await opslaan(bestelling);
+    // Zelfde index als koppelEmailAanBestelling hieronder -- hier inline
+    // i.p.v. die functie aanroepen, want die haalt de bestelling opnieuw op
+    // (bestaat op dit punt nog niet in de store) en zou dus niets vinden.
+    await kvZAdd(bestellingEmailIndexKey(bestelling.email), new Date(bestelling.aangemaaktOp).getTime(), bestelling.id);
+    return bestelling;
+  }
   await opslaan(bestelling);
   return bestelling;
 }

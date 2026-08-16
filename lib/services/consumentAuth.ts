@@ -1,5 +1,5 @@
 import { randomBytes } from "crypto";
-import type { NextRequest } from "next/server";
+import type { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { kvGet, kvSet } from "@/lib/services/kvStore";
 
@@ -90,3 +90,25 @@ export async function getIngelogdeEmailUitCookies(): Promise<string | null> {
 
 export const CONSUMENT_SESSION_COOKIE = SESSION_COOKIE;
 export const CONSUMENT_SESSION_TTL_SECONDEN = SESSION_TTL_SECONDEN;
+
+// Procesaudit-vervolg ("e-mail is nu verplicht bij checkout, koppel dat
+// automatisch aan een account, geen magic-linkklik nodig"): zet direct een
+// volwaardige sessie, zonder de inlogtoken-tussenstap uit
+// verifieerEnVerbruikInlogToken. Verantwoording: de koper heeft dit
+// e-mailadres zojuist zelf ingevuld ÉN er succesvol een betaling mee
+// afgerond (zie app/api/betaling/aanmaken/route.ts en
+// app/api/betaling/status/route.ts, de enige twee aanroepers) -- een
+// afgeronde betaling is minstens zo'n sterk eigenaarschapsbewijs als één
+// klik op een link in diezelfde inbox. Magic link (maakInlogToken/
+// verifieerEnVerbruikInlogToken) blijft het pad voor een latere, nieuwe
+// sessie op een ander moment/device (app/api/account/inlog-link/route.ts).
+export async function zetConsumentSessieCookie(response: NextResponse, email: string): Promise<void> {
+  const token = await maakSessie(email);
+  response.cookies.set(SESSION_COOKIE, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: SESSION_TTL_SECONDEN,
+  });
+}

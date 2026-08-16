@@ -1,6 +1,53 @@
 # Voortgang Kooprapport Zakelijk — overdracht naar nieuwe chat
 
-## -9. Nieuwste sessie: slaapkamers-fix + site-brede SEO-herschrijving
+## -10. Nieuwste sessie: verplichte e-mail+naam bij checkout, automatisch account na betaling
+
+Sjoerd: "mensen maken een account aan of Magic Link, maar we hebben wel een
+mail nodig en wat basisgegevens om gegevens te verzamelen. Dit is een
+voorwaarde om uiteindelijk het rapport in te zien na betaling." Verduidelijkt
+via AskUserQuestion (moment: vóór betaling vs. erna; welke velden; wel/geen
+automatisch account) — op de eerste twee "wat je aanraadt" geantwoord, op de
+derde expliciet "Automatisch account aanmaken".
+
+**Gekozen aanpak:** e-mail + naam nu verplicht in PaywallModal, vóór er
+naar Mollie/mock-betaling wordt doorgestuurd (niet meer pas achteraf via de
+losse "Bewaar in account"-knop). Zodra de betaling bevestigd "paid" is,
+wordt automatisch een consumentensessie gezet — GEEN magic-linkklik nodig
+voor deze eerste keer (een geslaagde betaling met dit e-mailadres is
+verificatie genoeg); magic link blijft het pad voor een latere/nieuwe
+sessie op een ander device.
+
+**Gebouwd:**
+
+- `lib/payments/bestellingen.ts`: `Bestelling.naam` toegevoegd;
+  `maakBestelling()` neemt nu optioneel `email`/`naam` en zet die (+ de
+  e-mail-index) meteen bij aanmaak, i.p.v. pas achteraf via
+  `koppelEmailAanBestelling`.
+- `lib/services/consumentAuth.ts`: nieuwe `zetConsumentSessieCookie(response,
+  email)` — maakt direct een sessie (roept `maakSessie` aan, slaat de
+  inlogtoken-tussenstap bewust over) en zet 'm op een `NextResponse`.
+- `app/api/betaling/aanmaken/route.ts`: `email`/`naam` verplicht en
+  server-side gevalideerd (`isGeldigEmailadres` + naam ≥ 2 tekens). Sessie
+  wordt hier al gezet bij de twee SYNCHRONE paid-paden (mock-modus,
+  100%-korting) — de oude "koppel aan al-ingelogde sessie"-logica is
+  vervallen (overbodig, e-mail is nu altijd al aanwezig).
+- `app/api/betaling/status/route.ts`: sessie wordt hier gezet zodra de
+  ASYNCHRONE live-Mollie-redirect-flow voor het eerst "paid" teruggeeft
+  (dekt het geval dat `aanmaken` nog niet kon zetten, omdat de klant nog
+  moest afrekenen bij Mollie zelf).
+- `components/report/PaywallModal.tsx`: naam- en e-mailveld toegevoegd
+  (verplicht, eigen sectie boven de akkoord-checkbox), meegestuurd in de
+  betaalaanroep, betaalknop blijft disabled zonder beide velden.
+- `components/report/ReportView.tsx`: de hele "Bewaar in account"-sectie
+  (state, handler, knop, formulier) verwijderd — overbodig geworden, elke
+  koper heeft na betalen al automatisch een account.
+
+**Bewust ongewijzigd gelaten:** `app/api/account/koppel-bestelling/route.ts`
+blijft bestaan (geen aanroeper meer vanuit de UI, maar onschadelijk als
+losse API — bv. bruikbaar voor de handvol bestellingen van vóór deze
+wijziging die nog geen e-mailadres hebben).
+
+## -9. Vorige sessie: slaapkamers-fix + site-brede SEO-herschrijving
 
 **Slaapkamers "nog steeds op onbekend":** de vorige sessie had alleen de
 re-fetch-frequentie verhoogd (slaapkamers toegevoegd aan
