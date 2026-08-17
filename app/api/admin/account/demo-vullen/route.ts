@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/services/rateLimit";
-import { maakBestelling, zetStatus, zetFavoriet, zetGearchiveerd } from "@/lib/payments/bestellingen";
-import { genereerDemoAdres, DEMO_WONINGEN, type DemoWoningInput } from "@/lib/services/b2bDemoData";
+import { maakBestelling, zetStatus, zetFavoriet, zetGearchiveerd, zetDemoRapport } from "@/lib/payments/bestellingen";
+import { genereerDemoAdres, genereerDemoRapport, DEMO_WONINGEN, type DemoWoningInput } from "@/lib/services/b2bDemoData";
 import { canonicalAddressKey } from "@/lib/utils/slug";
 import { isGeldigEmailadres } from "@/lib/services/email";
 
@@ -15,10 +15,12 @@ import { isGeldigEmailadres } from "@/lib/services/email";
 // route.ts (B2B-tegenhanger), hier alleen voor het lichtere B2C-model: een
 // Bestelling heeft geen los rapport nodig, alleen het adres zelf.
 //
-// LET OP: klikt iemand vanuit het dashboard door naar de bijbehorende
-// rapportpagina, dan wordt dat rapport wél gewoon live/kostenveroorzakend
-// opgehaald (getReport() kent geen "demo"-status) -- deze route vult alleen
-// de bestelling-records, niet een gecached rapport erachter.
+// Elke demo-bestelling krijgt ook meteen een volledig, vooraf gegenereerd
+// Report (genereerDemoRapport, "mock"-modus, exact dezelfde functie als de
+// B2B-demo-route al gebruikte) opgeslagen op Bestelling.demoReport --
+// klikt iemand vanuit het dashboard door naar de rapportpagina, dan wordt
+// DIT gebruikt i.p.v. een live/kostenveroorzakende aanroep (zie
+// app/rapport/[slug]/page.tsx en app/api/rapport/premium/route.ts).
 //
 // Idempotent-ONVEILIG: elke aanroep voegt NIEUWE bestellingen toe (geen
 // "al gevuld?"-check) -- bewust simpel, roep dit dus maar één keer aan per
@@ -92,6 +94,7 @@ export async function POST(req: NextRequest) {
 
     const bestelling = await maakBestelling(addressKey, item.bedragCenten, address, email, "Demo koper");
     await zetStatus(bestelling.id, "paid");
+    await zetDemoRapport(bestelling.id, genereerDemoRapport(item.woning));
     if (item.favoriet) await zetFavoriet(bestelling.id, true);
     if (item.gearchiveerd) await zetGearchiveerd(bestelling.id, true);
     aantalBestellingen += 1;

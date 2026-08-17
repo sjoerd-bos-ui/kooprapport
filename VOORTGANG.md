@@ -43,6 +43,24 @@ BEWUSTE SCOPE-KEUZE: geen dagelijkse cron-verversing voor consumenten (nog)
 logische vervolgstap zijn (`/api/cron/matches-controleren` uitbreiden met
 alle consumenten-e-mailadressen die voorkeuren hebben).
 
+**4. Demo-rapporten zonder Altum-aanroep:** Sjoerd merkte terecht op dat
+doorklikken vanuit een demo-kaart naar de rapportpagina alsnog een echte,
+kostenveroorzakende Altum-aanvraag deed (`getReport()`/`fetchPremiumOnUnlock()`
+kenden geen "demo"-status). Fix: `Bestelling` kreeg een nieuw optioneel veld
+`demoReport?: Report` (`lib/payments/bestellingen.ts`, nieuwe setter
+`zetDemoRapport`); `app/api/admin/account/demo-vullen/route.ts` genereert nu
+per adres een volledig rapport via `genereerDemoRapport()` (dezelfde functie
+als de B2B-demo-route, "mock"-modus) en slaat dat mee op. Twee
+afnamepunten passen dit toe: `app/rapport/[slug]/page.tsx` gebruikt
+`bestelling.demoReport` rechtstreeks i.p.v. `getReport()` aan te roepen
+zodra de URL een `bestellingId` bevat die naar een demo-bestelling voor
+DIT adres wijst (addressKey-check, zelfde beveiligingsprincipe als
+`isBetaaldVoorAdres`), en `app/api/rapport/premium/route.ts` geeft
+`demoReport.market/nearbySales/verduurzaming` terug i.p.v.
+`fetchPremiumOnUnlock()` aan te roepen. Resultaat: 0 live aanroepen (niet
+naar Altum, ook niet naar de gratis BAG/EP-Online-bronnen) bij het bekijken
+van een demo-rapport via "Mijn rapporten".
+
 ## -10. Vorige sessie: verplichte e-mail+naam bij checkout, automatisch account na betaling
 
 Sjoerd: "mensen maken een account aan of Magic Link, maar we hebben wel een

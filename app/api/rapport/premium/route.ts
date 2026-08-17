@@ -83,6 +83,15 @@ export async function POST(req: NextRequest) {
   const bestelling = await haalBestelling(body.bestellingId);
   const bedragCenten = bestelling?.bedragCenten ?? null;
 
+  // Demo-omgeving (zie de toelichting bij Bestelling.demoReport in
+  // bestellingen.ts): het volledige rapport, INCLUSIEF de premium-onderdelen,
+  // staat al klaar -- geen fetchPremiumOnUnlock()-aanroep (dus geen Altum-
+  // kosten) nodig voor een demo-bestelling.
+  if (bestelling?.demoReport) {
+    const { market, nearbySales, verduurzaming } = bestelling.demoReport;
+    return NextResponse.json({ market, nearbySales, verduurzaming, bedragCenten });
+  }
+
   const cacheKey = premiumCacheKey(body.bestellingId);
   const cached = await kvGet(cacheKey);
   if (cached) {

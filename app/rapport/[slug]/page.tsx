@@ -12,6 +12,8 @@ import { getReport } from "@/lib/services/reportService";
 import { RAPPORT_PRIJS, RAPPORT_PRIJS_CENTEN } from "@/lib/utils/prijs";
 import type { Report } from "@/types/report";
 import { APP_BASE_URL } from "@/lib/config/payment";
+import { haalBestelling } from "@/lib/payments/bestellingen";
+import { canonicalAddressKey } from "@/lib/utils/slug";
 
 type SearchParams = { [key: string]: string | string[] | undefined };
 
@@ -52,6 +54,24 @@ const getResolvedReportData = cache(async function getResolvedReportData(
   if (result.status !== "match" || !result.address) {
     return { result, report: null };
   }
+
+  // Demo-omgeving ("Mijn rapporten" gevuld via account:demo, zie
+  // app/api/admin/account/demo-vullen/route.ts): een bestellingId die naar
+  // een bestelling met een vooraf gegenereerd demoReport wijst, wordt hier
+  // RECHTSTREEKS gebruikt i.p.v. getReport() aan te roepen -- dus geen enkele
+  // live aanroep (niet naar Altum, en ook niet naar de gratis bronnen zoals
+  // BAG/EP-Online) voor demo-adressen. De addressKey-vergelijking voorkomt
+  // dat een bestellingId voor adres A het demoReport van adres B zou tonen
+  // (zelfde beveiligingsprincipe als isBetaaldVoorAdres elders).
+  const bestellingId = typeof searchParams.bestellingId === "string" ? searchParams.bestellingId : null;
+  if (bestellingId) {
+    const bestelling = await haalBestelling(bestellingId);
+    const addressKey = canonicalAddressKey(result.address);
+    if (bestelling?.demoReport && addressKey && bestelling.addressSlug === addressKey) {
+      return { result, report: bestelling.demoReport };
+    }
+  }
+
   const report = await getReport(result.address);
   return { result, report };
 });

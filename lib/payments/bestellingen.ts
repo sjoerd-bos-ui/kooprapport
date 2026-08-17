@@ -1,6 +1,6 @@
 import { kvGet, kvIsLive, kvSet, kvZAdd, kvZRangeByScore } from "@/lib/services/kvStore";
 import { BETAAL_MODE } from "@/lib/config/payment";
-import type { AddressMeta } from "@/types/report";
+import type { AddressMeta, Report } from "@/types/report";
 
 // -----------------------------------------------------------------------------
 // Bestelling-("order")-opslag — de kern van waarom een betaalflow niet
@@ -64,6 +64,17 @@ export interface Bestelling {
   naam?: string;
   favoriet?: boolean;
   gearchiveerd?: boolean;
+  // Demo-omgeving (zie app/api/admin/account/demo-vullen/route.ts, "gewoon
+  // een demo-rapport zonder Altum aanvraag"): een volledig, vooraf
+  // gegenereerd Report (genereerDemoRapport in b2bDemoData.ts, exact
+  // dezelfde functie als de B2B-demo-route al gebruikte) -- staat hier klaar
+  // zodat het bekijken van dit rapport GEEN live/kostenveroorzakende aanroep
+  // hoeft te doen (niet naar Altum, en ook niet naar de gratis bronnen zoals
+  // BAG/EP-Online). Zie app/rapport/[slug]/page.tsx (gebruikt dit i.p.v.
+  // getReport() als bestellingId hierheen wijst) en app/api/rapport/premium/
+  // route.ts (geeft market/nearbySales/verduurzaming hieruit terug i.p.v.
+  // fetchPremiumOnUnlock aan te roepen).
+  demoReport?: Report;
 }
 
 // Bestellingen die langer dan dit openstaan tellen niet meer mee als geldig
@@ -228,6 +239,17 @@ export async function zetGearchiveerd(id: string, gearchiveerd: boolean): Promis
   const bestelling = await haalBestelling(id);
   if (!bestelling) return undefined;
   bestelling.gearchiveerd = gearchiveerd;
+  await opslaan(bestelling);
+  return bestelling;
+}
+
+// Zie de toelichting bij Bestelling.demoReport hierboven -- uitsluitend
+// aangeroepen vanuit de admin-demo-vulroute, nooit vanuit een echte
+// (betaalde) bestelling.
+export async function zetDemoRapport(id: string, report: Report): Promise<Bestelling | undefined> {
+  const bestelling = await haalBestelling(id);
+  if (!bestelling) return undefined;
+  bestelling.demoReport = report;
   await opslaan(bestelling);
   return bestelling;
 }
