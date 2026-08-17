@@ -4,9 +4,12 @@ import SiteHeader from "@/components/layout/SiteHeader";
 import SiteFooter from "@/components/layout/SiteFooter";
 import Container from "@/components/ui/Container";
 import AccountDashboard, { type AccountRapportItem } from "@/components/account/AccountDashboard";
+import ConsumentZoekopdracht from "@/components/account/ConsumentZoekopdracht";
 import { getIngelogdeEmailUitCookies } from "@/lib/services/consumentAuth";
 import { listBestellingenVoorEmail } from "@/lib/payments/bestellingen";
 import { buildReportHref } from "@/lib/utils/slug";
+import { getConsumentVoorkeuren, consumentKlantId } from "@/lib/services/consumentZoekopdracht";
+import { listMatchenVoorKlant } from "@/lib/services/b2bStore";
 
 export const metadata: Metadata = {
   title: "Mijn rapporten",
@@ -44,6 +47,13 @@ export default async function AccountPagina() {
       gearchiveerd: b.gearchiveerd ?? false,
     }));
 
+  // Zoektool (zie het Cowork-gesprek "visualize de zoektool ... hierin
+  // precies zoals in zakelijk"): dezelfde Funda-zoekopdracht/matches als
+  // Zakelijk, hier gekoppeld aan de ingelogde consument i.p.v. een
+  // klantdossier. Zie lib/services/consumentZoekopdracht.ts.
+  const voorkeuren = await getConsumentVoorkeuren(email);
+  const matches = await listMatchenVoorKlant(consumentKlantId(email));
+
   return (
     <main className="min-h-screen bg-parchment">
       <SiteHeader />
@@ -51,6 +61,10 @@ export default async function AccountPagina() {
         <p className="font-display text-2xl font-extrabold text-ink">Mijn rapporten</p>
         <div className="mt-6">
           <AccountDashboard email={email} rapporten={rapporten} />
+        </div>
+        <div className="mt-8">
+          <p className="mb-3 font-display text-lg font-extrabold text-ink">Zoeken naar een nieuwe woning</p>
+          <ConsumentZoekopdracht voorkeuren={voorkeuren} matches={matches} />
         </div>
       </Container>
       <SiteFooter />

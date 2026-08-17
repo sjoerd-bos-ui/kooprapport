@@ -1,6 +1,49 @@
 # Voortgang Kooprapport Zakelijk — overdracht naar nieuwe chat
 
-## -10. Nieuwste sessie: verplichte e-mail+naam bij checkout, automatisch account na betaling
+## -11. Nieuwste sessie: magic-link-bugfix, demo-omgeving, Funda-zoektool in "Mijn rapporten"
+
+Drie losse onderdelen:
+
+**1. Bugfix magic-link-inlog ("Deze link werkt niet meer"):** het
+inlogtoken werd tot nu toe meteen bij de EERSTE `GET` ongeldig gemaakt
+(eenmalig gebruik). Veel mailclients/beveiligingsscanners (Outlook Safe
+Links, bedrijfs-antivirus) bezoeken een link in een e-mail automatisch om
+'m te scannen vóórdat de ontvanger er zelf op klikt — die scan verbruikte
+het token dus al. Fix in `lib/services/consumentAuth.ts`
+(`verifieerEnVerbruikInlogToken`): token verloopt nu gewoon op de bestaande
+15-minuten-TTL i.p.v. na één treffer. Geen Upstash-configuratiefout, puur
+een race condition.
+
+**2. Demo-omgeving voor "Mijn rapporten":** `app/api/admin/account/
+demo-vullen/route.ts` (ADMIN_SECRET, zelfde patroon als de B2B-tegenhanger)
++ `scripts/vul-account-demo.js` (`npm run account:demo -- --email "..."`)
+vult 5 voorbeeldbestellingen. Plus `app/api/admin/account/status/route.ts`
++ `scripts/check-account-status.js` (`npm run account:status -- --email
+"..."`) om te checken wat er voor een e-mailadres in de store staat, zonder
+in te loggen.
+
+**3. Funda-zoektool in het consumentendashboard:** Sjoerd: "visualize de
+zoektool die we in zakelijk hebben gemaakt van Funda hierin precies zoals
+in zakelijk" → via AskUserQuestion verduidelijkt naar "in het
+consumentendashboard ('Mijn rapporten')" → na een visuele preview: "ja maak
+maar". Hergebruikt `VoorkeurenVragenlijst.tsx` en `MatchesKaart.tsx`
+letterlijk (niet gedupliceerd) — beide waren al deels gedeeld ontworpen.
+`MatchesKaart.tsx` kreeg twee nieuwe, backward-compatible optionele props
+(`basisPad`, `toonRapportActies`) zodat hij ook buiten het B2B-klantdossier
+werkt; de B2B-aanroep zelf verandert niet. Nieuwe laag:
+`lib/services/consumentZoekopdracht.ts` (voorkeuren per e-mailadres) +
+`app/api/account/zoekopdracht/*` (GET/PUT, matches-verversen, interessant-
+toggle) + `components/account/ConsumentZoekopdracht.tsx`, hergebruikt de
+bestaande matchopslag in `b2bStore.ts` met `consumentKlantId(email)` als
+namespaced sleutel (geen B2B-klantdossier nodig). Getoond onderaan
+`/account`.
+
+BEWUSTE SCOPE-KEUZE: geen dagelijkse cron-verversing voor consumenten (nog)
+— alleen handmatig via "Ververs" of bij het opslaan van voorkeuren. Zou een
+logische vervolgstap zijn (`/api/cron/matches-controleren` uitbreiden met
+alle consumenten-e-mailadressen die voorkeuren hebben).
+
+## -10. Vorige sessie: verplichte e-mail+naam bij checkout, automatisch account na betaling
 
 Sjoerd: "mensen maken een account aan of Magic Link, maar we hebben wel een
 mail nodig en wat basisgegevens om gegevens te verzamelen. Dit is een

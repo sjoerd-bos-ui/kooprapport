@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { B2bWoningMatch, B2bRapportAanvraag, B2bZoekopdracht, B2bKoperVoorkeuren } from "@/types/b2b";
+import type { B2bWoningMatch, B2bRapportAanvraag, B2bKoperVoorkeuren } from "@/types/b2b";
 import { B2B_WONINGTYPE_VOORKEUREN } from "@/types/b2b";
 import { vindGekoppeldRapport } from "@/lib/services/matchRapportKoppeling";
 import { BoltIcon, ArrowRightIcon, FileCheckIcon, LayersIcon, RulerIcon, ChevronDownIcon, AlertTriangleIcon, CheckIcon, StarIcon } from "@/components/report/icons";
@@ -125,11 +125,19 @@ function MatchActieMenu({
   match,
   dossierId,
   gekoppeldRapport,
+  toonRapportActies,
   onSluiten,
 }: {
   match: B2bWoningMatch;
   dossierId: string;
   gekoppeldRapport: B2bRapportAanvraag | null;
+  // B2C-hergebruik (zie ConsumentMatchesKaart-integratie in "Mijn
+  // rapporten"): het B2B-rapportdossierconcept (Kooprapport genereren voor
+  // een klant) bestaat niet in de consumentenflow -- daar heeft de koper
+  // zelf al z'n eigen (betaalde) rapport via Bestelling, geen los
+  // dossier/klantId. Op `false` wordt de hele rapport-koppel/genereer-UI
+  // hieronder overgeslagen, blijft alleen de advertentielink over.
+  toonRapportActies: boolean;
   onSluiten: () => void;
 }) {
   return (
@@ -149,27 +157,28 @@ function MatchActieMenu({
             <ArrowRightIcon className="h-3.5 w-3.5 shrink-0 text-ink/30" />
           </a>
 
-          {gekoppeldRapport ? (
-            <Link
-              href={`/zakelijk/rapporten/${gekoppeldRapport.id}`}
-              className="flex items-center justify-between rounded-xl bg-[#EEF0FF] px-3.5 py-3 hover:bg-[#E2E5FF]"
-            >
-              <span className="flex items-center gap-2 text-[12px] font-semibold text-accent">
-                <FileCheckIcon className="h-3.5 w-3.5" /> Bekijk ons rapport
-              </span>
-              <ArrowRightIcon className="h-3.5 w-3.5 shrink-0 text-accent/50" />
-            </Link>
-          ) : (
-            <Link
-              href={`/zakelijk/rapporten/nieuw?klantId=${dossierId}&adres=${encodeURIComponent(match.titel)}`}
-              className="flex flex-col rounded-xl border border-dashed border-accent/40 px-3.5 py-3 hover:bg-[#EEF0FF]/50"
-            >
-              <span className="flex items-center gap-2 text-[12px] font-semibold text-accent">
-                <FileCheckIcon className="h-3.5 w-3.5" /> Rapport genereren voor dit adres
-              </span>
-              <span className="mt-0.5 text-[10.5px] text-ink/40">Nog geen rapport voor dit adres in dit dossier.</span>
-            </Link>
-          )}
+          {toonRapportActies &&
+            (gekoppeldRapport ? (
+              <Link
+                href={`/zakelijk/rapporten/${gekoppeldRapport.id}`}
+                className="flex items-center justify-between rounded-xl bg-[#EEF0FF] px-3.5 py-3 hover:bg-[#E2E5FF]"
+              >
+                <span className="flex items-center gap-2 text-[12px] font-semibold text-accent">
+                  <FileCheckIcon className="h-3.5 w-3.5" /> Bekijk ons rapport
+                </span>
+                <ArrowRightIcon className="h-3.5 w-3.5 shrink-0 text-accent/50" />
+              </Link>
+            ) : (
+              <Link
+                href={`/zakelijk/rapporten/nieuw?klantId=${dossierId}&adres=${encodeURIComponent(match.titel)}`}
+                className="flex flex-col rounded-xl border border-dashed border-accent/40 px-3.5 py-3 hover:bg-[#EEF0FF]/50"
+              >
+                <span className="flex items-center gap-2 text-[12px] font-semibold text-accent">
+                  <FileCheckIcon className="h-3.5 w-3.5" /> Rapport genereren voor dit adres
+                </span>
+                <span className="mt-0.5 text-[10.5px] text-ink/40">Nog geen rapport voor dit adres in dit dossier.</span>
+              </Link>
+            ))}
         </div>
 
         <button type="button" onClick={onSluiten} className="mt-4 w-full text-center text-[11px] font-semibold text-ink/40 hover:text-ink/60">
@@ -194,12 +203,25 @@ export default function MatchesKaart({
   matchenActief,
   zoekopdracht,
   favorietWaarschuwingen = {},
+  basisPad,
+  toonRapportActies = true,
 }: {
   matches: B2bWoningMatch[];
   rapporten: B2bRapportAanvraag[];
   dossierId: string;
   matchenActief: boolean;
-  zoekopdracht?: B2bZoekopdracht;
+  // Structureel compatibel met B2bZoekopdracht (die heeft dit veld, plus
+  // meer die hier niet gebruikt worden) -- versmald zodat B2C-aanroepers
+  // (zie ConsumentZoekopdracht.tsx) geen volledig, nep B2bZoekopdracht-
+  // object hoeven te verzinnen puur om deze ene prop door te geven.
+  zoekopdracht?: { koperVoorkeuren: B2bKoperVoorkeuren | null };
+  // B2C-hergebruik: standaard het bestaande Zakelijk-pad (niets verandert
+  // voor de makelaarskant), maar in het consumentendashboard ("Mijn
+  // rapporten") wijst dit naar /api/account/zoekopdracht i.p.v. een
+  // klantdossier-id -- zie de toelichting bij toonRapportActies hieronder.
+  basisPad?: string;
+  // Zie de toelichting bij MatchActieMenu hierboven.
+  toonRapportActies?: boolean;
   // Sinds favorieten niet meer automatisch worden opgeruimd (zie
   // ruimVerouderdeMatchenOp in b2bStore.ts, "favoriet alleen verwijderen als
   // de koper daarop klikt") kan een favoriet blijven staan terwijl hij niet
@@ -226,6 +248,7 @@ export default function MatchesKaart({
   const [interessantOverrides, setInteressantOverrides] = useState<Record<string, boolean>>({});
 
   const koperVoorkeuren = zoekopdracht?.koperVoorkeuren ?? null;
+  const pad = basisPad ?? `/api/zakelijk/klanten/${dossierId}`;
 
   function isInteressant(match: B2bWoningMatch): boolean {
     return interessantOverrides[match.id] ?? match.interessant === true;
@@ -235,7 +258,7 @@ export default function MatchesKaart({
     const nieuweWaarde = !isInteressant(match);
     setInteressantOverrides((o) => ({ ...o, [match.id]: nieuweWaarde }));
     try {
-      const res = await fetch(`/api/zakelijk/klanten/${dossierId}/matches/${match.id}/interessant`, {
+      const res = await fetch(`${pad}/matches/${match.id}/interessant`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ interessant: nieuweWaarde }),
@@ -253,7 +276,7 @@ export default function MatchesKaart({
     setVerverst(true);
     setZoekFout(false);
     try {
-      const res = await fetch(`/api/zakelijk/klanten/${dossierId}/matches-verversen`, { method: "POST" });
+      const res = await fetch(`${pad}/matches-verversen`, { method: "POST" });
       // BUGFIX (klacht "geeft nog steeds 0 matches zonder extra filter"):
       // een mislukte zoekaanvraag (netwerk/timeout, zie fundaFeed.ts) zag
       // er voorheen identiek uit als "0 passende woningen" -- dit toont nu
@@ -367,21 +390,22 @@ export default function MatchesKaart({
                       >
                         Advertentie
                       </a>
-                      {gekoppeldRapport ? (
-                        <Link
-                          href={`/zakelijk/rapporten/${gekoppeldRapport.id}`}
-                          className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-[#EAF3DE] py-1.5 text-[10.5px] font-semibold text-[#3B6D11]"
-                        >
-                          <CheckIcon className="h-3 w-3" /> Rapport
-                        </Link>
-                      ) : (
-                        <Link
-                          href={`/zakelijk/rapporten/nieuw?klantId=${dossierId}&adres=${encodeURIComponent(m.titel)}`}
-                          className="flex-1 rounded-lg bg-[#EEF0FF] py-1.5 text-center text-[10.5px] font-semibold text-accent"
-                        >
-                          Rapport
-                        </Link>
-                      )}
+                      {toonRapportActies &&
+                        (gekoppeldRapport ? (
+                          <Link
+                            href={`/zakelijk/rapporten/${gekoppeldRapport.id}`}
+                            className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-[#EAF3DE] py-1.5 text-[10.5px] font-semibold text-[#3B6D11]"
+                          >
+                            <CheckIcon className="h-3 w-3" /> Rapport
+                          </Link>
+                        ) : (
+                          <Link
+                            href={`/zakelijk/rapporten/nieuw?klantId=${dossierId}&adres=${encodeURIComponent(m.titel)}`}
+                            className="flex-1 rounded-lg bg-[#EEF0FF] py-1.5 text-center text-[10.5px] font-semibold text-accent"
+                          >
+                            Rapport
+                          </Link>
+                        ))}
                     </div>
                   </div>
                 </div>
@@ -480,6 +504,7 @@ export default function MatchesKaart({
           match={actieveMatch}
           dossierId={dossierId}
           gekoppeldRapport={vindGekoppeldRapport(actieveMatch.titel, rapporten)}
+          toonRapportActies={toonRapportActies}
           onSluiten={() => setActieveMatch(null)}
         />
       )}
