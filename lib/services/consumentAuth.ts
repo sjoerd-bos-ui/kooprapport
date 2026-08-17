@@ -49,15 +49,27 @@ export async function maakInlogToken(email: string): Promise<string> {
 }
 
 // Stap 2: het token uit de link verzilveren (zie app/api/account/bevestigen/
-// route.ts) -- EENMALIG: meteen na lezen ongeldig maken (zelfde
-// lege-waarde-met-TTL-1s-truc als verwijderSessie in b2bAuth.ts, geen kvDel
-// nodig puur hiervoor), zodat een onderschepte/opnieuw bezochte link niet
-// twee keer bruikbaar is.
+// route.ts).
+//
+// BUGFIX ("link werkt niet meer" zonder duidelijke oorzaak): dit was eerst
+// EENMALIG -- meteen na de eerste GET ongeldig gemaakt. Probleem: veel
+// mailclients/beveiligingsscanners (Outlook Safe Links, bedrijfs-antivirus,
+// linkpreviews in sommige webmail) bezoeken een link in een e-mail
+// automatisch om 'm te scannen, VOORDAT de ontvanger er zelf op klikt. Bij
+// directe eenmalige invalidatie verbruikt zo'n scan het token al, en krijgt
+// de echte gebruiker daarna "Deze link werkt niet meer" te zien terwijl hij
+// nog nooit zelf geklikt had -- niet te wijten aan een verkeerde
+// KV-configuratie, puur een race condition tussen scanner en gebruiker.
+//
+// Oplossing: het token niet langer expliciet ongeldig maken na de eerste
+// treffer, gewoon laten verlopen op de bestaande 15-minuten-TTL
+// (INLOG_TOKEN_TTL_SECONDEN) zoals elk ander tijdelijk token hier. Iets
+// ruimere hergebruik-mogelijkheid (tot 15 min i.p.v. exact één keer), maar
+// wél nog steeds tijdgebonden -- een acceptabele afweging voor dit
+// lage-risico consumentenaccount (rapport-inzage van iets dat al betaald
+// is, geen financiële actie).
 export async function verifieerEnVerbruikInlogToken(token: string): Promise<string | null> {
-  const email = await kvGet(inlogTokenKey(token));
-  if (!email) return null;
-  await kvSet(inlogTokenKey(token), "", 1);
-  return email;
+  return kvGet(inlogTokenKey(token));
 }
 
 export async function maakSessie(email: string): Promise<string> {
