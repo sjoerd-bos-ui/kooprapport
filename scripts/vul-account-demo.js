@@ -11,6 +11,7 @@ const path = require("path");
 //   npm run account:demo -- --email "sjoerd-bos@live.nl"
 //
 // Optioneel: --url https://kooprapport.nl (default: http://localhost:3000).
+// Optioneel: --aantal 2 (default: alle 5 -- zie route.ts voor het plan).
 // -----------------------------------------------------------------------------
 
 function leesAdminSecret() {
@@ -42,9 +43,15 @@ async function main() {
   const adminSecret = leesAdminSecret();
   const baseUrl = leesArg("url", "http://localhost:3000");
   const email = leesArg("email", null);
+  const aantalRuw = leesArg("aantal", null);
+  const aantal = aantalRuw != null ? Number(aantalRuw) : undefined;
 
   if (!email) {
     console.error('[account:demo] Geef --email "..." mee (het e-mailadres waarmee je straks bij "Mijn rapporten" inlogt).');
+    process.exit(1);
+  }
+  if (aantalRuw != null && (!Number.isFinite(aantal) || aantal < 1)) {
+    console.error("[account:demo] --aantal moet een positief getal zijn.");
     process.exit(1);
   }
 
@@ -55,7 +62,7 @@ async function main() {
       Authorization: `Bearer ${adminSecret}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ email }),
+    body: JSON.stringify(aantal != null ? { email, aantal } : { email }),
   });
 
   const body = await res.json().catch(() => ({}));

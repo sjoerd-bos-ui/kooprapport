@@ -27,7 +27,12 @@ import { isGeldigEmailadres } from "@/lib/services/email";
 // Voorbeeld:
 //   curl -X POST https://kooprapport.nl/api/admin/account/demo-vullen \
 //     -H "Authorization: Bearer $ADMIN_SECRET" -H "Content-Type: application/json" \
-//     -d '{"email":"sjoerd-bos@live.nl"}'
+//     -d '{"email":"sjoerd-bos@live.nl","aantal":2}'
+//
+// `aantal` is optioneel (standaard 5, het volledige plan hieronder) --
+// Sjoerd wilde een keer specifiek "2 rapporten" i.p.v. de standaard 5, dus
+// gewoon de eerste N items van hetzelfde vaste plan (favoriet/gearchiveerd-
+// markeringen blijven zo consistent, ongeacht N).
 // -----------------------------------------------------------------------------
 
 interface DemoBestellingPlan {
@@ -36,6 +41,8 @@ interface DemoBestellingPlan {
   gearchiveerd?: boolean;
   bedragCenten: number;
 }
+
+const MAX_DEMO_BESTELLINGEN = DEMO_WONINGEN.length;
 
 function plan(): DemoBestellingPlan[] {
   const [w1, w2, w3, w4, w5] = DEMO_WONINGEN;
@@ -63,7 +70,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Niet geautoriseerd." }, { status: 401 });
   }
 
-  let body: { email?: string };
+  let body: { email?: string; aantal?: number };
   try {
     body = await req.json();
   } catch {
@@ -73,9 +80,12 @@ export async function POST(req: NextRequest) {
   if (!email || !isGeldigEmailadres(email)) {
     return NextResponse.json({ error: "Vul een geldig e-mailadres in." }, { status: 400 });
   }
+  const gevraagdAantal =
+    typeof body.aantal === "number" && Number.isFinite(body.aantal) ? Math.round(body.aantal) : MAX_DEMO_BESTELLINGEN;
+  const aantalTeVullen = Math.min(Math.max(1, gevraagdAantal), MAX_DEMO_BESTELLINGEN);
 
   let aantalBestellingen = 0;
-  for (const item of plan()) {
+  for (const item of plan().slice(0, aantalTeVullen)) {
     const address = genereerDemoAdres(item.woning);
     const addressKey = canonicalAddressKey(address);
     if (!addressKey) continue; // defensief, kan niet gebeuren met de vaste DEMO_WONINGEN-lijst
