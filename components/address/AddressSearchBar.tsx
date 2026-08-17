@@ -19,10 +19,20 @@ import { trackAdresGekozen } from "@/lib/analytics/trackAdresGekozen";
 // Nederland), gedebounced. Als die niet bereikbaar is (geen netwerk, CORS),
 // valt dit terug op de kleine lokale MOCK_ADDRESSES-set via
 // searchAddressSuggestions() — met een zichtbare melding, nooit stil niets.
-export default function AddressSearchBar() {
+export default function AddressSearchBar({ initialQuery }: { initialQuery?: string } = {}) {
   const router = useRouter();
-  const [query, setQuery] = useState("");
-  const [open, setOpen] = useState(false);
+  // Vooringevuld vanaf een Funda-matchtitel ("Bekijk rapport" op een match in
+  // "Mijn rapporten", zie ConsumentZoekopdracht.tsx) -- BEWUST alleen de
+  // TEKST vooringevuld, geen automatische adreskeuze: dezelfde regel als
+  // hierboven toegelicht ("nooit vrije tekst zelf matchen") geldt evengoed
+  // voor een Funda-titel, die is nooit gegarandeerd exact gelijk aan een
+  // BAG-adres (huisletter/toevoeging-notatie kan afwijken). De gebruiker
+  // kiest dus nog steeds zelf de juiste suggestie.
+  const [query, setQuery] = useState(initialQuery ?? "");
+  // Bij een vooringevulde query meteen open, zodat de suggesties (zodra ze
+  // binnen zijn) direct zichtbaar zijn -- zonder deze extra state zou de
+  // gebruiker eerst zelf in het veld moeten klikken voor er iets verschijnt.
+  const [open, setOpen] = useState(Boolean(initialQuery?.trim()));
   const [highlightIndex, setHighlightIndex] = useState(-1);
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
   const [suggestions, setSuggestions] = useState<AddressMeta[]>([]);

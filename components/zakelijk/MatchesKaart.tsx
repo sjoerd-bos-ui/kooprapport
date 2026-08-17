@@ -126,18 +126,26 @@ function MatchActieMenu({
   dossierId,
   gekoppeldRapport,
   toonRapportActies,
+  rapportZoekHref,
   onSluiten,
 }: {
   match: B2bWoningMatch;
   dossierId: string;
   gekoppeldRapport: B2bRapportAanvraag | null;
-  // B2C-hergebruik (zie ConsumentMatchesKaart-integratie in "Mijn
-  // rapporten"): het B2B-rapportdossierconcept (Kooprapport genereren voor
-  // een klant) bestaat niet in de consumentenflow -- daar heeft de koper
-  // zelf al z'n eigen (betaalde) rapport via Bestelling, geen los
-  // dossier/klantId. Op `false` wordt de hele rapport-koppel/genereer-UI
-  // hieronder overgeslagen, blijft alleen de advertentielink over.
+  // B2C-hergebruik (zie ConsumentZoekopdracht.tsx in "Mijn rapporten"): het
+  // B2B-rapportdossierconcept (Kooprapport genereren voor een klant) bestaat
+  // niet in de consumentenflow -- daar heeft de koper zelf al z'n eigen
+  // (betaalde) rapport via Bestelling, geen los dossier/klantId. Op `false`
+  // wordt de hele rapport-koppel/genereer-UI hieronder overgeslagen.
   toonRapportActies: boolean;
+  // B2C-tegenhanger van de rapport-link hierboven (alleen relevant als
+  // toonRapportActies=false): een Funda-match heeft geen gestructureerd BAG-
+  // adres (alleen een vrije-teksttitel, zie fundaFeed.ts), dus dit linkt naar
+  // de homepage-zoekbalk met die titel VOORINGEVULD i.p.v. rechtstreeks naar
+  // een rapportpagina -- de gebruiker kiest daar zelf de juiste suggestie
+  // (zie AddressSearchBar.tsx, "nooit vrije tekst zelf matchen"). `undefined`
+  // laat de knop gewoon weg (bv. wanneer toonRapportActies alsnog true is).
+  rapportZoekHref?: (match: B2bWoningMatch) => string;
   onSluiten: () => void;
 }) {
   return (
@@ -179,6 +187,18 @@ function MatchActieMenu({
                 <span className="mt-0.5 text-[10.5px] text-ink/40">Nog geen rapport voor dit adres in dit dossier.</span>
               </Link>
             ))}
+
+          {!toonRapportActies && rapportZoekHref && (
+            <Link
+              href={rapportZoekHref(match)}
+              className="flex items-center justify-between rounded-xl bg-[#EEF0FF] px-3.5 py-3 hover:bg-[#E2E5FF]"
+            >
+              <span className="flex items-center gap-2 text-[12px] font-semibold text-accent">
+                <FileCheckIcon className="h-3.5 w-3.5" /> Bekijk Kooprapport voor dit adres
+              </span>
+              <ArrowRightIcon className="h-3.5 w-3.5 shrink-0 text-accent/50" />
+            </Link>
+          )}
         </div>
 
         <button type="button" onClick={onSluiten} className="mt-4 w-full text-center text-[11px] font-semibold text-ink/40 hover:text-ink/60">
@@ -205,6 +225,7 @@ export default function MatchesKaart({
   favorietWaarschuwingen = {},
   basisPad,
   toonRapportActies = true,
+  rapportZoekHref,
 }: {
   matches: B2bWoningMatch[];
   rapporten: B2bRapportAanvraag[];
@@ -222,6 +243,8 @@ export default function MatchesKaart({
   basisPad?: string;
   // Zie de toelichting bij MatchActieMenu hierboven.
   toonRapportActies?: boolean;
+  // Zie de toelichting bij MatchActieMenu hierboven.
+  rapportZoekHref?: (match: B2bWoningMatch) => string;
   // Sinds favorieten niet meer automatisch worden opgeruimd (zie
   // ruimVerouderdeMatchenOp in b2bStore.ts, "favoriet alleen verwijderen als
   // de koper daarop klikt") kan een favoriet blijven staan terwijl hij niet
@@ -406,6 +429,14 @@ export default function MatchesKaart({
                             Rapport
                           </Link>
                         ))}
+                      {!toonRapportActies && rapportZoekHref && (
+                        <Link
+                          href={rapportZoekHref(m)}
+                          className="flex-1 rounded-lg bg-[#EEF0FF] py-1.5 text-center text-[10.5px] font-semibold text-accent"
+                        >
+                          Rapport
+                        </Link>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -505,6 +536,7 @@ export default function MatchesKaart({
           dossierId={dossierId}
           gekoppeldRapport={vindGekoppeldRapport(actieveMatch.titel, rapporten)}
           toonRapportActies={toonRapportActies}
+          rapportZoekHref={rapportZoekHref}
           onSluiten={() => setActieveMatch(null)}
         />
       )}

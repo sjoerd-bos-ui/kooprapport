@@ -209,7 +209,16 @@ const VOORBEELD_ADRES: AddressMeta = {
   adresseerbaarObjectId: "0363010000783842",
 };
 
-export default function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  // Vooringevuld vanuit een Funda-match ("Bekijk rapport" op een match in
+  // "Mijn rapporten", zie ConsumentZoekopdracht.tsx/MatchesKaart.tsx) --
+  // alleen de zoekbalktekst, zie de toelichting in AddressSearchBar.tsx voor
+  // waarom er geen adres automatisch gekozen wordt.
+  const { q } = await searchParams;
 
   // JSON-LD — rechtstreeks uit bestaande, op de pagina zichtbare content
   // opgebouwd (VEELGESTELDE_VRAGEN hierboven, dezelfde RAPPORT_PRIJS als de
@@ -374,7 +383,7 @@ export default function HomePage() {
               </p>
 
               <div className="mt-6">
-                <AddressSearchBar />
+                <AddressSearchBar initialQuery={q} />
               </div>
 
               {/* Iconentegels i.p.v. de eerdere losse tekstpillen: compacter,

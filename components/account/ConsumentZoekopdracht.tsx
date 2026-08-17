@@ -161,6 +161,7 @@ export default function ConsumentZoekopdracht({
         zoekopdracht={{ koperVoorkeuren: voorkeuren }}
         basisPad="/api/account/zoekopdracht"
         toonRapportActies={false}
+        rapportZoekHref={(match) => `/?q=${encodeURIComponent(match.titel)}`}
       />
     </div>
   );
