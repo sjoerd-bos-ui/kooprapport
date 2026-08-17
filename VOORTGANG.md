@@ -43,6 +43,16 @@ BEWUSTE SCOPE-KEUZE: geen dagelijkse cron-verversing voor consumenten (nog)
 logische vervolgstap zijn (`/api/cron/matches-controleren` uitbreiden met
 alle consumenten-e-mailadressen die voorkeuren hebben).
 
+**5. "Download rapport" op de dashboardkaart:** naast "Bekijk rapport"
+staat nu ook een download-knop op elke kaart in "Mijn rapporten"
+(AccountDashboard.tsx). Nieuwe route `app/api/account/rapporten/[id]/pdf/
+route.tsx` bouwt het rapport server-side op (ownership-check op
+`bestelling.email` tegen de ingelogde sessie) en levert de PDF meteen --
+demo-bestellingen gebruiken `demoReport` rechtstreeks (geen live aanroep),
+echte betaalde bestellingen hergebruiken dezelfde premium-resultaat-KV-
+cache als `/api/rapport/premium/route.ts` zodat er nooit dubbel bij Altum
+wordt aangeklopt voor dezelfde bestelling.
+
 **4. Demo-rapporten zonder Altum-aanroep:** Sjoerd merkte terecht op dat
 doorklikken vanuit een demo-kaart naar de rapportpagina alsnog een echte,
 kostenveroorzakende Altum-aanvraag deed (`getReport()`/`fetchPremiumOnUnlock()`

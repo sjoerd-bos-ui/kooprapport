@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { HomeIcon, StarIcon, BoxIcon, PlusIcon, SearchIcon } from "@/components/report/icons";
+import { HomeIcon, StarIcon, BoxIcon, PlusIcon, SearchIcon, DownloadIcon } from "@/components/report/icons";
 
 export interface AccountRapportItem {
   id: string;
@@ -168,12 +168,22 @@ export default function AccountDashboard({ email, rapporten }: { email: string; 
                 </div>
                 <span className="text-[9.5px] text-ink/40">{r.datumLabel}</span>
               </div>
-              <Link
-                href={r.bekijkUrl}
-                className="mt-2.5 block w-full rounded-lg bg-accent px-3 py-2 text-center text-[11px] font-semibold text-white hover:bg-accent-dark"
-              >
-                Bekijk rapport
-              </Link>
+              <div className="mt-2.5 flex gap-1.5">
+                <Link
+                  href={r.bekijkUrl}
+                  className="flex-1 rounded-lg bg-accent px-3 py-2 text-center text-[11px] font-semibold text-white hover:bg-accent-dark"
+                >
+                  Bekijk rapport
+                </Link>
+                <a
+                  href={`/api/account/rapporten/${r.id}/pdf`}
+                  className="flex items-center justify-center gap-1 rounded-lg border border-ink/15 px-3 py-2 text-[11px] font-semibold text-ink/60 hover:bg-mist"
+                  aria-label="Download rapport als PDF"
+                  title="Download rapport"
+                >
+                  <DownloadIcon className="h-3.5 w-3.5" />
+                </a>
+              </div>
             </div>
           </div>
         ))}
