@@ -1,6 +1,65 @@
 # Voortgang Kooprapport Zakelijk — overdracht naar nieuwe chat
 
-## -11. Nieuwste sessie: magic-link-bugfix, demo-omgeving, Funda-zoektool in "Mijn rapporten"
+## -12. Nieuwste sessie: Koperportaal voor Zakelijk-klanten (self-service)
+
+Eerst gevisualiseerd (mcp__visualize, drie iteraties op verzoek "stuk
+mooier") als eerste van een top-5-lijst nieuwe Zakelijk-functionaliteiten,
+daarna gebouwd op "oke bouw maar".
+
+**Wat het is:** dezelfde zelfbedieningsconstructie als het B2C-
+consumentendashboard (magic-linkinlog, eigen matches/voorkeuren-UI) maar nu
+voor de KOPER van een B2B-klantdossier. Tot nu toe beheerde alleen de
+makelaar het dossier (favorieten aanvinken, koper-voorkeuren invullen via
+ZoekopdrachtForm.tsx); met dit portaal doet de koper dat zelf en ziet de
+makelaar alleen nog het resultaat.
+
+**Belangrijk architectuurverschil met het B2C-account:** dit is GEEN
+namespaced `consument:{email}`-sleutel zoals bij ConsumentZoekopdracht.tsx —
+het koperportaal werkt op het ECHTE `B2bKlantdossier` van de makelaar
+(`basisPad="/api/koper-portaal"`, klantId = dossierId, orgId = de echte
+organisatie). Wat de koper hier wijzigt (voorkeuren, matches verversen,
+favorieten) is dus meteen zichtbaar in het dossier dat de makelaar ziet in
+`/zakelijk/klanten/[id]`.
+
+**Nieuwe bestanden:**
+- `lib/services/koperPortaalAuth.ts` — magic-link-auth analoog aan
+  consumentAuth.ts, maar gescoped op `dossierId` i.p.v. e-mailadres. Eigen
+  cookie (`koper_portaal_session`, 180 dagen) en inlogtoken (15 min, blijft
+  net als bij consumentAuth.ts geldig tot de TTL verloopt i.p.v. eenmalig
+  ongeldig — zelfde reden: e-mailscanners mogen de koper niet buitensluiten).
+- `stuurKoperPortaalUitnodigingEmail` in `lib/services/email.ts` — uitnodiging
+  met de KANTOORNAAM van de makelaar voorop (Kooprapport is hier
+  ondergeschikt, kleine vermelding onderaan), verstuurd naar het al
+  bestaande `zoekopdracht.emailKoper`-veld.
+- `app/api/zakelijk/klanten/[id]/koper-portaal-uitnodigen/route.ts` —
+  makelaar-route die het token genereert en de mail verstuurt.
+- `components/zakelijk/ZoekopdrachtForm.tsx` — knop "Nodig koper uit voor
+  portaal" toegevoegd (disabled zolang er nog geen emailKoper is opgeslagen).
+- `app/api/koper-portaal/inloggen/route.ts` + `.../uitloggen/route.ts` —
+  magic-linkverzilvering en sessiecookie, zelfde tweestapsopzet als
+  `app/api/account/bevestigen/route.ts`.
+- `app/koper-portaal/inloggen/page.tsx` — BEWUST geen self-service
+  "vraag nieuwe link aan"-formulier (zoals bij /account/inloggen): een
+  koperportaal-sessie hoort bij één dossier van één makelaar, niet bij een
+  los e-mailadres — alleen de makelaar kan opnieuw uitnodigen.
+- `app/api/koper-portaal/zoekopdracht/route.ts` (GET/PUT),
+  `.../matches-verversen/route.ts` (POST), `.../matches/[matchId]/
+  interessant/route.ts` (PATCH) — koper-tegenhangers van de bestaande
+  Zakelijk-routes, ownership via de sessie (die wijst al naar precies één
+  dossierId) i.p.v. een orgId-check.
+- `components/koper-portaal/KoperPortaalDashboard.tsx` +
+  `app/koper-portaal/page.tsx` — hergebruikt VoorkeurenVragenlijst.tsx en
+  MatchesKaart.tsx (`toonRapportActies={false}`), donkere kantoorbranding-
+  header (logo/naam uit `B2bOrganisatie.branding`, zelfde patroon als
+  `app/koper-voorkeuren/[token]/page.tsx`), contactkaart naar de makelaar
+  onderaan.
+
+**Nog niet gedaan (bewust, niet gevraagd):** geen automatische cron-
+verversing van koperportaal-matches (zelfde bewuste scope-keuze als bij het
+B2C-dashboard) en geen persistente "uitgenodigd op"-datum op het dossier —
+de uitnodigingsknop kan gewoon opnieuw geklikt worden.
+
+## -11. Vorige sessie: magic-link-bugfix, demo-omgeving, Funda-zoektool in "Mijn rapporten"
 
 Drie losse onderdelen:
 

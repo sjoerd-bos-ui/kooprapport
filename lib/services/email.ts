@@ -959,6 +959,101 @@ function escapeHtml(input: string): string {
     .replace(/"/g, "&quot;");
 }
 
+export interface StuurKoperPortaalUitnodigingEmailInput {
+  naar: string;
+  klantnaam: string;
+  organisatieNaam: string;
+  inlogUrl: string;
+}
+
+// -----------------------------------------------------------------------------
+// Uitnodiging voor het koperportaal (zie het Cowork-gesprek "Koperportaal voor
+// Zakelijk-klanten") -- verstuurd door de makelaar vanuit het klantdossier
+// (app/api/zakelijk/klanten/[id]/koper-portaal-uitnodigen/route.ts). Zelfde
+// magic-linkopzet/uitstraling als stuurAccountInlogEmail hierboven, alleen nu
+// met de kantoornaam van de makelaar in plaats van "Kooprapport" als
+// hoofdboodschap -- de koper krijgt dit namens ZIJN makelaar, Kooprapport is
+// hier bewust ondergeschikt (kleine vermelding onderaan), net als op de
+// publieke koper-voorkeurenpagina (app/koper-voorkeuren/[token]/page.tsx).
+// -----------------------------------------------------------------------------
+export async function stuurKoperPortaalUitnodigingEmail(input: StuurKoperPortaalUitnodigingEmailInput): Promise<StuurRapportEmailResultaat> {
+  const apiKey = process.env.RESEND_API_KEY;
+  const van = process.env.RESEND_FROM_EMAIL;
+  if (!apiKey || !van) {
+    return { ok: false, error: "E-mailverzending is nog niet geconfigureerd." };
+  }
+
+  const link = escapeHtml(input.inlogUrl);
+  const klantnaam = escapeHtml(input.klantnaam);
+  const organisatieNaam = escapeHtml(input.organisatieNaam);
+
+  const html = `<!DOCTYPE html>
+<html lang="nl">
+  <body style="margin:0;padding:0;background-color:#F5F5FA;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F5F5FA;padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background-color:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #EEF0FF;">
+            <tr>
+              <td style="background-color:#1F1F2E;padding:22px 32px;">
+                <span style="font-size:18px;font-weight:700;color:#ffffff;letter-spacing:-0.01em;">${organisatieNaam}</span>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:32px;">
+                <p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#4F46E5;">
+                  Uw persoonlijke woningportaal
+                </p>
+                <p style="margin:0 0 18px;font-size:20px;line-height:1.4;font-weight:700;color:#1F1F2E;">
+                  Hallo ${klantnaam}, bekijk uw woningmatches
+                </p>
+                <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#1F1F2E;">
+                  ${organisatieNaam} heeft een persoonlijk portaal voor u klaargezet. Daar ziet u alle woningen die
+                  aan uw zoekopdracht voldoen, kunt u favorieten aanvinken en uw voorkeuren zelf aanpassen. Klik op
+                  onderstaande knop om in te loggen -- deze link is 15 minuten geldig.
+                </p>
+                <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;">
+                  <tr>
+                    <td align="center" style="border-radius:10px;background-color:#4F46E5;">
+                      <a href="${link}" style="display:inline-block;padding:14px 28px;font-size:14px;font-weight:700;color:#ffffff;text-decoration:none;">
+                        Naar mijn woningportaal
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin:24px 0 0;font-size:13px;line-height:1.6;color:#6B7280;">
+                  Niet zelf verwacht? Neem dan contact op met ${organisatieNaam}.
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:20px 32px;background-color:#F5F5FA;border-top:1px solid #EEF0FF;">
+                <p style="margin:0;font-size:12px;line-height:1.6;color:#9CA3AF;">
+                  Mede mogelijk gemaakt door <a href="https://kooprapport.nl" style="color:#4F46E5;text-decoration:none;">Kooprapport</a>
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+
+  const res = await fetch(RESEND_API_URL, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ from: van, to: [input.naar], subject: `Uw woningportaal bij ${input.organisatieNaam}`, html }),
+  });
+
+  if (!res.ok) {
+    const tekst = await res.text().catch(() => "");
+    console.error(`[email] Resend gaf status ${res.status} (koper-portaal-uitnodiging):`, tekst);
+    return { ok: false, error: "Versturen is niet gelukt. Probeer het later opnieuw." };
+  }
+  return { ok: true };
+}
+
 // -----------------------------------------------------------------------------
 // Merk-huisstijl e-mailtemplate — tabel-gebaseerde layout met inline styles
 // (geen flexbox/grid/externe CSS), want e-mailclients zoals Outlook renderen

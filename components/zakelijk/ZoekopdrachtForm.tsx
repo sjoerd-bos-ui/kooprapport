@@ -61,6 +61,13 @@ export default function ZoekopdrachtForm({ dossierId, huidig }: { dossierId: str
   const [mailBezig, setMailBezig] = useState(false);
   const [mailMelding, setMailMelding] = useState<string | null>(null);
   const [bevestigingBezig, setBevestigingBezig] = useState(false);
+  // Koperportaal-uitnodiging (zie het Cowork-gesprek "Koperportaal voor
+  // Zakelijk-klanten") -- losse, lokale bezig/melding-state, zelfde patroon
+  // als opnieuwBevestigingVersturen hierboven, geen router.refresh() nodig
+  // want er wordt niets in het dossier zelf gewijzigd (alleen een mail
+  // verstuurd).
+  const [portaalBezig, setPortaalBezig] = useState(false);
+  const [portaalMelding, setPortaalMelding] = useState<string | null>(null);
   // WhatsApp-alerts ("eerste zijn", zie het Cowork-gesprek "de grootste
   // functionaliteiten waar we echt de markt mee opschudden") -- exact
   // dezelfde lokale-invoer-tot-opslaan-opzet als het e-mailveld hierboven.
@@ -221,6 +228,20 @@ export default function ZoekopdrachtForm({ dossierId, huidig }: { dossierId: str
   function toggleWhatsappBijNieuweMatches() {
     if (!telefoonKoperOpgeslagen) return;
     opslaanKoperWhatsapp(telefoonKoperOpgeslagen, !whatsappBijNieuweMatches, false);
+  }
+
+  async function stuurPortaalUitnodiging() {
+    setPortaalBezig(true);
+    setPortaalMelding(null);
+    try {
+      const res = await fetch(`/api/zakelijk/klanten/${dossierId}/koper-portaal-uitnodigen`, { method: "POST" });
+      const body = await res.json();
+      setPortaalMelding(res.ok ? "Uitnodiging verstuurd naar de koper." : body.error ?? "Versturen is niet gelukt.");
+    } catch {
+      setPortaalMelding("Versturen is niet gelukt.");
+    } finally {
+      setPortaalBezig(false);
+    }
   }
 
   async function opnieuwWhatsappBevestigingVersturen() {
@@ -392,6 +413,26 @@ export default function ZoekopdrachtForm({ dossierId, huidig }: { dossierId: str
               </span>
             ))}
           {mailMelding && <p className="w-full text-[10.5px] font-semibold text-accent">{mailMelding}</p>}
+        </div>
+
+        {/* Koperportaal (zie het Cowork-gesprek "Koperportaal voor
+            Zakelijk-klanten"): zelfbedieningstoegang voor de koper zelf --
+            eigen matches bekijken, favorieten aanvinken en voorkeuren
+            bijwerken zonder tussenkomst van de makelaar. Gebruikt hetzelfde
+            emailKoper-veld als hierboven, vandaar de disabled-state en
+            title-hint zodra dat nog leeg is -- geen apart e-mailveld nodig. */}
+        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-ink/[0.06] pt-3">
+          <span className="text-[11px] text-ink/50">Geef de koper een eigen inlog om matches en voorkeuren zelf te beheren.</span>
+          <button
+            type="button"
+            onClick={stuurPortaalUitnodiging}
+            disabled={portaalBezig || !emailKoperOpgeslagen}
+            title={!emailKoperOpgeslagen ? "Vul en bewaar eerst een e-mailadres" : undefined}
+            className="rounded-lg bg-accent px-3 py-1.5 text-[10.5px] font-semibold text-white hover:bg-accent-dark disabled:opacity-50"
+          >
+            {portaalBezig ? "Bezig…" : "Nodig koper uit voor portaal"}
+          </button>
+          {portaalMelding && <p className="w-full text-[10.5px] font-semibold text-accent">{portaalMelding}</p>}
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-ink/[0.06] pt-3">
