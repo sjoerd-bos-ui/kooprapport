@@ -230,13 +230,44 @@ export default function ZoekopdrachtForm({ dossierId, huidig }: { dossierId: str
     opslaanKoperWhatsapp(telefoonKoperOpgeslagen, !whatsappBijNieuweMatches, false);
   }
 
+  // VERDUIDELIJKING (Sjoerd: "dit mag wel duidelijker" -- de knop leek
+  // simpelweg niets te doen zolang er nog geen apart OPGESLAGEN e-mailadres
+  // stond, want hij was dan `disabled` zonder zichtbare uitleg buiten een
+  // hover-title). Nu doet één klik alles: als het ingevulde adres nog niet
+  // (of nog niet in deze vorm) is opgeslagen, wordt dat eerst gedaan --
+  // pas dáárna gaat de uitnodiging uit. Geen aparte "Opslaan"-stap meer nodig.
   async function stuurPortaalUitnodiging() {
+    const email = emailKoperInput.trim();
     setPortaalBezig(true);
     setPortaalMelding(null);
+
+    if (!email) {
+      setPortaalMelding("Vul hierboven eerst een e-mailadres van de koper in.");
+      setPortaalBezig(false);
+      return;
+    }
+
     try {
+      if (email !== (emailKoperOpgeslagen ?? "")) {
+        const opslaanRes = await fetch(`/api/zakelijk/klanten/${dossierId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            zoekopdracht: { matchenActief, koperVoorkeuren, emailKoper: email, mailBijNieuweMatches: mailBijNieuweMatches },
+          }),
+        });
+        if (!opslaanRes.ok) {
+          const opslaanBody = await opslaanRes.json();
+          setPortaalMelding(opslaanBody.error ?? "Opslaan van het e-mailadres is niet gelukt.");
+          setPortaalBezig(false);
+          return;
+        }
+      }
+
       const res = await fetch(`/api/zakelijk/klanten/${dossierId}/koper-portaal-uitnodigen`, { method: "POST" });
       const body = await res.json();
       setPortaalMelding(res.ok ? "Uitnodiging verstuurd naar de koper." : body.error ?? "Versturen is niet gelukt.");
+      router.refresh();
     } catch {
       setPortaalMelding("Versturen is niet gelukt.");
     } finally {
@@ -416,23 +447,35 @@ export default function ZoekopdrachtForm({ dossierId, huidig }: { dossierId: str
         </div>
 
         {/* Koperportaal (zie het Cowork-gesprek "Koperportaal voor
-            Zakelijk-klanten"): zelfbedieningstoegang voor de koper zelf --
-            eigen matches bekijken, favorieten aanvinken en voorkeuren
-            bijwerken zonder tussenkomst van de makelaar. Gebruikt hetzelfde
-            emailKoper-veld als hierboven, vandaar de disabled-state en
-            title-hint zodra dat nog leeg is -- geen apart e-mailveld nodig. */}
-        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-ink/[0.06] pt-3">
-          <span className="text-[11px] text-ink/50">Geef de koper een eigen inlog om matches en voorkeuren zelf te beheren.</span>
-          <button
-            type="button"
-            onClick={stuurPortaalUitnodiging}
-            disabled={portaalBezig || !emailKoperOpgeslagen}
-            title={!emailKoperOpgeslagen ? "Vul en bewaar eerst een e-mailadres" : undefined}
-            className="rounded-lg bg-accent px-3 py-1.5 text-[10.5px] font-semibold text-white hover:bg-accent-dark disabled:opacity-50"
-          >
-            {portaalBezig ? "Bezig…" : "Nodig koper uit voor portaal"}
-          </button>
-          {portaalMelding && <p className="w-full text-[10.5px] font-semibold text-accent">{portaalMelding}</p>}
+            Zakelijk-klanten", en de verduidelijking "dit mag wel
+            duidelijker"): zelfbedieningstoegang voor de koper zelf -- eigen
+            matches bekijken, favorieten aanvinken en voorkeuren bijwerken
+            zonder tussenkomst van de makelaar. Gebruikt hetzelfde
+            emailKoper-veld als hierboven (geen apart e-mailveld nodig) --
+            maar de knop is nu ALTIJD klikbaar (behalve tijdens het versturen
+            zelf): stuurPortaalUitnodiging slaat een nog niet opgeslagen adres
+            eerst zelf op, i.p.v. dat de knop stil disabled blijft totdat er
+            los op "Opslaan" is geklikt. De uitleg staat nu ook gewoon
+            zichtbaar in tekst, niet meer verstopt in een hover-title. */}
+        <div className="mt-3 flex flex-col gap-2 rounded-xl bg-mist/60 px-3.5 py-3">
+          <div>
+            <p className="text-[11px] font-bold text-ink">Koperportaal</p>
+            <p className="mt-0.5 text-[11px] leading-relaxed text-ink/55">
+              Geef de koper een eigen inlog om zelf matches te bekijken, favorieten aan te vinken en voorkeuren aan te
+              passen. Gebruikt het e-mailadres hierboven -- vul dat eerst in als dat nog leeg is.
+            </p>
+          </div>
+          <div>
+            <button
+              type="button"
+              onClick={stuurPortaalUitnodiging}
+              disabled={portaalBezig}
+              className="rounded-lg bg-accent px-3.5 py-2 text-[11px] font-semibold text-white hover:bg-accent-dark disabled:opacity-50"
+            >
+              {portaalBezig ? "Bezig…" : "Nodig koper uit voor portaal"}
+            </button>
+          </div>
+          {portaalMelding && <p className="text-[10.5px] font-semibold text-accent">{portaalMelding}</p>}
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-ink/[0.06] pt-3">
