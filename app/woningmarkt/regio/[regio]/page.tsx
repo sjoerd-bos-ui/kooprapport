@@ -39,8 +39,11 @@ export async function generateMetadata({ params }: { params: Promise<{ regio: st
   // -- laat direct zien hoe actueel het cijfer is i.p.v. een tijdloos
   // ogende titel voor iets dat elk kwartaal verandert.
   const title = `Huizenprijzen in ${naam}: ${regio.periodeLabel}`;
-  const gemeentenLabel = regio.gemeenten.slice(0, 4).join(", ") + (regio.gemeenten.length > 4 ? " en omgeving" : "");
-  const description = `Overbiedpercentage en vraag-verkoopprijsverschil voor ${gemeentenLabel}, uit het officiële NVM Marktoverzicht ${regio.periodeLabel}.`;
+  const gemeentenLabel = regio.gemeenten.slice(0, 3).join(", ") + (regio.gemeenten.length > 3 ? " en omgeving" : "");
+  let description = `Overbieden en prijsverschil in ${gemeentenLabel}: cijfers uit het NVM Marktoverzicht ${regio.periodeLabel}.`;
+  if (description.length > 158) {
+    description = `Overbieden en prijsverschil in ${naam}: cijfers uit het NVM Marktoverzicht ${regio.periodeLabel}.`;
+  }
   return {
     title,
     description,
