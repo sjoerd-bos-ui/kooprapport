@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
     if (!addressKey) continue; // defensief, kan niet gebeuren met de vaste DEMO_WONINGEN-lijst
 
     const bestelling = await maakBestelling(addressKey, item.bedragCenten, address, email, "Demo koper");
-    await zetStatus(bestelling.id, "paid");
+    await zetStatus(bestelling.id, "paid", { stuurBevestiging: false });
     await zetDemoRapport(bestelling.id, genereerDemoRapport(item.woning));
     if (item.favoriet) await zetFavoriet(bestelling.id, true);
     if (item.gearchiveerd) await zetGearchiveerd(bestelling.id, true);

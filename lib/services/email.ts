@@ -951,6 +951,83 @@ export async function stuurAccountInlogEmail(input: StuurAccountInlogEmailInput)
   return { ok: true };
 }
 
+export interface StuurBestellingBevestigingEmailInput {
+  naar: string;
+  naam?: string;
+  adresLabel: string;
+  bedragCenten: number;
+  rapportUrl?: string;
+  inlogUrl: string;
+}
+
+// Bevestigingsmail direct na een geslaagde betaling: bedankt, link naar het
+// rapport (via inloglink, zodat het ook op een ander toestel werkt) en naar
+// "Mijn rapporten".
+export async function stuurBestellingBevestigingEmail(
+  input: StuurBestellingBevestigingEmailInput
+): Promise<StuurRapportEmailResultaat> {
+  const apiKey = process.env.RESEND_API_KEY;
+  const van = process.env.RESEND_FROM_EMAIL;
+  if (!apiKey || !van) {
+    return { ok: false, error: "E-mailverzending is nog niet geconfigureerd." };
+  }
+
+  const bedrag = input.bedragCenten > 0 ? `€ ${(input.bedragCenten / 100).toFixed(2).replace(".", ",")}` : "gratis";
+  const begroeting = input.naam ? `Bedankt, ${escapeHtml(input.naam.split(" ")[0])}!` : "Bedankt voor uw bestelling!";
+  const adres = escapeHtml(input.adresLabel);
+  const inlog = escapeHtml(input.inlogUrl);
+  const rapportKnop = input.rapportUrl
+    ? `<p style="margin:0 0 16px;font-size:13px;line-height:1.6;color:#6B7280;">Rechtstreeks naar het rapport: <a href="${escapeHtml(input.rapportUrl)}" style="color:#4F46E5;">${adres}</a></p>`
+    : "";
+  const logoUrl = `${APP_BASE_URL}/logo-email.png`;
+
+  const html = `<!DOCTYPE html>
+<html lang="nl">
+  <body style="margin:0;padding:0;background-color:#F5F5FA;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F5F5FA;padding:32px 16px;">
+      <tr><td align="center">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background-color:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #EEF0FF;">
+          <tr><td style="background-color:#1F1F2E;padding:22px 32px;">
+            <img src="${logoUrl}" width="32" height="32" alt="" style="vertical-align:middle;border-radius:9px;" />
+            <span style="font-size:18px;font-weight:700;color:#ffffff;vertical-align:middle;margin-left:10px;">Kooprapport</span>
+          </td></tr>
+          <tr><td style="padding:32px;">
+            <p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#4F46E5;">Bestelbevestiging</p>
+            <p style="margin:0 0 18px;font-size:20px;line-height:1.4;font-weight:700;color:#1F1F2E;">${begroeting}</p>
+            <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#1F1F2E;">
+              Uw kooprapport voor <strong>${adres}</strong> staat klaar (${bedrag}). Via onderstaande knop logt u in bij
+              "Mijn rapporten", daar vindt u dit rapport en al uw eerdere rapporten terug. De link is 15 minuten geldig.
+            </p>
+            <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin-bottom:20px;">
+              <tr><td align="center" style="border-radius:10px;background-color:#4F46E5;">
+                <a href="${inlog}" style="display:inline-block;padding:14px 28px;font-size:14px;font-weight:700;color:#ffffff;text-decoration:none;">Open mijn rapport</a>
+              </td></tr>
+            </table>
+            ${rapportKnop}
+            <p style="margin:0;font-size:13px;line-height:1.6;color:#6B7280;">Later opnieuw inloggen kan altijd op kooprapport.nl/account, met dit e-mailadres.</p>
+          </td></tr>
+          <tr><td style="padding:20px 32px;background-color:#F5F5FA;border-top:1px solid #EEF0FF;">
+            <p style="margin:0;font-size:12px;line-height:1.6;color:#9CA3AF;">Kooprapport · KvK 87451387 · Pleinweg 66D, 3083 EH Rotterdam · info@kooprapport.nl</p>
+          </td></tr>
+        </table>
+      </td></tr>
+    </table>
+  </body>
+</html>`;
+
+  const res = await fetch(RESEND_API_URL, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ from: van, to: [input.naar], subject: `Uw kooprapport voor ${input.adresLabel}`, html }),
+  });
+  if (!res.ok) {
+    const tekst = await res.text().catch(() => "");
+    console.error(`[email] Resend gaf status ${res.status} (bestelbevestiging):`, tekst);
+    return { ok: false, error: "Versturen is niet gelukt." };
+  }
+  return { ok: true };
+}
+
 function escapeHtml(input: string): string {
   return input
     .replace(/&/g, "&amp;")
