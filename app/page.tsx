@@ -158,7 +158,7 @@ const VEELGESTELDE_VRAGEN = [
 // ("Vul een adres in") -- zelfde les als bij /biedadvies: mensen zoeken op
 // de vraag, niet op de knop.
 const HOMEPAGE_OMSCHRIJVING =
-  "Bekijk gratis wat een huis waard is. Ontgrendel het volledige rapport met woningwaarde, biedadvies, energielabel, funderingsrisico en buurtverkopen -- per adres.";
+  "Bekijk gratis wat een huis waard is. Het volledige rapport met woningwaarde, biedadvies, energielabel en funderingsrisico kost eenmalig €11,95.";
 
 export const metadata: Metadata = {
   description: HOMEPAGE_OMSCHRIJVING,
