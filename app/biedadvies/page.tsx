@@ -24,7 +24,7 @@ const CANONICAL_PATH = "/biedadvies";
 // exact zo, vaak met jaartal voor actualiteit). Title/description hieronder
 // leiden nu met die vraag i.p.v. met de UI-instructie ("plak de link").
 const PAGINA_OMSCHRIJVING =
-  "Bereken direct hoeveel je moet bieden op een huis, op basis van het actuele NVM-overbiedcijfer voor jouw regio. Plak de Funda-link of typ het adres en zie drie scenario's.";
+  "Bereken hoeveel je moet bieden op een huis, op basis van het NVM-overbiedcijfer voor jouw regio. Typ het adres en zie drie scenario's.";
 
 export const metadata: Metadata = {
   title: "Hoeveel bieden op een huis? Bereken je bod (2026)",
