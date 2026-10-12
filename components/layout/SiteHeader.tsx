@@ -40,8 +40,18 @@ export default function SiteHeader() {
             <SiteNavLink href="/werkwijze" label="Werkwijze" />
             <SiteNavLink href="/marktupdates" label="Marktupdates" />
             <SiteNavLink href="/biedadvies" label="Biedadvies" />
-            <SiteNavLink href="/account" label="Mijn rapporten" />
           </div>
+          <Link
+            href="/account"
+            aria-label="Mijn rapporten"
+            title="Mijn rapporten"
+            className="hidden h-9 w-9 items-center justify-center rounded-full text-ink/60 transition-colors hover:bg-mist hover:text-ink lg:flex"
+          >
+            <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="12" cy="8" r="4" />
+              <path d="M4 20c0-3.6 3.6-6 8-6s8 2.4 8 6" />
+            </svg>
+          </Link>
           <MobileNavMenu />
           <Link
             href="/"
