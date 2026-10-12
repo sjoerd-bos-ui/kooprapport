@@ -2203,9 +2203,12 @@ export default function ReportDocument({
       {/* ================================================================== */}
       {/* Pagina 8 — Buurtprofiel                                            */}
       {/* ================================================================== */}
-      <Page size="A4" style={styles.pageRow}>
+      {/* wrap={false}: deze pagina zit bijna vol, een paar punten overloop gaf
+          een lege vervolgpagina (alleen zijbalk en voettekst). Nu blijft het
+          altijd één pagina, met iets krappere marges. */}
+      <Page size="A4" style={styles.pageRow} wrap={false}>
         <Sidebar actief={6} />
-        <View style={[styles.contentTinted, { paddingTop: isVoorbeeld ? 32 : 26, paddingBottom: isVoorbeeld ? 74 : 40 }]}>
+        <View style={[styles.contentTinted, { paddingTop: isVoorbeeld ? 32 : 22, paddingBottom: isVoorbeeld ? 74 : 34 }]}>
           {isVoorbeeld && <VoorbeeldBanner siteUrl={siteUrl} />}
           <PaginaKop kicker="08 · buurt" titel="Buurtprofiel" subtitel={buurtSubtitel} />
 
