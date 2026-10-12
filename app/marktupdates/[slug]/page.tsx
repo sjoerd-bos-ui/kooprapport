@@ -229,7 +229,11 @@ export default async function MarktupdatePagina({ params }: { params: Promise<{ 
             {/* Wat dit betekent */}
             <section>
               <h2 className="font-display text-lg font-bold text-ink">Wat dit voor u betekent</h2>
-              <p className="mt-3 text-[14.5px] leading-relaxed text-ink/65">{update.watDitBetekent}</p>
+              {update.watDitBetekent.split("\n\n").map((alinea, i) => (
+                <p key={i} className="mt-3 text-[14.5px] leading-relaxed text-ink/65">
+                  {alinea}
+                </p>
+              ))}
             </section>
 
             {/* Nieuwsbrief-aanmelding */}

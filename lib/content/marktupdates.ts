@@ -216,60 +216,61 @@ export const MARKTUPDATES: MarktupdateArtikel[] = [
   {
     slug: "q3-2026",
     periodeLabel: "Q3 2026",
-    titel: "Marktupdate Q3 2026: kopers krijgen meer keuze en overbieden wordt minder vanzelfsprekend",
+    titel: "Marktupdate Q3 2026: kopers krijgen meer keuze en hoeven minder te overbieden",
     metaTitel: "Huizenprijzen Q3 2026: gemiddeld €503.000 en 3,3% overboden",
     metaBeschrijving:
-      "Aanbod +24%, minder bezichtigingen en biedingen en een lager overbiedpercentage: de Nederlandse woningmarkt in het derde kwartaal van 2026, landelijk en per regio.",
+      "Bijna 39.000 huizen te koop, minder bieders per woning en minder overbieden: de woningmarkt in het derde kwartaal van 2026, landelijk en per regio.",
     samenvatting:
-      "Bijna 39.000 woningen te koop, minder bezichtigingen en biedingen per woning en een overbod dat zakt naar 3,3%. De cijfers van het derde kwartaal op een rijtje.",
+      "Bijna 39.000 huizen te koop, minder bezichtigingen en biedingen per woning en een overbod dat zakt naar 3,3%. De cijfers van het derde kwartaal, in gewoon Nederlands.",
     gepubliceerd: "12 oktober 2026",
     gepubliceerdISO: "2026-10-12",
-    leestijdMinuten: 6,
+    leestijdMinuten: 5,
     intro:
-      "Na een tweede kwartaal vol records laat het derde kwartaal van 2026 een markt zien die langzaam naar de kant van de koper schuift. Er staan bijna 39.000 woningen te koop, er worden minder bezichtigingen en biedingen per woning geteld en de gemiddelde overbieding zakt van 4,6% naar 3,3%. Geen kopersmarkt, wel een markt waarin u weer even kunt nadenken voordat u biedt.",
+      "Goed nieuws voor wie al maanden elke avond Funda leegtrekt: de markt wordt iets rustiger. Er staan bijna 39.000 huizen te koop, er komen minder mensen kijken en er wordt minder hoog geboden. Is het nu een kopersmarkt? Nee, dat gaat te ver. Maar u hoeft niet meer bij elk huis te bieden alsof het de laatste woning van Nederland is.",
 
     landelijkeCijfers: {
       tekst: [
-        "NVM-makelaars verkochten dit kwartaal 41.700 bestaande woningen: evenveel als een jaar eerder en 8% minder dan in het tweede kwartaal. Een deel daarvan is het gebruikelijke zomereffect, maar de daling is iets groter dan normaal. Tegelijk kwamen er 48.500 woningen nieuw te koop (+5% op jaarbasis), waardoor het aanbod uitkomt op 39.000 woningen, 24% meer dan een jaar geleden. Zo veel stond er voor het laatst in 2019 te koop.",
-        "De gemiddelde verkoopprijs kwam uit op €503.000, 1,8% hoger dan een jaar eerder en daarmee lager dan de inflatie. Het verschil met het vorige kwartaal (-1,3%) is vooral een seizoenseffect: in het tweede kwartaal worden vaak grotere, duurdere woningen verkocht, in het derde iets kleinere. Het is dus geen prijsdaling, maar de stijging op jaarbasis vlakt wel verder af.",
+        "Er werden dit kwartaal 41.700 huizen verkocht, ongeveer evenveel als een jaar geleden. Ten opzichte van het kwartaal ervoor is dat 8% minder, maar dat is vooral de zomervakantie: ook makelaars gaan weleens naar de camping. Er kwamen 48.500 huizen nieuw te koop, 5% meer dan vorig jaar. Daardoor staan er nu zo'n 39.000 woningen te koop, een kwart meer dan een jaar geleden. Zo veel keuze was er voor het laatst in 2019.",
+        "Een gemiddeld huis werd verkocht voor €503.000, 1,8% meer dan een jaar geleden. Dat is minder dan de inflatie, dus uw huis wordt in feite iets goedkoper ten opzichte van uw boodschappen. Is het gemiddelde ten opzichte van vorig kwartaal gezakt (-1,3%)? Ja, maar schrik niet: in de zomer worden vaker kleinere huizen verkocht, en dat drukt het gemiddelde. Het is dus geen prijsdaling, de huizen zijn alleen kleiner.",
       ],
       stats: [
         { label: "verkocht", waarde: "41.700" },
-        { label: "in aanbod (+24% jaar)", waarde: "39.000" },
+        { label: "te koop (+24% jaar)", waarde: "39.000" },
         { label: "gem. prijs", waarde: "€503k", nadruk: true },
         { label: "overboden", waarde: "3,3%" },
       ],
       tekstNaStats:
-        "Het overbieden koelt verder af: gemiddeld werd 3,3% boven de laatste vraagprijs betaald (4,6% in Q2, 5,0% een jaar geleden). Bij 66% van de verkochte woningen ging de prijs boven de vraag uit, tegen 71% vorig jaar. Per woning zijn er gemiddeld 6,8 bezichtigingen en 2,6 biedingen. Een woning staat gemiddeld 31 dagen te koop (29 dagen een jaar geleden), en de NVM-krapte-indicator steeg van 2,3 naar 2,8: kopers kiezen gemiddeld uit bijna drie woningen in plaats van uit twee.",
+        "Dan het overbieden. Gemiddeld werd er 3,3% meer betaald dan de vraagprijs. Een jaar geleden was dat nog 5,0%. Bij 66% van de huizen werd nog steeds boven de vraagprijs verkocht (vorig jaar 71%), dus helemaal verdwenen is het niet. Per huis komen er gemiddeld 6,8 mensen kijken en worden er 2,6 biedingen gedaan. Een huis staat gemiddeld 31 dagen te koop, twee dagen langer dan vorig jaar. Kortom: u heeft weer een weekend om na te denken.",
     },
 
     perRegio: {
       tekst:
-        "De prijsontwikkeling loopt sterk uiteen. In Zuidwest-Drenthe stijgen de prijzen op jaarbasis het hardst (+8,3%, al tien kwartalen op rij bijna 10%), gevolgd door Noord-Limburg (+6,7%) waar het aanbod snel wordt opgenomen. Aan de kust zakken de prijzen juist licht in Zeeuws-Vlaanderen en Overig Zeeland, en ook in de agglomeraties Haarlem en Leiden dalen ze. Van de grote steden stijgt Den Haag het hardst (+3,6%), terwijl Amsterdam met +0,6% het minst stijgt. Utrecht en Groot-Rijnmond zitten net onder het landelijk gemiddelde.",
+        "Waar stijgen de prijzen nog hard? Vooral buiten de Randstad. In Zuidwest-Drenthe zijn de prijzen dit jaar 8,3% gestegen, en dat gaat daar al tien kwartalen zo door. In Noord-Limburg is het 6,7%: huizen gaan er snel weg, voor alle soorten woningen. Aan de kust is het juist rustiger. In Zeeland dalen de prijzen een beetje, en ook in de omgeving van Haarlem en Leiden. Van de grote steden stijgt Den Haag het hardst (+3,6%) en Amsterdam het zachtst (+0,6%). Utrecht en Rotterdam zitten er net onder het landelijk gemiddelde.",
       rijen: [
         { naam: "Landelijk", jaarVergelijking: "+1,8% jaar", extra: "66% overb.", richting: "flat" },
-        { naam: "Zuidwest-Drenthe", jaarVergelijking: "+8,3% jaar", extra: "–", richting: "up" },
-        { naam: "Noord-Limburg", jaarVergelijking: "+6,7% jaar", extra: "–", richting: "up" },
-        { naam: "Den Haag", jaarVergelijking: "+3,6% jaar", extra: "–", richting: "up" },
-        { naam: "Amsterdam", jaarVergelijking: "+0,6% jaar", extra: "–", richting: "down" },
+        { naam: "Zuidwest-Drenthe", jaarVergelijking: "+8,3% jaar", extra: "10 kw. op rij", richting: "up" },
+        { naam: "Noord-Limburg", jaarVergelijking: "+6,7% jaar", extra: "snel verkocht", richting: "up" },
+        { naam: "Den Haag", jaarVergelijking: "+3,6% jaar", extra: "hoogste G4", richting: "up" },
+        { naam: "Amsterdam", jaarVergelijking: "+0,6% jaar", extra: "meer aanbod", richting: "down" },
+        { naam: "Zeeland", jaarVergelijking: "licht lager", extra: "meer aanbod", richting: "down" },
       ],
       conclusie:
-        "Het beeld van de afgelopen kwartalen zet door: de heetste prijsgroei zit buiten de Randstad, terwijl in Amsterdam, Haarlem en Leiden een grens aan de betaalbaarheid de prijzen dempt. Ook binnen een regio loopt het uiteen: in dorpen dicht bij een stad kost een woning gemiddeld €560.000, in afgelegen dorpen €444.000, een verschil van 26%.",
+        "De les: wie in de Randstad zoekt, merkt dat de rek er langzaam uit gaat. Wie buiten de Randstad zoekt, betaalt al snel meer dan verwacht. Ook binnen een regio zit veel verschil: een huis in een dorp vlak bij een stad kost gemiddeld €560.000, in een dorp verder weg €444.000. Dat is 26% minder, voor ongeveer dezelfde koe in de wei.",
     },
 
     betaalbaarheid: {
       tekst:
-        "De NHG-grens ligt in 2026 op €470.000. De landelijke gemiddelde verkoopprijs van dit kwartaal, €503.000, ligt daar nog steeds boven. Wel zijn er verschillen per type: een appartement kost gemiddeld €404.000 en een tussenwoning €468.000, beide onder de grens. Een tweekapper (€561.000) en een vrijstaande woning (€758.000) vallen er ruim boven.",
+        "De NHG-grens (de prijs waaronder u de Nationale Hypotheek Garantie krijgt) ligt in 2026 op €470.000. Het gemiddelde huis kost nu €503.000, dus ligt er net boven. Gelukkig is niet elk huis gemiddeld. Een appartement kost gemiddeld €404.000 en een tussenwoning €468.000: die zitten allebei onder de grens. Een twee-onder-een-kapwoning (€561.000) en een vrijstaand huis (€758.000) zitten er ruim boven.",
       nhgGrensLabel: "NHG-grens 2026",
       nhgGrens: 470000,
       gemPrijsLabel: "Gem. verkoopprijs Q3",
       gemPrijs: 503000,
       conclusie:
-        "Het type woning bepaalt dus sterk of de NHG-garantie binnen bereik ligt. Voor starters zijn tussenwoningen en appartementen, vooral in afgelegen dorpen, de beste kans.",
+        "Zoekt u als starter? Dan zijn een appartement of een tussenwoning in een dorp wat verder van de stad de beste kans op NHG.",
     },
 
     watDitBetekent:
-      "Koopt u, dan hoeft u minder vaak extreem te overbieden: bij vrijstaande woningen ging nog maar 44% boven de vraagprijs, bij tussenwoningen 74%. Woningen die langer te koop staan, worden zelfs vaker onder de vraagprijs verkocht. Let wel op kwaliteit: afgewerkte woningen verkopen sneller (28 dagen) en met meer overbod (3,6%) dan woningen die een verbouwing of verduurzaming vragen (36 dagen, 1,8%). Verkoopt u, dan is de kans groter dat een te hoge vraagprijs na enkele weken moet worden bijgesteld: 9,5% van de woningen kreeg dit kwartaal een lagere vraagprijs en van de nieuw aangeboden woningen was aan het eind van het kwartaal 43% verkocht, tegen 56% van het oudere aanbod. Bij nieuwbouw zijn de verkopen het vierde kwartaal op rij gedaald (circa 6.000), terwijl het aanbod met 21.500 woningen het hoogste niveau sinds eind 2015 haalt.",
+      "Bent u koper? Dan hoeft u minder vaak extreem te overbieden. Bij vrijstaande huizen werd nog maar bij 44% boven de vraagprijs verkocht, bij tussenwoningen bij 74%. Huizen die al langer te koop staan, gaan zelfs vaker onder de vraagprijs weg. Let wel op de staat van het huis: een mooi afgewerkt huis is sneller weg (28 dagen) en haalt meer boven de vraagprijs (3,6%) dan een huis waar nog een verbouwing of verduurzaming nodig is (36 dagen en 1,8%). Een klushuis moet dus echt een koopje zijn om op te vallen.\n\nBent u verkoper? Dan is de tijd van een schot hagel dat altijd raak is voorbij. Bij 9,5% van de huizen moest de vraagprijs omlaag. Van de huizen die dit kwartaal nieuw te koop kwamen, was aan het eind 43% verkocht. Bij huizen die al langer te koop stonden was dat 56%. Een vraagprijs die gebaseerd is op wat de buren vorig jaar kregen, werkt dus niet meer altijd. Kijk liever naar wat er nu verkocht wordt.\n\nEn nieuwbouw? Daar wordt het stiller: circa 6.000 verkopen, het vierde kwartaal op rij minder dan een jaar eerder, terwijl er 21.500 nieuwbouwhuizen te koop staan, het meeste sinds 2015. Vooral appartementen concurreren met elkaar.",
 
     vorigKwartaal: {
       periodeLabel: "Q2 2026",
