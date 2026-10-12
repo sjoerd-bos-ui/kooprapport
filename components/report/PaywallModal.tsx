@@ -351,7 +351,7 @@ export default function PaywallModal({
             />
           </div>
           <p className="mt-2 text-xs text-ink/40">
-            Nodig om het rapport te leveren en straks terug te vinden bij "Mijn rapporten" -- daar loggen we u
+            Nodig om het rapport te leveren en straks terug te vinden bij "Mijn rapporten". Daar loggen we u
             automatisch voor in, geen wachtwoord nodig.
           </p>
         </div>

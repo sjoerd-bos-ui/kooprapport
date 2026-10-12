@@ -902,7 +902,7 @@ export async function stuurAccountInlogEmail(input: StuurAccountInlogEmailInput)
                   Bekijk je rapporten
                 </p>
                 <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#1F1F2E;">
-                  Klik op onderstaande knop om in te loggen bij "Mijn rapporten" — al je gekochte kooprapporten staan
+                  Klik op onderstaande knop om in te loggen bij "Mijn rapporten". Al je gekochte kooprapporten staan
                   daar bij elkaar. Deze link is 15 minuten geldig en kan maar één keer gebruikt worden.
                 </p>
                 <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;">
