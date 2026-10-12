@@ -58,7 +58,7 @@ export default function MobileNavMenu() {
   }, [open]);
 
   return (
-    <div ref={containerRef} className="relative sm:hidden">
+    <div ref={containerRef} className="relative lg:hidden">
       <button
         type="button"
         aria-label={open ? "Menu sluiten" : "Menu openen"}

@@ -29,12 +29,12 @@ import MobileNavMenu from "@/components/layout/MobileNavMenu";
 export default function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-ink/10 bg-white">
-      <Container className="flex items-center justify-between py-4">
-        <Link href="/">
+      <Container className="flex items-center justify-between gap-6 py-4">
+        <Link href="/" className="shrink-0">
           <Logo />
         </Link>
-        <div className="flex items-center gap-6">
-          <div className="hidden items-center gap-6 sm:flex">
+        <div className="flex items-center gap-4 xl:gap-6">
+          <div className="hidden items-center gap-5 lg:flex xl:gap-7">
             <SiteNavLink href="/waarom-kooprapport" label="Waarom Kooprapport" />
             <SiteNavLink href="/koopgids" label="Koopgids" />
             <SiteNavLink href="/werkwijze" label="Werkwijze" />
@@ -45,7 +45,7 @@ export default function SiteHeader() {
           <MobileNavMenu />
           <Link
             href="/"
-            className="rounded-full bg-accent px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-accent-dark"
+            className="whitespace-nowrap rounded-full bg-accent px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-accent-dark"
           >
             Nieuw adres opzoeken
           </Link>
