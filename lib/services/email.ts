@@ -389,7 +389,8 @@ export async function stuurMarktupdateBevestigingsEmail(
   if (!res.ok) {
     const tekst = await res.text().catch(() => "");
     console.error(`[email] Resend gaf status ${res.status} (marktupdate-bevestiging):`, tekst);
-    return { ok: false, error: "Versturen is niet gelukt. Probeer het later opnieuw." };
+    // Tijdelijk met detail, om de oorzaak van mislukte verzending te kunnen zien.
+    return { ok: false, error: `Versturen is niet gelukt (Resend ${res.status}: ${tekst.slice(0, 160)})` };
   }
 
   return { ok: true };
