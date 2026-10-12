@@ -23,7 +23,21 @@ export default function robots(): MetadataRoute.Robots {
         // rapportlinks voor één specifieke klant, geen content om te
         // indexeren (ook daar staat al robots: {index:false} op de pagina
         // zelf, zie app/deelrapport/[token]/page.tsx).
-        disallow: ["/api/", "/zakelijk/", "/deelrapport/"],
+        disallow: [
+          "/api/",
+          "/zakelijk/",
+          "/deelrapport/",
+          "/deelvergelijking/",
+          "/deelfavorieten/",
+          "/account",
+          "/koper-portaal",
+          "/koper-voorkeuren/",
+          "/koper-mail-bevestigd",
+          "/koper-whatsapp-bevestigd",
+          "/afmelden/",
+          "/marktupdates/aangemeld",
+          "/marktupdates/afgemeld",
+        ],
       },
     ],
     sitemap: `${APP_BASE_URL}/sitemap.xml`,

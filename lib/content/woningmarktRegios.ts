@@ -40,6 +40,16 @@ const LAUNCH_REGIO_NAMEN = [
   "Agglomeratie Leiden en Bollenstreek",
   "Overig Groningen",
   "Het Gooi en Vechtstreek",
+  "Veluwe",
+  "Achterhoek",
+  "Flevoland",
+  "Noord-Limburg",
+  "Midden-Limburg",
+  "Delft en Westland",
+  "Alkmaar en omgeving",
+  "Zaanstreek",
+  "Noordoost-Noord-Brabant",
+  "Zuidwest-Drenthe",
 ];
 
 // Alfabetisch, niet op grootte -- we hebben geen inwonertalcijfer per regio

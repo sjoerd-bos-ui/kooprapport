@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Container from "@/components/ui/Container";
 import AddressSearchBar from "@/components/address/AddressSearchBar";
-import { RAPPORT_PRIJS } from "@/lib/utils/prijs";
+import { RAPPORT_PRIJS, RAPPORT_PRIJS_CENTEN } from "@/lib/utils/prijs";
 import { APP_BASE_URL } from "@/lib/config/payment";
 import { buildReportHref, slugify } from "@/lib/utils/slug";
 import { Logo } from "@/components/ui/Logo";
@@ -254,6 +254,27 @@ export default async function HomePage({
       name: "KvK-nummer",
       value: "87451387",
     },
+    contactPoint: {
+      "@type": "ContactPoint",
+      contactType: "customer support",
+      email: "info@kooprapport.nl",
+      availableLanguage: "nl",
+    },
+  };
+  const productJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: "Kooprapport woningrapport",
+    description:
+      "Woningrapport per adres met waarde-indicatie, biedadvies, buurtverkopen, energielabel, funderingsrisico en buurtprofiel, als PDF.",
+    brand: { "@type": "Brand", name: "Kooprapport" },
+    offers: {
+      "@type": "Offer",
+      url: APP_BASE_URL,
+      priceCurrency: "EUR",
+      price: (RAPPORT_PRIJS_CENTEN / 100).toFixed(2),
+      availability: "https://schema.org/InStock",
+    },
   };
   const websiteJsonLd = {
     "@context": "https://schema.org",
@@ -309,6 +330,8 @@ export default async function HomePage({
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }} />
       {/* eslint-disable-next-line react/no-danger */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
+      {/* eslint-disable-next-line react/no-danger */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }} />
       {/* Donkere context-ribbon boven de header is verwijderd (feedback:
           de mobiele homepage voelde te druk aan) — de "Probeer gratis"-knop
           in de header hieronder dekt dezelfde functie (springen naar de
@@ -377,10 +400,10 @@ export default async function HomePage({
                   sloot beter aan bij de iconentegels + "37 meer"-tegel
                   hieronder dan de vorige, algemenere kop. */}
               <h1 className="mt-4 font-display text-[2.3rem] font-extrabold leading-[1.12] text-ink sm:text-[2.9rem]">
-                Alles wat u moet weten over een woning, op één plek.
+                Wat is dit huis waard? Alles over een woning, op één plek.
               </h1>
               <p className="mt-3 max-w-md text-[13.5px] leading-relaxed text-ink/70">
-                Waarde, verkopen in de buurt, fundering en nog veel meer, per adres.
+                Woningwaarde, biedadvies, verkopen in de buurt, fundering en energielabel, per adres.
               </p>
 
               <div className="mt-6">

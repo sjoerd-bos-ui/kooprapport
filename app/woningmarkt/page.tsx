@@ -22,8 +22,7 @@ const CANONICAL_PATH = "/woningmarkt";
 // is "huizenprijzen [stad]"/"huizenprijzen per regio" (geverifieerd via live
 // zoekresultaten -- Funda, Calcasa en CBS titelen hun vergelijkbare
 // overzichten allemaal met "huizenprijzen" voorop).
-const PAGINA_OMSCHRIJVING =
-  "Huizenprijzen en overbiedpercentage per stad en regio, gebaseerd op NVM-cijfers: Amsterdam, Rotterdam, Den Haag, Utrecht en 11 andere regio's.";
+const PAGINA_OMSCHRIJVING = `Huizenprijzen en overbiedpercentage per stad en regio, gebaseerd op NVM-cijfers: Amsterdam, Rotterdam, Den Haag, Utrecht en ${Math.max(LAUNCH_REGIOS.length - 4, 0)} andere regio's.`;
 
 export const metadata: Metadata = {
   title: "Huizenprijzen per stad en regio (NVM-cijfers)",
