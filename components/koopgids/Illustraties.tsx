@@ -125,10 +125,10 @@ export function GebruiksscenariosIllustratie() {
 // -----------------------------------------------------------------------------
 
 const MARKTCIJFERS = [
-  { waarde: "45.200", label: "verkocht Q2", accent: false },
-  { waarde: "56.700", label: "te koop gezet", accent: false },
-  { waarde: "€506k", label: "gem. prijs (+3,4%)", accent: true },
-  { waarde: "28-32", label: "dagen te koop", accent: false },
+  { waarde: "41.700", label: "verkocht Q3", accent: false },
+  { waarde: "48.500", label: "te koop gezet", accent: false },
+  { waarde: "€503k", label: "gem. prijs (+1,8% jaar)", accent: true },
+  { waarde: "31", label: "dagen te koop", accent: false },
 ];
 
 export function MarktcijfersIllustratie() {

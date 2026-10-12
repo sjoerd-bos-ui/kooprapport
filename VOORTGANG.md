@@ -1,6 +1,25 @@
 # Voortgang Kooprapport Zakelijk — overdracht naar nieuwe chat
 
-## -12. Nieuwste sessie: Koperportaal voor Zakelijk-klanten (self-service)
+## -13. Nieuwste sessie: Marktupdate Q3 2026
+
+Bron: NVM Q3 2026 (persbericht + Bijlage 1 analyse + Bijlage 2 marktoverzicht
+Nederland, nvm.nl/media). NVM-kwartaal = 16 juni–15 sept; cijfers voorlopig.
+
+**Bijgewerkt:** `lib/content/marktupdates.ts` (nieuw object `q3-2026`; hub, feed,
+sitemap, OG, biedadvies-landelijk %, marktAlert pakken automatisch de laatste),
+`components/koopgids/Illustraties.tsx` (MARKTCIJFERS naar Q3) en
+`lib/content/koopgids.ts` (Q2-tekst naar Q3).
+
+**NOG NIET bijgewerkt (bewust, geen cijfers verzonnen):**
+- `lib/content/regioOverbieden.ts` staat nog op Q2 2026 (41 COROP-regio's).
+  De regionale Q3-PDF's ("Marktoverzicht regio …", rij "% Boven vraagprijs
+  verkocht" en "Vraag-verkoopprijsverschil", kolom 2026-3) zitten achter een
+  JS-dropdown op nvm.nl/wonen/marktinformatie-wonen en waren niet op te halen.
+  Handmatig downloaden of via Chrome-tools ophalen, dan `PERIODE` + waarden
+  aanpassen en de OVERBIEDEN_DATA-staafjes in Illustraties.tsx (label Q2 2026).
+- Let op: regiopagina's vergelijken regio (Q2) met landelijk (Q3: 3,3%).
+
+## -12. Vorige sessie: Koperportaal voor Zakelijk-klanten (self-service)
 
 Eerst gevisualiseerd (mcp__visualize, drie iteraties op verzoek "stuk
 mooier") als eerste van een top-5-lijst nieuwe Zakelijk-functionaliteiten,

@@ -168,7 +168,7 @@ export const ARTIKELEN: KoopgidsArtikel[] = [
       {
         kop: "De markt in cijfers",
         paragrafen: [
-          "In het tweede kwartaal van 2026 wisselden ruim 45.200 woningen via NVM-makelaars van eigenaar, tegenover een recordaantal van bijna 56.700 nieuw te koop gezette woningen. Dat groeiende aanbod geeft kopers voor het eerst in jaren weer wat meer keuze en onderhandelingsruimte. De gemiddelde verkoopprijs kwam uit op €506.000, een stijging van 3,4% ten opzichte van het kwartaal ervoor, met opvallende verschillen per woningtype: vrijstaande woningen stegen dit jaar het hardst in prijs terwijl appartementen de kleinste stijging lieten zien.",
+          "In het derde kwartaal van 2026 wisselden ruim 41.700 woningen via NVM-makelaars van eigenaar, tegenover bijna 48.500 nieuw te koop gezette woningen. Dat groeiende aanbod (bijna 39.000 woningen, 24% meer dan een jaar eerder) geeft kopers weer wat meer keuze en onderhandelingsruimte. De gemiddelde verkoopprijs kwam uit op €503.000, 1,8% meer dan een jaar eerder, met opvallende verschillen per woningtype: vrijstaande woningen stegen het hardst in prijs (+3,0%) terwijl appartementen en tussenwoningen beperkt bleven tot +1,2%.",
           "Ook de snelheid waarmee huizen verkopen zegt iets over de markt. Woningen stonden in 2026 gemiddeld 28 tot 32 dagen te koop voordat ze verkocht waren, met vrijstaande woningen die er doorgaans wat langer over deden (rond de 35 dagen) dan appartementen. De gemiddelde vraagprijs per vierkante meter lag in juli 2026 op €4.510 met grote regionale verschillen: van rond de €3.700 in Ede tot €7.290 in Amsterdam.",
         ],
         illustratie: MarktcijfersIllustratie,

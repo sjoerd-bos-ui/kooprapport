@@ -213,6 +213,72 @@ export const MARKTUPDATES: MarktupdateArtikel[] = [
 
     ctaTekst: "Benieuwd wat deze cijfers voor uw eigen adres betekenen?",
   },
+  {
+    slug: "q3-2026",
+    periodeLabel: "Q3 2026",
+    titel: "Marktupdate Q3 2026: kopers krijgen meer keuze en overbieden wordt minder vanzelfsprekend",
+    metaTitel: "Huizenprijzen Q3 2026: gemiddeld €503.000 en 3,3% overboden",
+    metaBeschrijving:
+      "Aanbod +24%, minder bezichtigingen en biedingen en een lager overbiedpercentage: de Nederlandse woningmarkt in het derde kwartaal van 2026, landelijk en per regio.",
+    samenvatting:
+      "Bijna 39.000 woningen te koop, minder bezichtigingen en biedingen per woning en een overbod dat zakt naar 3,3%. De cijfers van het derde kwartaal op een rijtje.",
+    gepubliceerd: "12 oktober 2026",
+    gepubliceerdISO: "2026-10-12",
+    leestijdMinuten: 6,
+    intro:
+      "Na een tweede kwartaal vol records laat het derde kwartaal van 2026 een markt zien die langzaam naar de kant van de koper schuift. Er staan bijna 39.000 woningen te koop, er worden minder bezichtigingen en biedingen per woning geteld en de gemiddelde overbieding zakt van 4,6% naar 3,3%. Geen kopersmarkt, wel een markt waarin u weer even kunt nadenken voordat u biedt.",
+
+    landelijkeCijfers: {
+      tekst: [
+        "NVM-makelaars verkochten dit kwartaal 41.700 bestaande woningen: evenveel als een jaar eerder en 8% minder dan in het tweede kwartaal. Een deel daarvan is het gebruikelijke zomereffect, maar de daling is iets groter dan normaal. Tegelijk kwamen er 48.500 woningen nieuw te koop (+5% op jaarbasis), waardoor het aanbod uitkomt op 39.000 woningen, 24% meer dan een jaar geleden. Zo veel stond er voor het laatst in 2019 te koop.",
+        "De gemiddelde verkoopprijs kwam uit op €503.000, 1,8% hoger dan een jaar eerder en daarmee lager dan de inflatie. Het verschil met het vorige kwartaal (-1,3%) is vooral een seizoenseffect: in het tweede kwartaal worden vaak grotere, duurdere woningen verkocht, in het derde iets kleinere. Het is dus geen prijsdaling, maar de stijging op jaarbasis vlakt wel verder af.",
+      ],
+      stats: [
+        { label: "verkocht", waarde: "41.700" },
+        { label: "in aanbod (+24% jaar)", waarde: "39.000" },
+        { label: "gem. prijs", waarde: "€503k", nadruk: true },
+        { label: "overboden", waarde: "3,3%" },
+      ],
+      tekstNaStats:
+        "Het overbieden koelt verder af: gemiddeld werd 3,3% boven de laatste vraagprijs betaald (4,6% in Q2, 5,0% een jaar geleden). Bij 66% van de verkochte woningen ging de prijs boven de vraag uit, tegen 71% vorig jaar. Per woning zijn er gemiddeld 6,8 bezichtigingen en 2,6 biedingen. Een woning staat gemiddeld 31 dagen te koop (29 dagen een jaar geleden), en de NVM-krapte-indicator steeg van 2,3 naar 2,8: kopers kiezen gemiddeld uit bijna drie woningen in plaats van uit twee.",
+    },
+
+    perRegio: {
+      tekst:
+        "De prijsontwikkeling loopt sterk uiteen. In Zuidwest-Drenthe stijgen de prijzen op jaarbasis het hardst (+8,3%, al tien kwartalen op rij bijna 10%), gevolgd door Noord-Limburg (+6,7%) waar het aanbod snel wordt opgenomen. Aan de kust zakken de prijzen juist licht in Zeeuws-Vlaanderen en Overig Zeeland, en ook in de agglomeraties Haarlem en Leiden dalen ze. Van de grote steden stijgt Den Haag het hardst (+3,6%), terwijl Amsterdam met +0,6% het minst stijgt. Utrecht en Groot-Rijnmond zitten net onder het landelijk gemiddelde.",
+      rijen: [
+        { naam: "Landelijk", jaarVergelijking: "+1,8% jaar", extra: "66% overb.", richting: "flat" },
+        { naam: "Zuidwest-Drenthe", jaarVergelijking: "+8,3% jaar", extra: "–", richting: "up" },
+        { naam: "Noord-Limburg", jaarVergelijking: "+6,7% jaar", extra: "–", richting: "up" },
+        { naam: "Den Haag", jaarVergelijking: "+3,6% jaar", extra: "–", richting: "up" },
+        { naam: "Amsterdam", jaarVergelijking: "+0,6% jaar", extra: "–", richting: "down" },
+      ],
+      conclusie:
+        "Het beeld van de afgelopen kwartalen zet door: de heetste prijsgroei zit buiten de Randstad, terwijl in Amsterdam, Haarlem en Leiden een grens aan de betaalbaarheid de prijzen dempt. Ook binnen een regio loopt het uiteen: in dorpen dicht bij een stad kost een woning gemiddeld €560.000, in afgelegen dorpen €444.000, een verschil van 26%.",
+    },
+
+    betaalbaarheid: {
+      tekst:
+        "De NHG-grens ligt in 2026 op €470.000. De landelijke gemiddelde verkoopprijs van dit kwartaal, €503.000, ligt daar nog steeds boven. Wel zijn er verschillen per type: een appartement kost gemiddeld €404.000 en een tussenwoning €468.000, beide onder de grens. Een tweekapper (€561.000) en een vrijstaande woning (€758.000) vallen er ruim boven.",
+      nhgGrensLabel: "NHG-grens 2026",
+      nhgGrens: 470000,
+      gemPrijsLabel: "Gem. verkoopprijs Q3",
+      gemPrijs: 503000,
+      conclusie:
+        "Het type woning bepaalt dus sterk of de NHG-garantie binnen bereik ligt. Voor starters zijn tussenwoningen en appartementen, vooral in afgelegen dorpen, de beste kans.",
+    },
+
+    watDitBetekent:
+      "Koopt u, dan hoeft u minder vaak extreem te overbieden: bij vrijstaande woningen ging nog maar 44% boven de vraagprijs, bij tussenwoningen 74%. Woningen die langer te koop staan, worden zelfs vaker onder de vraagprijs verkocht. Let wel op kwaliteit: afgewerkte woningen verkopen sneller (28 dagen) en met meer overbod (3,6%) dan woningen die een verbouwing of verduurzaming vragen (36 dagen, 1,8%). Verkoopt u, dan is de kans groter dat een te hoge vraagprijs na enkele weken moet worden bijgesteld: 9,5% van de woningen kreeg dit kwartaal een lagere vraagprijs en van de nieuw aangeboden woningen was aan het eind van het kwartaal 43% verkocht, tegen 56% van het oudere aanbod. Bij nieuwbouw zijn de verkopen het vierde kwartaal op rij gedaald (circa 6.000), terwijl het aanbod met 21.500 woningen het hoogste niveau sinds eind 2015 haalt.",
+
+    vorigKwartaal: {
+      periodeLabel: "Q2 2026",
+      overbieden: "4,6% gemiddeld overboden",
+      gemPrijs: "€506.000",
+    },
+
+    ctaTekst: "Benieuwd wat deze cijfers voor uw eigen adres betekenen?",
+  },
 ];
 
 export function getMarktupdateBySlug(slug: string): MarktupdateArtikel | undefined {
