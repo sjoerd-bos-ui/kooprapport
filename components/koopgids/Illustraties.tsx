@@ -36,16 +36,16 @@ export function DriePrijzenIllustratie() {
 }
 
 const OVERBIEDEN_DATA = [
-  { label: "Landelijk", percentage: "4,6%", hoogte: 38, kleur: "#C7C6F0" },
-  { label: "Groot-A'dam", percentage: "5,9%", hoogte: 50, kleur: "#8B85E8" },
-  { label: "Groningen", percentage: "8,8%", hoogte: 70, kleur: "#4F46E5" },
+  { label: "Landelijk", percentage: "3,3%", hoogte: 27, kleur: "#C7C6F0" },
+  { label: "Groot-A'dam", percentage: "5,0%", hoogte: 41, kleur: "#8B85E8" },
+  { label: "Groningen", percentage: "7,9%", hoogte: 64, kleur: "#4F46E5" },
 ];
 
 export function OverbiedenStaafjesIllustratie() {
   return (
     <div className="my-5 rounded-2xl bg-parchment p-5">
       <p className="mb-3.5 text-[11px] font-bold uppercase tracking-wider3 text-ink/45">
-        Gemiddeld overboden · Q2 2026
+        Gemiddeld overboden · Q3 2026
       </p>
       <div className="flex h-20 items-end gap-4">
         {OVERBIEDEN_DATA.map((d) => (

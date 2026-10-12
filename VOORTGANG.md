@@ -10,14 +10,15 @@ sitemap, OG, biedadvies-landelijk %, marktAlert pakken automatisch de laatste),
 `components/koopgids/Illustraties.tsx` (MARKTCIJFERS naar Q3) en
 `lib/content/koopgids.ts` (Q2-tekst naar Q3).
 
-**NOG NIET bijgewerkt (bewust, geen cijfers verzonnen):**
-- `lib/content/regioOverbieden.ts` staat nog op Q2 2026 (41 COROP-regio's).
-  De regionale Q3-PDF's ("Marktoverzicht regio …", rij "% Boven vraagprijs
-  verkocht" en "Vraag-verkoopprijsverschil", kolom 2026-3) zitten achter een
-  JS-dropdown op nvm.nl/wonen/marktinformatie-wonen en waren niet op te halen.
-  Handmatig downloaden of via Chrome-tools ophalen, dan `PERIODE` + waarden
-  aanpassen en de OVERBIEDEN_DATA-staafjes in Illustraties.tsx (label Q2 2026).
-- Let op: regiopagina's vergelijken regio (Q2) met landelijk (Q3: 3,3%).
+**Ook bijgewerkt (regionaal):** alle 40 regio's in `regioOverbieden.ts` staan
+nu op Q3 2026 (cijfers uit de per-regio NVM "Marktoverzicht"-PDF's, kolom
+2026-3; bronUrl per regio ook bijgewerkt), plus de staafjes in
+`Illustraties.tsx` (Landelijk 3,3% / Groot-A'dam 5,0% / Groningen = Overig
+Groningen 7,9%). De PDF-links stonden als verborgen links in de HTML van
+nvm.nl/wonen/marktinformatie-wonen (te vinden via Chrome-JS, niet via fetch).
+Ruwe data: outputs/q3_regio.csv (tijdelijk).
+
+**Let op:** Q3-cijfers zijn voorlopig (NVM herziet ze volgend kwartaal).
 
 ## -12. Vorige sessie: Koperportaal voor Zakelijk-klanten (self-service)
 

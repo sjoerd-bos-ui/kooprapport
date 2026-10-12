@@ -245,14 +245,14 @@ export const MARKTUPDATES: MarktupdateArtikel[] = [
 
     perRegio: {
       tekst:
-        "Waar stijgen de prijzen nog hard? Vooral buiten de Randstad. In Zuidwest-Drenthe zijn de prijzen dit jaar 8,3% gestegen, en dat gaat daar al tien kwartalen zo door. In Noord-Limburg is het 6,7%: huizen gaan er snel weg, voor alle soorten woningen. Aan de kust is het juist rustiger. In Zeeland dalen de prijzen een beetje, en ook in de omgeving van Haarlem en Leiden. Van de grote steden stijgt Den Haag het hardst (+3,6%) en Amsterdam het zachtst (+0,6%). Utrecht en Rotterdam zitten er net onder het landelijk gemiddelde.",
+        "Waar stijgen de prijzen nog hard? Vooral buiten de Randstad. In Zuidwest-Drenthe zijn de prijzen dit jaar 8,3% gestegen, en dat gaat daar al tien kwartalen zo door. In Noord-Limburg is het 6,7%: huizen gaan er snel weg, voor alle soorten woningen. Aan de kust is het juist rustiger. In Zeeland dalen de prijzen een beetje, en ook in de omgeving van Haarlem en Leiden. Van de grote steden stijgt Den Haag het hardst (+3,6%) en Amsterdam het zachtst (+0,6%). Utrecht en Rotterdam zitten er net onder het landelijk gemiddelde. En overbieden? Dat hangt van de regio af. In Overig Groningen en Flevoland ging 80% van de huizen boven de vraagprijs weg, in Utrecht 76%. In Zeeuws-Vlaanderen was dat maar 26%: daar kunt u gewoon onderhandelen. Het hoogste gemiddelde overbod zit in Overig Groningen (7,9%), daarna volgen kleine Delfzijl (6,3%) en Utrecht (6,1%).",
       rijen: [
         { naam: "Landelijk", jaarVergelijking: "+1,8% jaar", extra: "66% overb.", richting: "flat" },
-        { naam: "Zuidwest-Drenthe", jaarVergelijking: "+8,3% jaar", extra: "10 kw. op rij", richting: "up" },
-        { naam: "Noord-Limburg", jaarVergelijking: "+6,7% jaar", extra: "snel verkocht", richting: "up" },
-        { naam: "Den Haag", jaarVergelijking: "+3,6% jaar", extra: "hoogste G4", richting: "up" },
-        { naam: "Amsterdam", jaarVergelijking: "+0,6% jaar", extra: "meer aanbod", richting: "down" },
-        { naam: "Zeeland", jaarVergelijking: "licht lager", extra: "meer aanbod", richting: "down" },
+        { naam: "Zuidwest-Drenthe", jaarVergelijking: "+8,3% jaar", extra: "41% overb.", richting: "up" },
+        { naam: "Noord-Limburg", jaarVergelijking: "+6,7% jaar", extra: "71% overb.", richting: "up" },
+        { naam: "Den Haag", jaarVergelijking: "+3,6% jaar", extra: "64% overb.", richting: "up" },
+        { naam: "Amsterdam", jaarVergelijking: "+0,6% jaar", extra: "73% overb.", richting: "down" },
+        { naam: "Zeeuws-Vlaanderen", jaarVergelijking: "licht lager", extra: "26% overb.", richting: "down" },
       ],
       conclusie:
         "De les: wie in de Randstad zoekt, merkt dat de rek er langzaam uit gaat. Wie buiten de Randstad zoekt, betaalt al snel meer dan verwacht. Ook binnen een regio zit veel verschil: een huis in een dorp vlak bij een stad kost gemiddeld €560.000, in een dorp verder weg €444.000. Dat is 26% minder, voor ongeveer dezelfde koe in de wei.",
