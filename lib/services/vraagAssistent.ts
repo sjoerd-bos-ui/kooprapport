@@ -111,26 +111,26 @@ function mockAntwoord(report: Report, vraag: string): string {
   if (/prijs|waarde|bod|bieden|duur|goedkoop/.test(v) && market) {
     const biedadvies = berekenBiedadvies(market.geschatteWaarde, report.core.address.plaats);
     return (
-      `De modelgeschatte waarde van dit pand is ${euro(market.geschatteWaarde)}` +
-      (market.bandbreedteMin && market.bandbreedteMax ? ` (bandbreedte ${euro(market.bandbreedteMin)} - ${euro(market.bandbreedteMax)})` : "") +
+      `Goeie vraag, daar draait het uiteindelijk om! Ons model schat dit huis op ${euro(market.geschatteWaarde)}` +
+      (market.bandbreedteMin && market.bandbreedteMax ? ` (ergens tussen ${euro(market.bandbreedteMin)} en ${euro(market.bandbreedteMax)})` : "") +
       ". " +
       (biedadvies
-        ? `Op basis van ${biedadvies.niveau === "regio" ? `regio ${biedadvies.regioNaam}` : "het landelijk gemiddelde"} (${biedadvies.periodeLabel}) ligt een indicatief bod tussen ${euro(biedadvies.ondergrens)} en ${euro(biedadvies.bovengrens)}.`
-        : "")
+        ? `Kijk je naar ${biedadvies.niveau === "regio" ? `regio ${biedadvies.regioNaam}` : "het landelijk gemiddelde"} (${biedadvies.periodeLabel}), dan ligt een bod van ${euro(biedadvies.ondergrens)} tot ${euro(biedadvies.bovengrens)} in de buurt. Een kristallen bol is het niet, maar wel een prima startpunt om mee te onderhandelen.`
+        : "Een kristallen bol is het niet, maar wel een prima startpunt om mee te onderhandelen.")
     );
   }
   if (/energie|label|isolatie|stook/.test(v) && energy?.klasse) {
     const duiding = duidEnergielabel(energy.klasse);
-    return `Dit pand heeft energielabel ${energy.klasse}${duiding ? `, in de ${duiding.kwartTekst}. ${duiding.stookkostenTekst}` : "."}`;
+    return `Dit huis heeft energielabel ${energy.klasse}${duiding ? `, en dat zit in de ${duiding.kwartTekst}. ${duiding.stookkostenTekst}` : "."}`;
   }
   if (/fundering|scheur|risico|zakking/.test(v) && fundering?.niveau) {
-    return `Het funderingsrisico voor dit adres is ingeschat als ${fundering.niveau}. ${fundering.toelichting ?? ""}`.trim();
+    return `Over de fundering even in gewone taal: het risico is ingeschat als ${fundering.niveau}. ${fundering.toelichting ?? ""} Twijfel je? Dan is een bouwkundige keuring altijd de slimste zet.`.replace(/\s+/g, " ").trim();
   }
   if (/buurt|omgeving|veilig|school|voorzien/.test(v) && buurt?.samenvatting) {
-    return buurt.samenvatting;
+    return `Even rondkijken in de buurt: ${buurt.samenvatting}`;
   }
 
-  return "Op basis van de gegevens in dit rapport kan ik die vraag niet met zekerheid beantwoorden. Bekijk de tabbladen hierboven voor alle beschikbare details, of stel een specifiekere vraag over de waarde, het energielabel, de fundering of de buurt.";
+  return "Hmm, daar kan ik uit dit rapport geen eerlijk antwoord op geven, en ik ga zeker niets verzinnen. Kijk eens in de tabbladen hierboven, of vraag me iets over de waarde, het energielabel, de fundering of de buurt. Daar ben ik goed in!";
 }
 
 async function fetchMetTimeout(url: string, init: RequestInit, timeoutMs: number): Promise<Response> {
