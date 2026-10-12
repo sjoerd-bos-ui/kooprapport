@@ -43,6 +43,7 @@ export default function SiteHeader() {
           </div>
           <Link
             href="/account"
+            rel="nofollow"
             aria-label="Mijn rapporten"
             title="Mijn rapporten"
             className="hidden h-9 w-9 items-center justify-center rounded-full text-ink/60 transition-colors hover:bg-mist hover:text-ink lg:flex"
