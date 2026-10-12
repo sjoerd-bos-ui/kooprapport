@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
     left: 24,
     right: 24,
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "flex-end",
     fontSize: 7.5,
     color: KLEUR.inkFaint,
     paddingTop: 7,
@@ -739,7 +739,6 @@ function Sidebar({ actief }: { actief: number }) {
 function Footer({ gegenereerdOp }: { gegenereerdOp: string }) {
   return (
     <View style={styles.footer} fixed>
-      <Text>Bronnen: Kadaster (BAG), RVO/EP-Online, CBS, Altum AI</Text>
       <Text
         render={({ pageNumber, totalPages }: { pageNumber: number; totalPages: number }) =>
           `Pagina ${pageNumber} van ${totalPages} · gegenereerd op ${formatDate(gegenereerdOp)}`
