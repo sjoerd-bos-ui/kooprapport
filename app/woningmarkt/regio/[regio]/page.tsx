@@ -38,7 +38,12 @@ export async function generateMetadata({ params }: { params: Promise<{ regio: st
   // SEO-audit: periodeLabel in de title, zelfde reden als bij de stadspagina
   // -- laat direct zien hoe actueel het cijfer is i.p.v. een tijdloos
   // ogende titel voor iets dat elk kwartaal verandert.
-  const title = `Huizenprijzen in ${naam}: ${regio.periodeLabel}`;
+  // Titel met echt cijfer als haakje voor de zoeker (gemiddeld overbod uit het NVM-document),
+  // met een kortere vorm als de regionaam de titel te lang zou maken.
+  const overbod = Math.abs(regio.gemiddeldOverbod).toFixed(1).replace(".", ",");
+  const cijferDeel = regio.gemiddeldOverbod >= 0 ? `${overbod}% overbieden` : `${overbod}% onder vraagprijs`;
+  const langeTitel = `Huizenprijzen ${naam}: ${cijferDeel} (${regio.periodeLabel})`;
+  const title = langeTitel.length <= 58 ? langeTitel : `Huizenprijzen in ${naam}: ${regio.periodeLabel}`;
   const gemeentenLabel = regio.gemeenten.slice(0, 3).join(", ") + (regio.gemeenten.length > 3 ? " en omgeving" : "");
   let description = `Overbieden en prijsverschil in ${gemeentenLabel}: cijfers uit het NVM Marktoverzicht ${regio.periodeLabel}.`;
   if (description.length > 158) {

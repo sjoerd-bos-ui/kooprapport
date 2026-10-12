@@ -154,7 +154,7 @@ export const ARTIKELEN: KoopgidsArtikel[] = [
     slug: "verkopen-in-de-buurt",
     bijgewerkt: "2026-08-03",
     titel: "Wat verkopen in uw buurt zeggen over de prijs",
-    metaTitel: "Verkochte woningen in de buurt bekijken",
+    metaTitel: "Waarvoor zijn huizen in jouw buurt echt verkocht?",
     metaBeschrijving:
       "Actuele NVM-cijfers over verkochte woningen, gemiddelde prijzen en doorlooptijd, wanneer een verkoop echt vergelijkbaar is en waar u verder op moet letten.",
     categorie: "Verkopen in de buurt",
