@@ -54,7 +54,7 @@ export const metadata: Metadata = {
     // waardecheckers (biedadvies, funderingsrisico). Titel als template
     // (title.template hieronder) geeft dit automatisch mee aan elke pagina
     // die zelf geen title zet.
-    default: "Wat is dit huis waard? Woningwaarde, biedadvies en funderingsrisico per adres · Kooprapport",
+    default: "Wat is dit huis waard? Gratis woningwaarde check · Kooprapport",
     template: "%s · Kooprapport",
   },
   description:

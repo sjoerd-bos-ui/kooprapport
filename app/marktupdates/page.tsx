@@ -27,7 +27,7 @@ const PAGINA_OMSCHRIJVING =
   "Actuele huizenprijzen, verkooptijd en overbiedpercentages per regio, elk kwartaal bijgewerkt met de nieuwste cijfers van NVM, Kadaster en CBS.";
 
 export const metadata: Metadata = {
-  title: "Woningmarktcijfers: huizenprijzen en overbieden per kwartaal",
+  title: "Huizenprijzen en overbieden: cijfers per kwartaal",
   description: PAGINA_OMSCHRIJVING,
   alternates: {
     canonical: CANONICAL_PATH,
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
   },
   robots: { index: true, follow: true },
   openGraph: {
-    title: "Woningmarktcijfers: huizenprijzen en overbieden per kwartaal · Kooprapport",
+    title: "Huizenprijzen en overbieden: cijfers per kwartaal · Kooprapport",
     description: PAGINA_OMSCHRIJVING,
     url: `${APP_BASE_URL}${CANONICAL_PATH}`,
     type: "website",

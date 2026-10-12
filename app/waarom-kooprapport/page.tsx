@@ -36,12 +36,12 @@ const PAGINA_OMSCHRIJVING =
   "Kooprapport bundelt openbare en officiële gegevens per adres in één onafhankelijk model, zelf ontwikkeld en los van alle partijen rond de aankoop of verkoop.";
 
 export const metadata: Metadata = {
-  title: "Waarom Kooprapport",
+  title: "Woningrapport per adres: onafhankelijk en eerlijk",
   description: PAGINA_OMSCHRIJVING,
   alternates: { canonical: CANONICAL_PATH },
   robots: { index: true, follow: true },
   openGraph: {
-    title: "Waarom Kooprapport · Kooprapport",
+    title: "Woningrapport per adres: onafhankelijk en eerlijk · Kooprapport",
     description: PAGINA_OMSCHRIJVING,
     url: `${APP_BASE_URL}${CANONICAL_PATH}`,
     type: "website",

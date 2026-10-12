@@ -44,7 +44,7 @@ export async function generateMetadata({ params }: { params: Promise<{ stad: str
   // cijfers zijn (zelfde reden als bij de Marktupdates-artikelen zelf).
   const nieuwsteCijfer = getStadCijfers(stad.naam)[0];
   const title = nieuwsteCijfer
-    ? `Huizenprijzen in ${stad.naam} — ${nieuwsteCijfer.periodeLabel}`
+    ? `Huizenprijzen in ${stad.naam}: ${nieuwsteCijfer.periodeLabel}`
     : `Huizenprijzen in ${stad.naam}`;
   const description = `Actuele prijsontwikkeling en overbiedpercentage in ${stad.naam}, per kwartaal, gebaseerd op de NVM-cijfers uit onze Marktupdates.`;
   return {

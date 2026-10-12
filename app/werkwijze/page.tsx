@@ -22,13 +22,13 @@ import { APP_BASE_URL } from "@/lib/config/payment";
 const CANONICAL_PATH = "/werkwijze";
 
 export const metadata: Metadata = {
-  title: "Werkwijze",
+  title: "Zo maken we je woningrapport: bronnen en werkwijze",
   description:
     "Hoe Kooprapport tot stand komt: per onderdeel van het rapport in het kort uitgelegd waar de gegevens vandaan komen en hoe actueel ze zijn.",
   alternates: { canonical: CANONICAL_PATH },
   robots: { index: true, follow: true },
   openGraph: {
-    title: "Werkwijze · Kooprapport",
+    title: "Zo maken we je woningrapport: bronnen en werkwijze · Kooprapport",
     description:
       "Hoe Kooprapport tot stand komt: per onderdeel van het rapport in het kort uitgelegd waar de gegevens vandaan komen en hoe actueel ze zijn.",
     url: `${APP_BASE_URL}${CANONICAL_PATH}`,

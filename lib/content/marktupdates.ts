@@ -87,7 +87,7 @@ export const MARKTUPDATES: MarktupdateArtikel[] = [
     slug: "q1-2026",
     periodeLabel: "Q1 2026",
     titel: "Marktupdate Q1 2026: de markt haalt even adem",
-    metaTitel: "Huizenprijzen Q1 2026: gemiddelde verkoopprijs en overbieden",
+    metaTitel: "Huizenprijzen Q1 2026: prijs en overbieden",
     metaBeschrijving:
       "Meer aanbod, minder overbieden en een gemiddelde prijs die weer onder de €500.000 duikt: de woningmarkt in het eerste kwartaal van 2026.",
     samenvatting:
@@ -151,7 +151,7 @@ export const MARKTUPDATES: MarktupdateArtikel[] = [
     slug: "q2-2026",
     periodeLabel: "Q2 2026",
     titel: "Marktupdate Q2 2026: meer aanbod en toch weer harder overboden",
-    metaTitel: "Huizenprijzen Q2 2026: recordaanbod en 4,6% overboden",
+    metaTitel: "Huizenprijzen Q2 2026: 4,6% overboden",
     metaBeschrijving:
       "Recordaanbod, meer verkopen en toch een hoger overbiedingspercentage: de Nederlandse woningmarkt in het tweede kwartaal van 2026, landelijk en per regio.",
     samenvatting:
@@ -217,7 +217,7 @@ export const MARKTUPDATES: MarktupdateArtikel[] = [
     slug: "q3-2026",
     periodeLabel: "Q3 2026",
     titel: "Marktupdate Q3 2026: kopers krijgen meer keuze en hoeven minder te overbieden",
-    metaTitel: "Huizenprijzen Q3 2026: gemiddeld €503.000 en 3,3% overboden",
+    metaTitel: "Huizenprijzen Q3 2026: €503.000, 3,3% overboden",
     metaBeschrijving:
       "Bijna 39.000 huizen te koop, minder bieders per woning en minder overbieden: de woningmarkt in het derde kwartaal van 2026, landelijk en per regio.",
     samenvatting:

@@ -95,6 +95,7 @@ export const ARTIKELEN: KoopgidsArtikel[] = [
     slug: "woningwaarde-bepalen",
     bijgewerkt: "2026-08-05",
     titel: "Hoe bepaalt u de waarde van een woning?",
+    metaTitel: "Woningwaarde bepalen: zo doe je dat (2026)",
     metaBeschrijving:
       "Hoe een vraagprijs tot stand komt, waarom overbieden de norm is en hoe een modelmatige schatting (AVM) dit samenbrengt in een betrouwbare bandbreedte.",
     categorie: "Waarde-indicatie",
@@ -153,7 +154,7 @@ export const ARTIKELEN: KoopgidsArtikel[] = [
     slug: "verkopen-in-de-buurt",
     bijgewerkt: "2026-08-03",
     titel: "Wat verkopen in uw buurt zeggen over de prijs",
-    metaTitel: "Wat verkopen in uw buurt zeggen",
+    metaTitel: "Verkochte woningen in de buurt bekijken",
     metaBeschrijving:
       "Actuele NVM-cijfers over verkochte woningen, gemiddelde prijzen en doorlooptijd, wanneer een verkoop echt vergelijkbaar is en waar u verder op moet letten.",
     categorie: "Verkopen in de buurt",
@@ -210,7 +211,7 @@ export const ARTIKELEN: KoopgidsArtikel[] = [
     slug: "bouwjaar-en-gebruiksdoel",
     bijgewerkt: "2026-08-05",
     titel: "Wat bouwjaar, oppervlakte en gebruiksdoel u eigenlijk vertellen",
-    metaTitel: "Bouwjaar, oppervlakte en gebruiksdoel",
+    metaTitel: "Bouwjaar en oppervlakte van een huis opzoeken",
     metaBeschrijving:
       "Wat de BAG precies registreert, waarom gebruiksdoel niet hetzelfde is als het feitelijke gebruik en wat bouwjaar en oppervlakte over een huis zeggen.",
     categorie: "Objectgegevens",
@@ -269,7 +270,7 @@ export const ARTIKELEN: KoopgidsArtikel[] = [
     slug: "energielabel-uitgelegd",
     bijgewerkt: "2026-08-03",
     titel: "Energielabel uitgelegd: wat de letters betekenen",
-    metaTitel: "Energielabel uitgelegd",
+    metaTitel: "Energielabel uitgelegd: wat betekent A t/m G?",
     metaBeschrijving:
       "Hoe het energielabel wordt berekend, welke deadlines er al gelden voor huurwoningen en wat een goed label voor uw hypotheek betekent.",
     categorie: "Energieprestatie en label",
@@ -317,7 +318,7 @@ export const ARTIKELEN: KoopgidsArtikel[] = [
     slug: "funderingsrisico-herkennen",
     bijgewerkt: "2026-08-03",
     titel: "Funderingsrisico herkennen: waar moet u op letten?",
-    metaTitel: "Funderingsrisico herkennen: waarop letten?",
+    metaTitel: "Funderingsproblemen herkennen voor je koopt",
     metaBeschrijving:
       "Wat funderingsrisico precies is, waarom taxatierapporten sinds 2026 verplicht een A-E score bevatten en wat u er zelf al vóór het bieden aan kunt zien.",
     categorie: "Funderingsrisico",
@@ -380,7 +381,7 @@ export const ARTIKELEN: KoopgidsArtikel[] = [
     slug: "buurt-en-voorzieningen",
     bijgewerkt: "2026-08-03",
     titel: "Buurt en voorzieningen: wat zit er echt om de hoek?",
-    metaTitel: "Buurt en voorzieningen uitgelegd",
+    metaTitel: "Een buurt beoordelen voor je een huis koopt",
     metaBeschrijving:
       "Wat het CBS precies meet aan afstand tot voorzieningen, waarom dichtbij niet altijd beter is en wat het buurtprofiel van Kooprapport per adres laat zien.",
     categorie: "Buurtprofiel",
@@ -432,7 +433,7 @@ export const ARTIKELEN: KoopgidsArtikel[] = [
     slug: "verduurzamen-wat-loont",
     bijgewerkt: "2026-08-03",
     titel: "Verduurzamen: welke maatregelen leveren het meeste op?",
-    metaTitel: "Welke verduurzaming loont het meest?",
+    metaTitel: "Huis verduurzamen: welke maatregelen lonen?",
     metaBeschrijving:
       "Waarom de volgorde van verduurzamingsmaatregelen ertoe doet, wat ze qua terugverdientijd opleveren en wanneer een maatregel wel of niet zinvol is.",
     categorie: "Verduurzamingsadvies",
