@@ -64,6 +64,7 @@ export interface Bestelling {
   naam?: string;
   favoriet?: boolean;
   gearchiveerd?: boolean;
+  rapportVerstuurdOp?: string;
   // Demo-omgeving (zie app/api/admin/account/demo-vullen/route.ts, "gewoon
   // een demo-rapport zonder Altum aanvraag"): een volledig, vooraf
   // gegenereerd Report (genereerDemoRapport in b2bDemoData.ts, exact
@@ -176,48 +177,30 @@ export async function koppelMolliePaymentId(id: string, molliePaymentId: string)
   await kvSet(mollieIndexKey(molliePaymentId), id, BESTELLING_TTL_SECONDEN);
 }
 
-export async function zetStatus(
-  id: string,
-  status: BestellingStatus,
-  opties: { stuurBevestiging?: boolean } = {}
-): Promise<void> {
+export async function zetStatus(id: string, status: BestellingStatus): Promise<void> {
   const bestelling = await haalBestelling(id);
   if (!bestelling) return;
-  const eerderBetaald = bestelling.status === "paid";
   bestelling.status = status;
   if (status === "paid") bestelling.betaaldOp = new Date().toISOString();
   await opslaan(bestelling);
+}
 
-  // Bevestigingsmail naar de klant, precies één keer: alleen bij de overgang
-  // naar "paid" (webhook en status-route kunnen beide aanroepen). Mislukt het
-  // versturen, dan blokkeert dat de bestelling nooit.
-  if (status === "paid" && !eerderBetaald && bestelling.email && opties.stuurBevestiging !== false) {
-    try {
-      const [{ stuurBestellingBevestigingEmail }, { maakInlogToken }, { buildReportHref }, { APP_BASE_URL }] =
-        await Promise.all([
-          import("@/lib/services/email"),
-          import("@/lib/services/consumentAuth"),
-          import("@/lib/utils/slug"),
-          import("@/lib/config/payment"),
-        ]);
-      const token = await maakInlogToken(bestelling.email);
-      const inlogUrl = new URL(`/api/account/bevestigen?token=${token}`, APP_BASE_URL).toString();
-      const rapportUrl = bestelling.address
-        ? new URL(buildReportHref(bestelling.address), APP_BASE_URL).toString()
-        : undefined;
-      const res = await stuurBestellingBevestigingEmail({
-        naar: bestelling.email,
-        naam: bestelling.naam,
-        adresLabel: bestelling.address?.label ?? bestelling.addressSlug,
-        bedragCenten: bestelling.bedragCenten,
-        rapportUrl,
-        inlogUrl,
-      });
-      if (!res.ok) console.error("[bestelling] bevestigingsmail niet verstuurd:", res.error);
-    } catch (err) {
-      console.error("[bestelling] bevestigingsmail faalde:", err);
-    }
-  }
+// Markeert dat de bevestigingsmail (PDF + inloglink) is verstuurd, zodat een
+// pagina-refresh geen tweede mail veroorzaakt. Geeft false terug als er al
+// eerder was verstuurd.
+export async function markeerRapportVerstuurd(id: string): Promise<boolean> {
+  const bestelling = await haalBestelling(id);
+  if (!bestelling || bestelling.rapportVerstuurdOp) return false;
+  bestelling.rapportVerstuurdOp = new Date().toISOString();
+  await opslaan(bestelling);
+  return true;
+}
+
+export async function wisRapportVerstuurd(id: string): Promise<void> {
+  const bestelling = await haalBestelling(id);
+  if (!bestelling) return;
+  delete bestelling.rapportVerstuurdOp;
+  await opslaan(bestelling);
 }
 
 export async function vindBestellingDoorMolliePaymentId(molliePaymentId: string): Promise<Bestelling | undefined> {

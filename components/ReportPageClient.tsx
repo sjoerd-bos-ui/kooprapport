@@ -246,6 +246,22 @@ export default function ReportPageClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
+  // Na een geslaagde betaling: eenmalig de bevestigingsmail met PDF en
+  // inloglink laten versturen. Server controleert betaling en voorkomt
+  // dubbele mails (rapportVerstuurdOp).
+  const mailVerstuurd = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!isUnlocked || !bestellingId || !report) return;
+    if (mailVerstuurd.current.has(bestellingId)) return;
+    mailVerstuurd.current.add(bestellingId);
+    fetch("/api/rapport/bevestigingsmail", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ report, bestellingId }),
+    }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isUnlocked, bestellingId]);
+
   if (status === "loading" || !report) {
     return <LoadingAnalysis completedSteps={completedSteps} address={address} />;
   }

@@ -958,6 +958,8 @@ export interface StuurBestellingBevestigingEmailInput {
   bedragCenten: number;
   rapportUrl?: string;
   inlogUrl: string;
+  bestandsnaam?: string;
+  pdfBuffer?: Buffer;
 }
 
 // Bevestigingsmail direct na een geslaagde betaling: bedankt, link naar het
@@ -995,8 +997,8 @@ export async function stuurBestellingBevestigingEmail(
             <p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#4F46E5;">Bestelbevestiging</p>
             <p style="margin:0 0 18px;font-size:20px;line-height:1.4;font-weight:700;color:#1F1F2E;">${begroeting}</p>
             <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#1F1F2E;">
-              Uw kooprapport voor <strong>${adres}</strong> staat klaar (${bedrag}). Via onderstaande knop logt u in bij
-              "Mijn rapporten", daar vindt u dit rapport en al uw eerdere rapporten terug. De link is 15 minuten geldig.
+              Uw kooprapport voor <strong>${adres}</strong> (${bedrag}) zit als PDF in de bijlage. Via onderstaande knop logt u in bij
+              "Mijn rapporten", daar vindt u dit rapport en al uw andere rapporten terug. De link is 15 minuten geldig.
             </p>
             <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin-bottom:20px;">
               <tr><td align="center" style="border-radius:10px;background-color:#4F46E5;">
@@ -1018,7 +1020,12 @@ export async function stuurBestellingBevestigingEmail(
   const res = await fetch(RESEND_API_URL, {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from: van, to: [input.naar], subject: `Uw kooprapport voor ${input.adresLabel}`, html }),
+    body: JSON.stringify({ from: van, to: [input.naar], subject: `Uw kooprapport voor ${input.adresLabel}`,
+      html,
+      ...(input.pdfBuffer
+        ? { attachments: [{ filename: input.bestandsnaam ?? "kooprapport.pdf", content: input.pdfBuffer.toString("base64") }] }
+        : {}),
+    }),
   });
   if (!res.ok) {
     const tekst = await res.text().catch(() => "");
