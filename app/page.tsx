@@ -399,8 +399,8 @@ export default async function HomePage({
                   een variant die meteen de breedte van het rapport benoemt —
                   sloot beter aan bij de iconentegels + "37 meer"-tegel
                   hieronder dan de vorige, algemenere kop. */}
-              <h1 className="mt-2 font-display text-[2rem] font-extrabold leading-[1.12] text-ink sm:mt-4 sm:text-[2.9rem]">
-                Wat is dit huis waard?<span className="hidden sm:inline"> Alles over een woning, op één plek.</span>
+              <h1 className="mt-2 font-display text-[1.75rem] font-extrabold leading-[1.12] text-ink sm:mt-4 sm:text-[2.9rem]">
+                Wat is dit huis <span className="text-accent sm:text-ink">waard?</span><span className="hidden sm:inline"> Alles over een woning, op één plek.</span>
               </h1>
               <p className="mt-2 text-[14px] text-ink/70 sm:hidden">Alles over een woning, per adres.</p>
               <p className="mt-3 hidden max-w-md text-[13.5px] leading-relaxed text-ink/70 sm:block">
@@ -440,10 +440,10 @@ export default async function HomePage({
                   VoorbeeldrapportSlider (alle 10 pagina's, zelfde stijl als
                   het echte rapport) i.p.v. direct de PDF te openen; de PDF
                   blijft binnen die modal als aparte downloadlink bereikbaar. */}
-              <div className="mt-4 flex flex-wrap gap-2 sm:hidden">
-                {["Gratis preview", "Geen account", `Volledig rapport ${RAPPORT_PRIJS}`].map((t) => (
-                  <span key={t} className="rounded-full border border-ink/10 bg-white px-3 py-1.5 text-[12px] font-semibold text-ink">
-                    {t}
+              <div className="mt-4 flex justify-between gap-2 text-[11px] font-bold text-[#0F6E56] sm:hidden">
+                {["Gratis preview", "Geen account", `Rapport ${RAPPORT_PRIJS}`].map((t) => (
+                  <span key={t} className="whitespace-nowrap">
+                    ✓ {t}
                   </span>
                 ))}
               </div>
@@ -454,7 +454,7 @@ export default async function HomePage({
                   </span>
                 ))}
               </div>
-              <div className="mt-3 flex flex-wrap items-center gap-3 sm:mt-4">
+              <div className="mt-4 flex flex-wrap items-center gap-3 max-sm:justify-center sm:mt-4">
                 <span className="hidden items-center gap-1.5 rounded-full bg-[#EAF3DE] px-3 py-1.5 text-[11px] font-bold text-[#3B6D11] sm:inline-flex">
                   <BoltIcon className="h-3.5 w-3.5" />
                   Rapport direct beschikbaar
@@ -538,7 +538,10 @@ export default async function HomePage({
               met 3 stappen), en hoort dus ook semantisch als kop gemarkeerd
               te zijn i.p.v. als gewone tekst. Zelfde reden bij "Veelgestelde
               vragen" verderop. */}
-          <h2 className="text-center text-[11px] font-bold uppercase tracking-wider3 text-ink/70">Zo werkt het</h2>
+          <h2 className="text-center text-[11px] font-bold uppercase tracking-wider3 text-ink/70 max-sm:text-[15px] max-sm:normal-case max-sm:tracking-normal max-sm:text-ink max-sm:font-extrabold">
+            <span className="sm:hidden">In drie stappen klaar</span>
+            <span className="hidden sm:inline">Zo werkt het</span>
+          </h2>
 
           {/* Horizontaal op tablet/desktop (sm en groter) — de eerder
               gebouwde verticale tijdlijn oogde op grotere schermen te klein,
@@ -574,8 +577,8 @@ export default async function HomePage({
               const Icon = s.icoon;
               return (
                 <div key={s.titel} className="flex flex-col items-center gap-2 px-1 py-2 text-center">
-                  <span className={`flex h-10 w-10 items-center justify-center rounded-full ${s.badgeBg}`}>
-                    <Icon className={`h-[18px] w-[18px] ${s.badgeKleur}`} />
+                  <span className={`flex h-11 w-11 items-center justify-center rounded-full ${s.badgeBg}`}>
+                    <Icon className={`h-5 w-5 ${s.badgeKleur}`} />
                   </span>
                   <p className={`text-[10.5px] font-bold uppercase tracking-wider3 ${s.labelKleur}`}>Stap {i + 1}</p>
                   <h3 className="text-[12.5px] font-semibold leading-snug text-ink">{s.titel}</h3>
@@ -598,9 +601,16 @@ export default async function HomePage({
           volstaat de korte, generieke formulering. */}
       <section className="relative border-y border-ink/[0.06]">
         <Container className="py-6 text-center text-[11px] text-ink/70">
-          <span className="font-bold text-ink">1.240+</span> rapporten gegenereerd ·{" "}
-          <span className="font-bold text-ink">10</span>{" "}pagina&apos;s per rapport · gebaseerd op officiële, erkende
-          bronnen
+          <div className="grid grid-cols-3 gap-2 rounded-2xl bg-ink px-3 py-3.5 text-white sm:hidden">
+            <div><p className="text-[16px] font-extrabold">1.240+</p><p className="text-[10px] text-white/70">rapporten</p></div>
+            <div><p className="text-[16px] font-extrabold">10</p><p className="text-[10px] text-white/70">pagina&apos;s</p></div>
+            <div><p className="text-[16px] font-extrabold">Officiële</p><p className="text-[10px] text-white/70">bronnen</p></div>
+          </div>
+          <p className="hidden sm:block">
+            <span className="font-bold text-ink">1.240+</span> rapporten gegenereerd ·{" "}
+            <span className="font-bold text-ink">10</span>{" "}pagina&apos;s per rapport · gebaseerd op officiële, erkende
+            bronnen
+          </p>
         </Container>
       </section>
 
