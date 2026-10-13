@@ -313,14 +313,17 @@ export default function VoorbeeldrapportSlider() {
           laadDocument().catch(() => {});
         }}
         onFocus={() => laadDocument().catch(() => {})}
-        className="group inline-flex items-center gap-2.5 rounded-xl border border-line bg-white p-2 pr-3 text-left shadow-flat transition-shadow hover:shadow-overlay"
+        className="group inline-flex items-center gap-2.5 text-left sm:rounded-xl sm:border sm:border-line sm:bg-white sm:p-2 sm:pr-3 sm:shadow-flat sm:transition-shadow sm:hover:shadow-overlay"
       >
-        <span className="flex h-9 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-accent to-accent-dark">
+        <span className="hidden h-9 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-accent to-accent-dark sm:flex">
           <FileCheckIcon className="h-4 w-4 text-white" />
         </span>
         <span>
-          <span className="block text-[12.5px] font-bold text-ink">Bekijk het echte voorbeeldrapport</span>
-          <span className="block text-[10.5px] text-ink/70">10 pagina&apos;s · gratis, geen account nodig</span>
+          <span className="block text-[13px] font-semibold text-accent sm:text-[12.5px] sm:font-bold sm:text-ink">
+            Bekijk <span className="sm:hidden">een</span>
+            <span className="hidden sm:inline">het echte</span> voorbeeldrapport
+          </span>
+          <span className="hidden text-[10.5px] text-ink/70 sm:block">10 pagina&apos;s · gratis, geen account nodig</span>
         </span>
         <ArrowRightIcon className="h-3.5 w-3.5 shrink-0 text-accent transition-transform group-hover:translate-x-1" />
       </button>

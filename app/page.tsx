@@ -367,7 +367,7 @@ export default async function HomePage({
             <MobileNavMenu />
             <a
               href="#zoeken"
-              className="rounded-full bg-accent px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-accent-dark"
+              className="hidden rounded-full bg-accent px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-accent-dark sm:inline-block"
             >
               Probeer gratis
             </a>
@@ -376,7 +376,7 @@ export default async function HomePage({
       </header>
 
       <section id="zoeken" className="relative">
-        <Container className="py-16 sm:py-20">
+        <Container className="py-10 sm:py-20">
           <div className="grid items-center gap-14 lg:grid-cols-[1.05fr_0.95fr]">
             {/* Tekstkolom.
                 BUGFIX (mobiel): CSS Grid-items krijgen, net als flex-items,
@@ -391,7 +391,7 @@ export default async function HomePage({
                 breder geduwd dan de viewport. min-w-0 hier op de grid-track
                 zelf lost dat definitief op. */}
             <div className="min-w-0">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-mist px-3 py-1.5 text-[10.5px] font-bold text-accent">
+              <span className="hidden items-center gap-1.5 rounded-full bg-mist px-3 py-1.5 text-[10.5px] font-bold text-accent sm:inline-flex">
                 ✓ Onafhankelijk · gebaseerd op officiële bronnen
               </span>
 
@@ -399,10 +399,11 @@ export default async function HomePage({
                   een variant die meteen de breedte van het rapport benoemt —
                   sloot beter aan bij de iconentegels + "37 meer"-tegel
                   hieronder dan de vorige, algemenere kop. */}
-              <h1 className="mt-4 font-display text-[2.3rem] font-extrabold leading-[1.12] text-ink sm:text-[2.9rem]">
-                Wat is dit huis waard? Alles over een woning, op één plek.
+              <h1 className="mt-2 font-display text-[2rem] font-extrabold leading-[1.12] text-ink sm:mt-4 sm:text-[2.9rem]">
+                Wat is dit huis waard?<span className="hidden sm:inline"> Alles over een woning, op één plek.</span>
               </h1>
-              <p className="mt-3 max-w-md text-[13.5px] leading-relaxed text-ink/70">
+              <p className="mt-2 text-[14px] text-ink/70 sm:hidden">Alles over een woning, per adres.</p>
+              <p className="mt-3 hidden max-w-md text-[13.5px] leading-relaxed text-ink/70 sm:block">
                 Woningwaarde, biedadvies, verkopen in de buurt, fundering en energielabel, per adres.
               </p>
 
@@ -414,7 +415,7 @@ export default async function HomePage({
                   en de 4e tegel ("37 meer") maakt in één oogopslag duidelijk
                   dat het rapport verder gaat dan deze 3 onderwerpen, zonder
                   dat er een lange opsomming nodig is. */}
-              <div className="mt-4 grid max-w-sm grid-cols-4 gap-2">
+              <div className="mt-4 hidden max-w-sm grid-cols-4 gap-2 sm:grid">
                 <div className="flex flex-col items-center gap-1 rounded-xl bg-mist px-1.5 py-2.5 text-center">
                   <TrendingUpIcon className="h-4 w-4 text-accent-dark" />
                   <span className="text-[9.5px] font-bold text-accent-dark">Waarde</span>
@@ -439,14 +440,15 @@ export default async function HomePage({
                   VoorbeeldrapportSlider (alle 10 pagina's, zelfde stijl als
                   het echte rapport) i.p.v. direct de PDF te openen; de PDF
                   blijft binnen die modal als aparte downloadlink bereikbaar. */}
-              <div className="mt-4 flex flex-wrap items-center gap-3">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EAF3DE] px-3 py-1.5 text-[11px] font-bold text-[#3B6D11]">
+              <p className="mt-3 text-[12px] text-ink/70 sm:hidden">Gratis preview · geen account · {RAPPORT_PRIJS} voor het volledige rapport</p>
+              <div className="mt-3 flex flex-wrap items-center gap-3 sm:mt-4">
+                <span className="hidden items-center gap-1.5 rounded-full bg-[#EAF3DE] px-3 py-1.5 text-[11px] font-bold text-[#3B6D11] sm:inline-flex">
                   <BoltIcon className="h-3.5 w-3.5" />
                   Rapport direct beschikbaar
                 </span>
                 <VoorbeeldrapportSlider />
               </div>
-              <p className="mt-2 text-[11px] text-ink/70">Gratis preview, geen abonnement, geen account nodig</p>
+              <p className="mt-2 hidden text-[11px] text-ink/70 sm:block">Gratis preview, geen abonnement, geen account nodig</p>
             </div>
 
             {/* Eén rustig browserscherm i.p.v. de eerdere 3 losse gestapelde
@@ -517,7 +519,7 @@ export default async function HomePage({
       </section>
 
       <section className="relative">
-        <Container className="py-20">
+        <Container className="py-10 sm:py-20">
           {/* h2 i.p.v. eerder een <p> — visueel identiek (zelfde classes),
               maar dit is inhoudelijk een sectiekop (opent een nieuwe sectie
               met 3 stappen), en hoort dus ook semantisch als kop gemarkeerd
@@ -552,37 +554,15 @@ export default async function HomePage({
             })}
           </div>
 
-          {/* Verticaal op mobiel (onder sm) — ongewijzigd t.o.v. de eerder
-              goedgekeurde versie. */}
-          <div className="relative mx-auto mt-8 max-w-xl sm:hidden">
-            {/* Verbindingslijn achter de drie stap-badges, kleurverloop van
-                indigo (stap 1) naar groen (stap 3, "voltooid/ontgrendeld") --
-                zie de visualize-afstemming hierover. */}
-            <div className="absolute bottom-6 left-6 top-6 w-0.5 bg-gradient-to-b from-accent via-[#8B85EE] to-[#3B6D11] opacity-20" />
-            <div className="flex flex-col gap-4">
-              {STAPPEN.map((s, i) => {
-                const Icon = s.icoon;
-                const laatste = i === STAPPEN.length - 1;
-                return (
-                  <div key={s.titel} className={`relative flex items-start gap-4 ${laatste ? "" : "pb-0"}`}>
-                    <span
-                      className={`relative z-10 flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full ${s.badgeBg} ring-4 ring-white`}
-                    >
-                      <Icon className={`h-5 w-5 ${s.badgeKleur}`} />
-                    </span>
-                    <div className="flex flex-1 items-center justify-between gap-3 rounded-2xl bg-parchment p-4">
-                      <div>
-                        <p className={`text-[10.5px] font-bold uppercase tracking-wider3 ${s.labelKleur}`}>
-                          Stap {i + 1}
-                        </p>
-                        <h3 className="mt-0.5 text-[14.5px] font-extrabold text-ink">{s.titel}</h3>
-                        <p className="mt-0.5 text-xs leading-relaxed text-ink/70">{s.tekst}</p>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+          {/* Mobiel (onder sm): compact, drie kolommen naast elkaar, zonder
+              tijdlijn of uitleg per stap. */}
+          <div className="mx-auto mt-5 grid max-w-xl grid-cols-3 gap-3 sm:hidden">
+            {STAPPEN.map((s, i) => (
+              <div key={s.titel} className="text-[12px] leading-snug text-ink">
+                <p className={`text-[11px] font-bold ${s.labelKleur}`}>{i + 1}</p>
+                <h3 className="mt-0.5 font-semibold">{s.titel}</h3>
+              </div>
+            ))}
           </div>
         </Container>
       </section>
@@ -610,14 +590,14 @@ export default async function HomePage({
           dat de pagina drukker oogt (alles behalve de eerste vraag staat
           dicht). */}
       <section className="relative">
-        <Container className="py-16">
+        <Container className="py-10 sm:py-16">
           <h2 className="text-center text-[11px] font-bold uppercase tracking-wider3 text-ink/70">Veelgestelde vragen</h2>
           <div className="mx-auto mt-7 flex max-w-2xl flex-col gap-2">
-            {VEELGESTELDE_VRAGEN.map((item) => (
+            {VEELGESTELDE_VRAGEN.map((item, i) => (
               <details
                 key={item.vraag}
                 open={item.open}
-                className={`group rounded-xl bg-white p-4 ${item.open ? "border-2 border-accent" : "border border-ink/10"}`}
+                className={`group rounded-xl bg-white p-4 ${i >= 4 ? "hidden sm:block" : ""} ${item.open ? "border-2 border-accent" : "border border-ink/10"}`}
               >
                 <summary
                   className={`flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden ${
@@ -634,6 +614,23 @@ export default async function HomePage({
                 <p className="mt-2 text-[12.5px] leading-relaxed text-ink/70">{item.antwoord}</p>
               </details>
             ))}
+            {/* Mobiel: de overige vragen achter één knop, zodat de pagina korter blijft. */}
+            <details className="group sm:hidden">
+              <summary className="cursor-pointer list-none py-2 text-center text-[13px] font-semibold text-accent [&::-webkit-details-marker]:hidden group-open:hidden">
+                Toon meer vragen
+              </summary>
+              <div className="flex flex-col gap-2">
+                {VEELGESTELDE_VRAGEN.slice(4).map((item) => (
+                  <details key={item.vraag} className="group rounded-xl border border-ink/10 bg-white p-4">
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[13px] font-semibold text-ink [&::-webkit-details-marker]:hidden">
+                      {item.vraag}
+                      <ChevronDownIcon className="h-4 w-4 shrink-0 text-ink/30 transition-transform group-open:rotate-180" />
+                    </summary>
+                    <p className="mt-2 text-[12.5px] leading-relaxed text-ink/70">{item.antwoord}</p>
+                  </details>
+                ))}
+              </div>
+            </details>
           </div>
         </Container>
       </section>

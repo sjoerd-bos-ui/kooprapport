@@ -28,6 +28,16 @@ import { CONSENT_KEY } from "@/components/analytics/CookieConsent";
 // zodra de bezoeker "Accepteren"/"Weigeren" heeft gekozen.
 export default function WhatsAppFloatingButton() {
   const [bannerZichtbaar, setBannerZichtbaar] = useState(false);
+  // Mobiel: de knop verschijnt pas nadat de bezoeker iets heeft gescrold, zodat hij de zoekbalk niet afdekt.
+  const [gescrold, setGescrold] = useState(false);
+  useEffect(() => {
+    function opScroll() {
+      setGescrold(window.scrollY > 400);
+    }
+    opScroll();
+    window.addEventListener("scroll", opScroll, { passive: true });
+    return () => window.removeEventListener("scroll", opScroll);
+  }, []);
 
   useEffect(() => {
     function controleer() {
@@ -49,15 +59,15 @@ export default function WhatsAppFloatingButton() {
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Stuur ons een WhatsApp-bericht"
-      className={`fixed right-4 z-40 flex items-center gap-2 transition-[bottom] sm:right-6 ${
+      className={`fixed right-4 z-40 flex items-center gap-2 transition-[bottom,opacity] sm:right-6 ${
         bannerZichtbaar ? "bottom-24 sm:bottom-28" : "bottom-4 sm:bottom-6"
-      }`}
+      } ${gescrold ? "" : "max-sm:pointer-events-none max-sm:opacity-0"}`}
     >
       <span className="hidden rounded-full bg-ink px-3 py-1.5 text-xs font-medium text-white shadow-overlay sm:inline-block">
         Vragen? App ons direct
       </span>
-      <span className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full bg-[#25D366] shadow-overlay transition-transform hover:scale-105">
-        <svg viewBox="0 0 24 24" className="h-7 w-7" fill="#fff" aria-hidden="true">
+      <span className="flex h-11 w-11 shrink-0 sm:h-[52px] sm:w-[52px] items-center justify-center rounded-full bg-[#25D366] shadow-overlay transition-transform hover:scale-105">
+        <svg viewBox="0 0 24 24" className="h-6 w-6 sm:h-7 sm:w-7" fill="#fff" aria-hidden="true">
           <path d="M17.5 14.4c-.3-.1-1.7-.8-1.9-.9-.3-.1-.4-.1-.6.1-.2.3-.7.9-.8 1-.2.2-.3.2-.5.1-.3-.1-1.2-.4-2.3-1.4-.8-.7-1.4-1.6-1.6-1.9-.2-.3 0-.5.1-.6.1-.1.3-.3.4-.5.1-.1.2-.3.2-.4.1-.1 0-.3 0-.4-.1-.1-.6-1.4-.8-1.9-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.4.1-.7.3-.2.3-.9.9-.9 2.1 0 1.2.9 2.4 1 2.6.1.1 1.8 2.8 4.4 3.9.6.3 1.1.4 1.5.6.6.2 1.2.2 1.6.1.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.1-1.2-.1-.1-.2-.2-.5-.3Z" />
           <path d="M20.5 3.5A11 11 0 0 0 3.1 16.9L2 21.5l4.7-1.2a11 11 0 0 0 5.3 1.4h.1a11 11 0 0 0 8.4-18.2Zm-8.4 16.8h-.1a9.1 9.1 0 0 1-4.6-1.3l-.3-.2-3.1.8.8-3-.2-.3a9.1 9.1 0 1 1 16.9-4.7 9.1 9.1 0 0 1-9.4 8.7Z" />
         </svg>
