@@ -376,7 +376,7 @@ export default async function HomePage({
       </header>
 
       <section id="zoeken" className="relative">
-        <Container className="py-10 sm:py-20">
+        <Container className="pb-6 pt-8 sm:py-20">
           <div className="grid items-center gap-14 lg:grid-cols-[1.05fr_0.95fr]">
             {/* Tekstkolom.
                 BUGFIX (mobiel): CSS Grid-items krijgen, net als flex-items,
@@ -440,7 +440,20 @@ export default async function HomePage({
                   VoorbeeldrapportSlider (alle 10 pagina's, zelfde stijl als
                   het echte rapport) i.p.v. direct de PDF te openen; de PDF
                   blijft binnen die modal als aparte downloadlink bereikbaar. */}
-              <p className="mt-3 text-[12px] text-ink/70 sm:hidden">Gratis preview · geen account · {RAPPORT_PRIJS} voor het volledige rapport</p>
+              <div className="mt-4 flex flex-wrap gap-2 sm:hidden">
+                {["Gratis preview", "Geen account", `Volledig rapport ${RAPPORT_PRIJS}`].map((t) => (
+                  <span key={t} className="rounded-full border border-ink/10 bg-white px-3 py-1.5 text-[12px] font-semibold text-ink">
+                    {t}
+                  </span>
+                ))}
+              </div>
+              <div className="-mx-5 mt-4 flex gap-2 overflow-x-auto px-5 pb-1 sm:hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {["Woningwaarde", "Biedadvies", "Verkopen in de buurt", "Funderingsrisico", "Energielabel", "Buurtprofiel"].map((t) => (
+                  <span key={t} className="shrink-0 rounded-full bg-mist px-3 py-1.5 text-[12px] font-bold text-accent-dark">
+                    {t}
+                  </span>
+                ))}
+              </div>
               <div className="mt-3 flex flex-wrap items-center gap-3 sm:mt-4">
                 <span className="hidden items-center gap-1.5 rounded-full bg-[#EAF3DE] px-3 py-1.5 text-[11px] font-bold text-[#3B6D11] sm:inline-flex">
                   <BoltIcon className="h-3.5 w-3.5" />
@@ -519,7 +532,7 @@ export default async function HomePage({
       </section>
 
       <section className="relative">
-        <Container className="py-10 sm:py-20">
+        <Container className="py-8 sm:py-20">
           {/* h2 i.p.v. eerder een <p> — visueel identiek (zelfde classes),
               maar dit is inhoudelijk een sectiekop (opent een nieuwe sectie
               met 3 stappen), en hoort dus ook semantisch als kop gemarkeerd
@@ -556,13 +569,19 @@ export default async function HomePage({
 
           {/* Mobiel (onder sm): compact, drie kolommen naast elkaar, zonder
               tijdlijn of uitleg per stap. */}
-          <div className="mx-auto mt-5 grid max-w-xl grid-cols-3 gap-3 sm:hidden">
-            {STAPPEN.map((s, i) => (
-              <div key={s.titel} className="text-[12px] leading-snug text-ink">
-                <p className={`text-[11px] font-bold ${s.labelKleur}`}>{i + 1}</p>
-                <h3 className="mt-0.5 font-semibold">{s.titel}</h3>
-              </div>
-            ))}
+          <div className="mx-auto mt-5 grid max-w-xl grid-cols-3 gap-2 rounded-2xl border border-ink/10 bg-white p-3 sm:hidden">
+            {STAPPEN.map((s, i) => {
+              const Icon = s.icoon;
+              return (
+                <div key={s.titel} className="flex flex-col items-center gap-2 px-1 py-2 text-center">
+                  <span className={`flex h-10 w-10 items-center justify-center rounded-full ${s.badgeBg}`}>
+                    <Icon className={`h-[18px] w-[18px] ${s.badgeKleur}`} />
+                  </span>
+                  <p className={`text-[10.5px] font-bold uppercase tracking-wider3 ${s.labelKleur}`}>Stap {i + 1}</p>
+                  <h3 className="text-[12.5px] font-semibold leading-snug text-ink">{s.titel}</h3>
+                </div>
+              );
+            })}
           </div>
         </Container>
       </section>
@@ -580,7 +599,7 @@ export default async function HomePage({
       <section className="relative border-y border-ink/[0.06]">
         <Container className="py-6 text-center text-[11px] text-ink/70">
           <span className="font-bold text-ink">1.240+</span> rapporten gegenereerd ·{" "}
-          <span className="font-bold text-ink">10</span> pagina&apos;s per rapport · gebaseerd op officiële, erkende
+          <span className="font-bold text-ink">10</span>{" "}pagina&apos;s per rapport · gebaseerd op officiële, erkende
           bronnen
         </Container>
       </section>

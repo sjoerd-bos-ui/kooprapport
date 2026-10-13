@@ -313,7 +313,7 @@ export default function VoorbeeldrapportSlider() {
           laadDocument().catch(() => {});
         }}
         onFocus={() => laadDocument().catch(() => {})}
-        className="group inline-flex items-center gap-2.5 text-left sm:rounded-xl sm:border sm:border-line sm:bg-white sm:p-2 sm:pr-3 sm:shadow-flat sm:transition-shadow sm:hover:shadow-overlay"
+        className="group inline-flex items-center gap-2.5 rounded-full border border-accent/30 px-4 py-2 text-left sm:rounded-xl sm:border sm:border-line sm:bg-white sm:p-2 sm:pr-3 sm:shadow-flat sm:transition-shadow sm:hover:shadow-overlay"
       >
         <span className="hidden h-9 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-accent to-accent-dark sm:flex">
           <FileCheckIcon className="h-4 w-4 text-white" />
